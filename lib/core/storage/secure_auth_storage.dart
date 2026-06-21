@@ -1,7 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'auth_storage.dart';
 
-
 class SecureAuthStorage implements AuthStorage {
   SecureAuthStorage()
       : _storage = const FlutterSecureStorage(
@@ -12,15 +11,33 @@ class SecureAuthStorage implements AuthStorage {
 
   final FlutterSecureStorage _storage;
 
-  static const String _tokenKey = 'jwt';
+  static const String _accessTokenKey = 'access_token';
+  static const String _refreshTokenKey = 'refresh_token';
 
   @override
-  Future<String?> readToken() => _storage.read(key: _tokenKey);
+  Future<String?> readAccessToken() =>
+      _storage.read(key: _accessTokenKey);
 
   @override
-  Future<void> writeToken(String token) =>
-      _storage.write(key: _tokenKey, value: token);
+  Future<String?> readRefreshToken() =>
+      _storage.read(key: _refreshTokenKey);
 
   @override
-  Future<void> clear() => _storage.delete(key: _tokenKey);
+  Future<void> writeTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    await Future.wait([
+      _storage.write(key: _accessTokenKey, value: accessToken),
+      _storage.write(key: _refreshTokenKey, value: refreshToken),
+    ]);
+  }
+
+  @override
+  Future<void> clear() async {
+    await Future.wait([
+      _storage.delete(key: _accessTokenKey),
+      _storage.delete(key: _refreshTokenKey),
+    ]);
+  }
 }

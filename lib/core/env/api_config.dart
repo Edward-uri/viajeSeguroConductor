@@ -3,7 +3,7 @@ class ApiConfig {
 
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.example.com',
+    defaultValue: 'https://api.codigoverse.space',
   );
 
   static const Duration requestTimeout = Duration(

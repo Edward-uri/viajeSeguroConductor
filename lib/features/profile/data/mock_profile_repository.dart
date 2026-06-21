@@ -8,8 +8,7 @@ class MockProfileRepository implements ProfileRepository {
   Future<User> getMe() async {
     return const User(
       idUsuario: 1,
-      nombreUsuario: 'usuario',
-      rol: 'pasajero',
+      rol: 'conductor',
       estadoCuenta: 'activo',
       fechaRegistro: null,
     );
@@ -33,8 +32,7 @@ class MockProfileRepository implements ProfileRepository {
   Future<User> confirmPhotoUpload({required String s3Key}) async {
     return const User(
       idUsuario: 1,
-      nombreUsuario: 'usuario',
-      rol: 'pasajero',
+      rol: 'conductor',
       estadoCuenta: 'activo',
       fechaRegistro: null,
       fotoPerfilUrl: 'https://mock-s3.example.com/mock-s3-key',

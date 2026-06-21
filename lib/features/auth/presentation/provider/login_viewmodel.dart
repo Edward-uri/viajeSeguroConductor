@@ -1,87 +1,30 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/http/api_exception.dart';
-import '../../../../core/security/sensitive_data_processor.dart';
+import '../../di/auth_module.dart';
 import '../../domain/repositories/auth_repository.dart';
-import '../../domain/services/mock_location_detector.dart';
-import '../../domain/services/usb_debug_detector.dart';
 
+final loginViewModelProvider =
+    ChangeNotifierProvider<LoginViewModel>((ref) {
+  return LoginViewModel(ref.watch(authRepositoryProvider));
+});
 
 class LoginViewModel extends ChangeNotifier {
-  LoginViewModel(
-    this._repository,
-    this._mockLocationDetector,
-    this._usbDebugDetector,
-  );
+  LoginViewModel(this._repository);
 
   final AuthRepository _repository;
-  final MockLocationDetector _mockLocationDetector;
-  final UsbDebugDetector _usbDebugDetector;
 
-
-  String _identifier = '';
-  String _password = '';
-  bool _obscurePassword = true;
+  String _email = '';
   bool _isLoading = false;
   String? _errorMessage;
-  bool _checkingSecurity = true;
-  bool _mockLocationDetected = false;
-  bool _usbDebugDetected = false;
 
-  String get identifier => _identifier;
-  String get password => _password;
-  bool get obscurePassword => _obscurePassword;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String get email => _email;
 
-  bool get checkingSecurity => _checkingSecurity;
-
-  bool get mockLocationDetected => _mockLocationDetected;
-  bool get usbDebugDetected => _usbDebugDetected;
-
-  bool get isSecurityCompromised => _mockLocationDetected || _usbDebugDetected;
-
-  bool get canSubmit =>
-      !_isLoading && _identifier.trim().isNotEmpty && _password.isNotEmpty;
-
-
-  Future<void> checkSecurity() async {
-    _checkingSecurity = true;
-    notifyListeners();
-
-    try {
-      // Ejecutamos ambas comprobaciones con un tiempo límite total
-      final results = await Future.wait([
-        _mockLocationDetector.isMockLocationActive(),
-        _usbDebugDetector.isUsbDebuggingActive(),
-      ]).timeout(const Duration(seconds: 7));
-
-      _mockLocationDetected = results[0];
-      _usbDebugDetected = results[1];
-    } catch (e) {
-      debugPrint('[Security] Error durante la comprobación: $e');
-      // En caso de error crítico, permitimos continuar para no bloquear al usuario
-      _mockLocationDetected = false;
-      _usbDebugDetected = false;
-    } finally {
-      _checkingSecurity = false;
-      notifyListeners();
-    }
-  }
-
-
-  void setIdentifier(String value) {
-    _identifier = value;
-    notifyListeners();
-  }
-
-  void setPassword(String value) {
-    _password = value;
-    notifyListeners();
-  }
-
-  void togglePasswordVisibility() {
-    _obscurePassword = !_obscurePassword;
+  void setEmail(String v) {
+    _email = v;
     notifyListeners();
   }
 
@@ -91,31 +34,42 @@ class LoginViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-
-  Future<bool> submit() async {
-    if (!canSubmit) return false;
+  Future<bool> sendOtp() async {
+    if (_email.trim().isEmpty) return false;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-
-    final logData = <String, dynamic>{
-      'identifier': _identifier.trim(),
-      'password': _password,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-    SensitiveDataProcessor.debugLogSanitized('LoginViewModel.submit', logData);
-
     try {
-      await _repository.login(
-        identifier: _identifier.trim(),
-        password: _password,
+      await _repository.loginStart(correo: _email.trim());
+      return true;
+    } on ApiException catch (e) {
+      _errorMessage = e.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'Ocurrió un error inesperado';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> verifyOtp(String codigo) async {
+    if (_email.trim().isEmpty || codigo.length != 4) return false;
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.loginVerify(
+        correo: _email.trim(),
+        codigo: codigo,
       );
       return true;
     } on ApiException catch (e) {
       _errorMessage = e.message;
       return false;
     } catch (_) {
-      _errorMessage = 'Ocurrio un error inesperado';
+      _errorMessage = 'Ocurrió un error inesperado';
       return false;
     } finally {
       _isLoading = false;

@@ -1,8 +1,8 @@
 import 'package:http/http.dart' as http;
 
 import '../../../../core/http/api_client.dart';
+import '../../../../core/http/api_endpoints.dart';
 import '../../../../core/http/api_exception.dart';
-
 
 class ProfileApi {
   ProfileApi(this._api, this._rawClient);
@@ -10,26 +10,21 @@ class ProfileApi {
   final ApiClient _api;
   final http.Client _rawClient;
 
-  static const String _mePath = '/api/users/me';
-  static const String _presignPath = '/api/users/me/photo/presign';
-  static const String _confirmPath = '/api/users/me/photo/confirm';
-
-  Future<Map<String, dynamic>> getMe() => _api.get(_mePath);
+  Future<Map<String, dynamic>> getMe() => _api.get(ApiEndpoints.usersMe);
 
   Future<Map<String, dynamic>> requestPhotoUpload(String contentType) =>
       _api.post(
-        _presignPath,
+        ApiEndpoints.usersMePhotoPresign,
         auth: true,
         body: <String, dynamic>{'contentType': contentType},
       );
 
   Future<Map<String, dynamic>> confirmPhotoUpload(String s3Key) => _api.put(
-        _confirmPath,
+        ApiEndpoints.usersMePhotoConfirm,
         body: <String, dynamic>{'s3Key': s3Key},
       );
 
-  Future<void> deleteAccount() => _api.delete(_mePath);
-
+  Future<void> deleteAccount() => _api.delete(ApiEndpoints.usersMe);
 
   Future<void> uploadBytesToS3({
     required String uploadUrl,

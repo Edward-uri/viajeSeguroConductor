@@ -1,7 +1,12 @@
 abstract class AuthStorage {
-  Future<String?> readToken();
+  Future<String?> readAccessToken();
 
-  Future<void> writeToken(String token);
+  Future<String?> readRefreshToken();
+
+  Future<void> writeTokens({
+    required String accessToken,
+    required String refreshToken,
+  });
 
   Future<void> clear();
 }

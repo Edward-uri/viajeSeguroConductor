@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/logo_badge.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/theme.dart';
-import '../../auth/domain/repositories/auth_repository.dart';
+import '../../auth/di/auth_module.dart';
 
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
@@ -22,7 +22,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _decideRoute() async {
-    final authRepo = context.read<AuthRepository>();
+    final authRepo = ref.read(authRepositoryProvider);
     final results = await Future.wait<dynamic>([
       authRepo.hasSession(),
       Future<void>.delayed(const Duration(milliseconds: 600)),
@@ -30,7 +30,7 @@ class _SplashScreenState extends State<SplashScreen> {
     final hasSession = results[0] as bool;
     if (!mounted) return;
     Navigator.of(context).pushReplacementNamed(
-      hasSession ? AppRoutes.profile : AppRoutes.login,
+      hasSession ? AppRoutes.driverHome : AppRoutes.getstarted,
     );
   }
 
@@ -67,7 +67,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Tu mototaxi, a un toque',
+                'Conduce con Jala',
                 style: text.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),

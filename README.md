@@ -1,6 +1,6 @@
-# Jala — App móvil
+# Jala — App móvil (pasajero)
 
-Cliente Flutter de **Jala**, una plataforma de moto-taxis. Esta app es la del **pasajero** (la del conductor irá en un binario aparte cuando le toque su turno). Apunta principalmente a Android y consume un backend REST en Node/Express que vive aparte.
+Cliente Flutter de **Jala**, una plataforma de moto-taxis. Esta app es la del **pasajero**. Apunta principalmente a Android y consume un backend REST en Node/Express desplegado en la nube.
 
 ---
 
@@ -10,7 +10,7 @@ Cliente Flutter de **Jala**, una plataforma de moto-taxis. Esta app es la del **
 |---|---|
 | **Flutter** + **Dart** | Toda la app |
 | **Material 3** | Sistema de diseño base. El `ColorScheme` viene del Material Theme Builder oficial |
-| **Provider** | State management + Inyección de Dependencias manual |
+| **Riverpod** | State management + Inyección de Dependencias |
 | **http** | Cliente HTTP — **una sola instancia** compartida en toda la app |
 | **flutter_secure_storage** | Persistir el JWT en el Keystore de Android (encriptado a nivel hardware) |
 | **google_fonts** | Cargar **Plus Jakarta Sans** sin tener que pegar los `.ttf` en el repo |
@@ -20,6 +20,8 @@ Cliente Flutter de **Jala**, una plataforma de moto-taxis. Esta app es la del **
 | **firebase_messaging** | Push notifications vía FCM (remote wipe) |
 | **geolocator** | Detectar ubicaciones mock en Android |
 | **device_preview** | Probar la UI en distintos devices sin emulador (solo activo en web/desktop debug) |
+| **socket_io_client** | Conexión en tiempo real con el backend (viajes, tracking, eventos) |
+| **crypto** | Hashing SHA256 para contraseñas en el simulador local |
 
 ---
 
@@ -91,7 +93,7 @@ Cada feature aplica **Model-View-ViewModel**:
 
 La View se suscribe al ViewModel con `context.watch<XxxViewModel>()` y se reconstruye cuando el ViewModel hace `notifyListeners()`. Cuando la View se desmonta, el ViewModel se libera (porque está scopeado al `ChangeNotifierProvider` de esa pantalla). Cero leaks.
 
-> Decidí llamar a la carpeta **`provider/`** en vez de `viewmodels/` porque refleja la tecnología que está usando (el paquete Provider). Las clases adentro mantienen el sufijo `ViewModel` porque conceptualmente siguen siendo ViewModels de MVVM. La carpeta dice **cómo**, las clases dicen **qué**.
+> Decidí llamar a la carpeta **`provider/`** en vez de `viewmodels/` porque refleja tecnología de state management. Las clases adentro mantienen el sufijo `ViewModel` porque conceptualmente siguen siendo ViewModels de MVVM. La carpeta dice **cómo**, las clases dicen **qué**.
 
 ---
 
@@ -99,13 +101,14 @@ La View se suscribe al ViewModel con `context.watch<XxxViewModel>()` y se recons
 
 ```
 lib/
-├── main.dart                              ← entry point + bootstrap de toda la DI + Firebase init
+├── main.dart                              ← entry point + bootstrap Firebase + ProviderScope
 ├── app.dart                               ← MaterialApp + theme + rutas
 ├── firebase_options.dart                  ← config de Firebase por plataforma (desde .env)
+├── google-services.json                   ← Firebase Android config
 │
 ├── core/                                  ← cosas transversales a TODA la app
 │   ├── di/
-│   │   └── core_module.dart               ← providers app-wide (http, storage, api)
+│   │   └── core_module.dart               ← Riverpod providers app-wide (http, storage, api)
 │   ├── env/api_config.dart                ← lee API_BASE_URL del compile-time env
 │   ├── http/
 │   │   ├── api_client.dart                ← wrapper de http.Client, inyecta JWT
@@ -117,6 +120,7 @@ lib/
 │   ├── navigation/
 │   │   └── app_navigator.dart             ← GlobalKey<NavigatorState> para navegar sin context
 │   ├── security/
+│   │   ├── sensitive_data_processor.dart  ← enmascaramiento + hashing + sanitización de logs
 │   │   └── remote_wipe_handler.dart       ← borrado remoto de datos sensibles vía FCM
 │   ├── storage/
 │   │   ├── auth_storage.dart              ← interfaz abstracta
@@ -168,7 +172,7 @@ lib/
     │   │       ├── mock_location_detector.dart    ← interfaz abstracta
     │   │       └── usb_debug_detector.dart        ← interfaz abstracta
     │   ├── di/
-    │   │   └── auth_module.dart           ← providers del feature auth
+    │   │   └── auth_module.dart           ← Riverpod providers del feature auth
     │   └── presentation/
     │       ├── provider/                  ← ChangeNotifier (LoginViewModel, RegisterViewModel)
     │       └── screens/                   ← Widgets de pantalla
@@ -182,7 +186,7 @@ lib/
         │   ├── entities/profile_photo_upload_ticket.dart
         │   └── repositories/profile_repository.dart
         ├── di/
-        │   └── profile_module.dart        ← providers del feature profile
+        │   └── profile_module.dart        ← Riverpod providers del feature profile
         └── presentation/
             ├── provider/
             └── screens/
@@ -202,14 +206,27 @@ Se crea en `main.dart` y se inyecta vía Provider a todos los repositorios. No q
 
 Cuando la app se cierra, el `Provider` llama al `dispose` y cierra el cliente liberando el connection pool.
 
-### 2. DI manual con Provider (sin codegen)
+### 2. DI con Riverpod (sin codegen)
 
-La cátedra exige Provider. Coincide con la idea de "DI manual" porque Provider **no es un framework de DI con magia** — es un `InheritedWidget` glorificado. Tú armas el árbol, tú decides qué se inyecta dónde.
+La app usa **Riverpod** como sistema de inyección de dependencias y state management. Los providers se declaran como variables globales en archivos de módulo (`core_module.dart`, `auth_module.dart`, `profile_module.dart`):
 
-Hay dos niveles de scope:
+```dart
+// core_module.dart
+final httpClientProvider = Provider<http.Client>((ref) {
+  final client = http.Client();
+  ref.onDispose(client.close);
+  return client;
+});
+```
 
-- **Nivel app-wide** (en `main.dart` con `MultiProvider`): cosas que viven mientras la app esté abierta — `http.Client`, `ApiClient`, `AuthStorage`, repositorios.
-- **Nivel pantalla** (con `ChangeNotifierProvider`): ViewModels. Se crean cuando entras a la pantalla, se destruyen cuando sales. Así el estado de un Login no contamina al siguiente Login.
+Hay dos tipos de providers según el ciclo de vida:
+
+- **`Provider`** (keepAlive): Dependencias que viven toda la vida de la app — `http.Client`, `ApiClient`, `AuthStorage`, repositorios.
+- **`ChangeNotifierProvider.autoDispose`**: ViewModels. Se crean cuando un `ConsumerWidget` los observa por primera vez, se destruyen cuando nadie los escucha. Así el estado de un Login no contamina al siguiente Login.
+
+Los ViewModels siguen siendo `ChangeNotifier`s. Riverpod los envuelve con `ChangeNotifierProvider.autoDispose` y las pantallas acceden a ellos con `ref.watch(provider)` en un `ConsumerWidget`.
+
+> Se migró de `provider` (paquete legacy) a Riverpod para obtener mejor gestión de ciclo de vida, providers auto-dispose nativos, y cero dependencia del widget tree para la DI.
 
 ### 3. `shared/` para entidades compartidas
 
@@ -321,8 +338,8 @@ Más allá de Clean Architecture y MVVM, la app aplica estos patrones de forma c
 | Patrón | Dónde aparece | Para qué sirve |
 |--------|---------------|----------------|
 | **Repository** | `AuthRepository` / `AuthRepositoryImpl`, `ProfileRepository` / `ProfileRepositoryImpl` | Interfaz en domain, implementación en data. El dominio nunca sabe cómo se obtienen los datos. |
-| **Factory** | `CoreModule.providers()`, `AuthModule.providers()`, `ProfileModule.providers()` | Métodos estáticos que construyen y configuran la cadena de dependencias. |
-| **Singleton** | `http.Client`, `ApiClient`, `AuthStorage`, `SensitiveDataStorage`, repositorios | Una sola instancia compartida en toda la app, inyectada vía `MultiProvider`. |
+| **Factory** | `core_module.dart`, `auth_module.dart`, `profile_module.dart` | Providers globales de Riverpod que construyen y configuran la cadena de dependencias. |
+| **Singleton** | `http.Client`, `ApiClient`, `AuthStorage`, `SensitiveDataStorage`, repositorios | Una sola instancia compartida en toda la app, declarada como `Provider` en Riverpod. |
 | **Strategy** | `AuthStorage` / `SecureAuthStorage`, `SensitiveDataStorage` / `SecureSensitiveDataStorage` | La interfaz define el contrato; se puede intercambiar la implementación (real, mock, otra tecnología). |
 | **Adapter** | `UserMapper`, `RegisterParamsMapper`, `ProfilePhotoUploadTicketMapper` | Convierte entre entidades de dominio (puras) y el formato del backend (JSON), manteniendo el dominio aislado. |
 | **Bridge** | `MockLocationDetector` / `MockLocationDetectorImpl`, `UsbDebugDetector` / `UsbDebugDetectorImpl` | Interfaz abstracta en domain, implementación nativa Android via `MethodChannel`. El domain no depende de Flutter ni de Android. |
@@ -452,21 +469,102 @@ La suite de tests se organiza así:
 
 | Archivo | Tipo | Qué prueba |
 |---------|------|------------|
-| `test/widget_test.dart` | Widget smoke test | Verifica que la app monta y muestra el branding "Jala" en el SplashScreen. Usa fakes de `AuthStorage`, `AuthRepository`, `MockLocationDetector` y `ProfileRepository`. |
-| `test/features/auth/login_viewmodel_test.dart` | Unit test | 4 casos: mock location detectado, USB debug detectado, sin riesgos, y estado inicial. Usa stubs con contadores de llamadas. |
+| `test/widget_test.dart` | Widget smoke test | Verifica que la app monta y muestra el branding "Jala" envuelta en `ProviderScope`. |
 
-Los ViewModels son `ChangeNotifier`s puros sin dependencia de Flutter, lo que los hace directamente testeables inyectando fakes de sus repositorios.
+Los ViewModels son `ChangeNotifier`s puros sin dependencia de Flutter, lo que los hace directamente testeables inyectando fakes de sus repositorios. Los providers de Riverpod permiten sobreescribir dependencias en tests usando `ProviderScope(overrides: [...])`.
 
 ---
 
-## Lo que queda pendiente
+## API Backend
+
+La app consume una API REST desplegada (Node/Express):
+
+| Recurso | URL |
+|---|---|
+| **Base URL** | `https://api.codigoverse.space/api` |
+| **Documentación (Swagger)** | `https://api.codigoverse.space/api/docs/` |
+
+La configuración de la URL se inyecta en compile-time via `--dart-define-from-file=config/prod.json`.
+
+---
+
+## google-services.json
+
+El archivo `google-services.json` está ubicado en `lib/google-services.json` (no en `android/app/` como es tradicional). Esto es porque Flutter lo resuelve desde la raíz del proyecto para la inicialización de Firebase.
+
+---
+
+## Seguridad (adicional)
+
+### SensitiveDataProcessor
+
+`lib/core/security/sensitive_data_processor.dart` expone utilidades para proteger datos sensibles en logs y en la UI:
+
+| Método | Función |
+|---|---|
+| `maskEmail(email)` | Enmascara el correo mostrando solo el primer carácter y el dominio: `j***@domain.com` |
+| `maskPhone(phone)` | Enmascara el teléfono mostrando solo últimos 4 dígitos: `*** *** 1234` |
+| `sanitizeForLogging(data)` | Limpia un `Map` de logs reemplazando passwords, tokens, JWTs y secrets con `[REDACTED]` |
+| `computeDataFingerprint(data)` | Genera un hash SHA256 del contenido para verificar integridad |
+| `isValidEmail(email)` / `isValidPhone(phone)` | Validación de formato |
+
+Cada ViewModel que maneja datos sensibles (login, perfil) usa `sanitizeForLogging` antes de cualquier `debugPrint`, asegurando que nunca se registren contraseñas o tokens en texto plano.
+
+---
+
+## Próximos pasos (Roadmap)
+
+### 1. Autenticación por OTP (Auth)
+
+El servicio de autenticación ya está desplegado y funcional. Hay que construir el flujo de registro/login por correo con OTP:
+
+**Flujo de endpoints:**
+```
+register/start {correo}
+  → register/verify {correo, codigo}
+    → register/complete
+```
+
+**Base URL:** `https://api.codigoverse.space/api`  
+**Documentación Swagger:** `/api/docs/`
+
+**Tareas:**
+- Crear el datasource HTTP (`AuthApi`) apuntando a estos endpoints
+- Implementar `AuthRepositoryImpl` real (reemplazar `AuthSimulator`)
+- Construir la UI de los 3 pasos: ingreso de correo → verificación OTP → completar registro
+
+### 2. Firebase + FCM (Cloud Messaging)
+
+Necesario configurar Firebase y Cloud Messaging en cada plataforma.
+
+**Tareas:**
+- Crear el proyecto Firebase (si no existe)
+- El `google-services.json` ya está en `lib/`
+- Integrar FCM y obtener el device token
+- El backend expondrá próximamente un endpoint para registrar el token
+
+> Este es el avance más importante que se puede ir adelantando mientras se definen los eventos del socket.
+
+### 3. Conexión en tiempo real (socket_io_client)
+
+Preparar una capa de conexión utilizando `socket_io_client`.
+
+**Requisitos:**
+- Autenticarse con el JWT (access token obtenido en el login)
+- Usar `socket_io_client` para conexión persistente
+- Manejar reconexión automática
+
+**Pendiente:**
+- Los nombres específicos de los eventos se entregarán junto con la especificación técnica
+- El `socket_io_client` ya está agregado en `pubspec.yaml`
+
+### 4. Otras mejoras pendientes
 
 - **`data/local/`**: cuando agreguemos cache (perfil offline, lista de viajes recientes) va aquí.
-- **HTTPS en producción**: hoy el backend responde por `http://` plano. En `release` Android bloquea cleartext — hay que configurar `network_security_config.xml` o ponerle HTTPS al servidor.
-- **Refresh token**: el backend emite un JWT con expiración de 7 días sin refresh. Cuando se venza, el `UnauthorizedException` que ya manejamos manda al usuario a Login. Si se quiere algo más fino (refresh transparente), va aquí.
-- **Tests de RegisterViewModel y ProfileViewModel**: hoy solo hay tests de `LoginViewModel`. Los otros dos ViewModels siguen el mismo patrón y son igualmente testeables.
-- **Integración y E2E**: no hay tests de integración (widget tests con dependencias reales) ni end-to-end.
-- **Suscripción a topics FCM**: el remote wipe está implementado del lado del cliente, pero falta que el servidor envíe la notificación push al topic correcto.
+- **Refresh token**: el backend emite un JWT con expiración. Cuando se venza, el `UnauthorizedException` manda al usuario a Login. Se puede agregar refresh transparente.
+- **Tests**: hay que agregar tests de `RegisterViewModel` y `ProfileViewModel`.
+- **Integración y E2E**: no hay tests de integración ni end-to-end.
+- **Suscripción a topics FCM**: el remote wipe está implementado del lado del cliente, pero falta que el servidor envíe la notificación push.
 
 ---
 

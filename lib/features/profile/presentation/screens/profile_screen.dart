@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
 
-import '../../../../core/storage/sensitive_data_storage.dart';
 import '../../../../routes/app_routes.dart';
 import '../../../../shared/domain/entities/user.dart';
-import '../../../auth/domain/repositories/auth_repository.dart';
-import '../../domain/repositories/profile_repository.dart';
 import '../provider/profile_viewmodel.dart';
 
 
@@ -18,28 +15,12 @@ const Map<String, String> _allowedImageMimeByExt = <String, String>{
 };
 
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider<ProfileViewModel>(
-      create: (ctx) => ProfileViewModel(
-        ctx.read<ProfileRepository>(),
-        ctx.read<AuthRepository>(),
-        ctx.read<SensitiveDataStorage>(),
-      )..loadProfile(),
-      child: const _ProfileView(),
-    );
-  }
-}
-
-class _ProfileView extends StatelessWidget {
-  const _ProfileView();
-
-  @override
-  Widget build(BuildContext context) {
-    final vm = context.watch<ProfileViewModel>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vm = ref.watch(profileViewModelProvider);
     final scheme = Theme.of(context).colorScheme;
 
     if (vm.user == null && vm.errorMessage != null && !vm.isLoading) {
@@ -90,14 +71,14 @@ class _ProfileView extends StatelessWidget {
   }
 }
 
-class _ProfileContent extends StatelessWidget {
+class _ProfileContent extends ConsumerWidget {
   const _ProfileContent({required this.user});
 
   final User user;
 
   @override
-  Widget build(BuildContext context) {
-    final vm = context.watch<ProfileViewModel>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vm = ref.watch(profileViewModelProvider);
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
@@ -107,14 +88,14 @@ class _ProfileContent extends StatelessWidget {
         Center(
           child: _Avatar(
             url: user.fotoPerfilUrl,
-            initials: _initials(user.nombreUsuario),
+            initials: _initials(user.correoElectronico ?? '?'),
             isUploading: vm.isUploadingPhoto,
           ),
         ),
         const SizedBox(height: 16),
         Center(
           child: Text(
-            '@${user.nombreUsuario}',
+            user.correoElectronico ?? 'Usuario',
             style: text.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
               color: scheme.onSurface,
@@ -188,7 +169,7 @@ class _ProfileContent extends StatelessWidget {
         FilledButton.tonalIcon(
           onPressed: vm.isUploadingPhoto || vm.isDeleting
               ? null
-              : () => _pickAndUploadPhoto(context),
+              : () => _pickAndUploadPhoto(context, ref),
           icon: const Icon(Icons.photo_camera_outlined),
           label: const Text('Cambiar foto de perfil'),
         ),
@@ -211,7 +192,7 @@ class _ProfileContent extends StatelessWidget {
         TextButton.icon(
           onPressed: vm.isDeleting
               ? null
-              : () => _confirmDelete(context),
+              : () => _confirmDelete(context, ref),
           icon: Icon(Icons.delete_outline, color: scheme.error),
           label: Text(
             'Eliminar mi cuenta',
@@ -233,7 +214,7 @@ class _ProfileContent extends StatelessWidget {
   }
 
 
-  Future<void> _pickAndUploadPhoto(BuildContext context) async {
+  Future<void> _pickAndUploadPhoto(BuildContext context, WidgetRef ref) async {
     final source = await _askPhotoSource(context);
     if (source == null || !context.mounted) return;
 
@@ -259,7 +240,7 @@ class _ProfileContent extends StatelessWidget {
     final bytes = await file.readAsBytes();
     if (!context.mounted) return;
 
-    final vm = context.read<ProfileViewModel>();
+    final vm = ref.read(profileViewModelProvider);
     final ok = await vm.uploadNewPhoto(bytes: bytes, contentType: contentType);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -312,7 +293,7 @@ class _ProfileContent extends StatelessWidget {
     return _allowedImageMimeByExt[ext];
   }
 
-  Future<void> _confirmDelete(BuildContext context) async {
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final scheme = Theme.of(context).colorScheme;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -336,7 +317,7 @@ class _ProfileContent extends StatelessWidget {
       ),
     );
     if (confirmed != true || !context.mounted) return;
-    final vm = context.read<ProfileViewModel>();
+    final vm = ref.read(profileViewModelProvider);
     final ok = await vm.deleteAccount();
     if (ok && context.mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil(

@@ -1,12 +1,24 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/di/core_module.dart';
 import '../../../../core/http/api_exception.dart';
 import '../../../../core/security/sensitive_data_processor.dart';
 import '../../../../core/storage/sensitive_data_storage.dart';
 import '../../../../shared/domain/entities/user.dart';
+import '../../../auth/di/auth_module.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
+import '../../di/profile_module.dart';
 import '../../domain/repositories/profile_repository.dart';
 
+final profileViewModelProvider =
+    ChangeNotifierProvider.autoDispose<ProfileViewModel>((ref) {
+  return ProfileViewModel(
+    ref.watch(profileRepositoryProvider),
+    ref.watch(authRepositoryProvider),
+    ref.watch(sensitiveDataStorageProvider),
+  );
+});
 
 class ProfileViewModel extends ChangeNotifier {
   ProfileViewModel(this._profileRepo, this._authRepo, this._sensitiveStorage);
