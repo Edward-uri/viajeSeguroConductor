@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/core_module.dart';
 import '../data/auth_repository_impl.dart';
+import '../data/auth_session_service.dart';
 import '../data/remote/auth_api.dart';
 import '../domain/repositories/auth_repository.dart';
 import '../domain/services/mock_location_detector.dart';
@@ -14,6 +15,11 @@ final authApiProvider = Provider<AuthApi>((ref) => AuthApi(
     ));
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepositoryImpl(
+      ref.watch(authApiProvider),
+      ref.watch(authStorageProvider),
+    ));
+
+final authSessionServiceProvider = Provider<AuthSessionService>((ref) => AuthSessionService(
       ref.watch(authApiProvider),
       ref.watch(authStorageProvider),
     ));

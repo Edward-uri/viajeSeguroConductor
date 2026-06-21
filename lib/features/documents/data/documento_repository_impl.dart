@@ -5,15 +5,8 @@ import 'package:flutter/foundation.dart';
 import '../../../core/http/api_exception.dart';
 import '../domain/entities/documento.dart';
 import '../domain/repositories/documento_repository.dart';
+import 'mappers/documento_mapper.dart';
 import 'remote/documentos_api.dart';
-
-const _tipoToNombre = {
-  'licencia': 'Licencia de conducir',
-  'ine-frente': 'INE (frente)',
-  'ine-reverso': 'INE (reverso)',
-  'tarjeta-circulacion': 'Tarjeta de circulación',
-  'foto-vehiculo': 'Foto del vehículo',
-};
 
 class DocumentoRepositoryImpl implements DocumentoRepository {
   DocumentoRepositoryImpl(this._api);
@@ -36,7 +29,7 @@ class DocumentoRepositoryImpl implements DocumentoRepository {
   Future<List<Documento>> _fetchDocumentos() async {
     final res = await _api.getDocumentos();
     final docs = res['documentos'] as List<dynamic>? ?? [];
-    return docs.map((e) => _mapDocumento(e as Map<String, dynamic>)).toList();
+    return docs.map((e) => DocumentoMapper.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   @override
@@ -47,28 +40,5 @@ class DocumentoRepositoryImpl implements DocumentoRepository {
       bytes: bytes,
       fileName: fileName,
     );
-  }
-
-  Documento _mapDocumento(Map<String, dynamic> json) {
-    final tipo = json['tipo']?.toString() ?? '';
-    return Documento(
-      id: tipo,
-      nombre: _tipoToNombre[tipo] ?? tipo,
-      status: _mapStatus(json['estado']?.toString() ?? ''),
-      rejectionReason: json['motivoRechazo']?.toString(),
-    );
-  }
-
-  DocumentStatus _mapStatus(String estado) {
-    switch (estado.toLowerCase()) {
-      case 'aprobado':
-        return DocumentStatus.approved;
-      case 'pendiente':
-        return DocumentStatus.reviewing;
-      case 'rechazado':
-        return DocumentStatus.rejected;
-      default:
-        return DocumentStatus.pending;
-    }
   }
 }

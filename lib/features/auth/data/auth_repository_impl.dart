@@ -2,6 +2,7 @@ import '../../../core/http/api_exception.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../domain/entities/register_params.dart';
 import '../domain/repositories/auth_repository.dart';
+import 'mappers/register_params_mapper.dart';
 import 'remote/auth_api.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
@@ -41,21 +42,9 @@ class AuthRepositoryImpl implements AuthRepository {
     required String registrationToken,
     required RegisterParams params,
   }) async {
-    final data = <String, dynamic>{
-      'nombre': params.nombre,
-      'apellidoPaterno': params.apellidoPaterno,
-      if (params.apellidoMaterno != null)
-        'apellidoMaterno': params.apellidoMaterno,
-      if (params.telefono != null) 'telefono': params.telefono,
-      if (params.idSexo != null) 'idSexo': params.idSexo,
-      if (params.fechaNacimiento != null)
-        'fechaNacimiento': params.fechaNacimiento,
-      if (params.idMunicipio != null) 'idMunicipio': params.idMunicipio,
-      if (params.dispositivo != null) 'dispositivo': params.dispositivo,
-    };
     final response = await _api.registerComplete(
       registrationToken: registrationToken,
-      data: data,
+      data: RegisterParamsMapper.toJson(params),
     );
     await _persistSession(response);
   }

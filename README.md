@@ -78,7 +78,10 @@ lib/
 ├── features/
 │   ├── auth/        ← "Hay autenticación"
 │   ├── profile/     ← "Hay perfil de usuario"
-│   └── splash/      ← "Hay pantalla de splash"
+│   ├── splash/      ← "Hay pantalla de splash"
+│   ├── rides/       ← "Hay gestión de viajes"
+│   ├── documents/   ← "Hay documentos del conductor"
+│   └── vehicle/     ← "Hay registro de vehículos"
 ```
 
 No hay carpetas tipo `controllers/`, `services/`, `viewmodels/` en la raíz. Esas existen pero **adentro** de cada feature, porque son detalles de implementación. Lo importante (el dominio del problema) está al frente.
@@ -122,6 +125,8 @@ lib/
 │   ├── security/
 │   │   ├── sensitive_data_processor.dart  ← enmascaramiento + hashing + sanitización de logs
 │   │   └── remote_wipe_handler.dart       ← borrado remoto de datos sensibles vía FCM
+│   ├── session/
+│   │   └── session_service.dart           ← interfaz abstracta de sesión (hasSession, logout)
 │   ├── storage/
 │   │   ├── auth_storage.dart              ← interfaz abstracta
 │   │   ├── secure_auth_storage.dart       ← impl con flutter_secure_storage
@@ -187,6 +192,53 @@ lib/
         │   └── repositories/profile_repository.dart
         ├── di/
         │   └── profile_module.dart        ← Riverpod providers del feature profile
+        └── presentation/
+            ├── provider/
+            └── screens/
+
+    ├── rides/                             ← Gestión de solicitudes de viaje
+    │   ├── data/
+    │   │   ├── remote/rides_api.dart
+    │   │   ├── mappers/
+    │   │   │   ├── solicitud_viaje_mapper.dart
+    │   │   │   └── driver_stats_mapper.dart
+    │   │   ├── mock_rides_repository.dart
+    │   │   └── rides_repository_impl.dart
+    │   ├── domain/
+    │   │   ├── entities/solicitud_viaje.dart
+    │   │   └── repositories/rides_repository.dart
+    │   ├── di/
+    │   │   └── rides_module.dart
+    │   └── presentation/
+    │       ├── provider/
+    │       └── screens/
+    │
+    ├── documents/                         ← Carga y verificación de documentos
+    │   ├── data/
+    │   │   ├── remote/documentos_api.dart
+    │   │   ├── mappers/documento_mapper.dart
+    │   │   ├── mock_documento_repository.dart
+    │   │   └── documento_repository_impl.dart
+    │   ├── domain/
+    │   │   ├── entities/documento.dart
+    │   │   └── repositories/documento_repository.dart
+    │   ├── di/
+    │   │   └── documents_module.dart
+    │   └── presentation/
+    │       ├── provider/
+    │       └── screens/
+    │
+    └── vehicle/                           ← CRUD de vehículos del conductor
+        ├── data/
+        │   ├── remote/vehiculos_api.dart
+        │   ├── mappers/vehiculo_mapper.dart
+        │   ├── mock_vehicle_repository.dart
+        │   └── vehicle_repository_impl.dart
+        ├── domain/
+        │   ├── entities/vehiculo.dart
+        │   └── repositories/vehicle_repository.dart
+        ├── di/
+        │   └── vehicle_module.dart
         └── presentation/
             ├── provider/
             └── screens/
@@ -341,11 +393,12 @@ Más allá de Clean Architecture y MVVM, la app aplica estos patrones de forma c
 | **Factory** | `core_module.dart`, `auth_module.dart`, `profile_module.dart` | Providers globales de Riverpod que construyen y configuran la cadena de dependencias. |
 | **Singleton** | `http.Client`, `ApiClient`, `AuthStorage`, `SensitiveDataStorage`, repositorios | Una sola instancia compartida en toda la app, declarada como `Provider` en Riverpod. |
 | **Strategy** | `AuthStorage` / `SecureAuthStorage`, `SensitiveDataStorage` / `SecureSensitiveDataStorage` | La interfaz define el contrato; se puede intercambiar la implementación (real, mock, otra tecnología). |
-| **Adapter** | `UserMapper`, `RegisterParamsMapper`, `ProfilePhotoUploadTicketMapper` | Convierte entre entidades de dominio (puras) y el formato del backend (JSON), manteniendo el dominio aislado. |
+| **Adapter** | `UserMapper`, `RegisterParamsMapper`, `ProfilePhotoUploadTicketMapper`, `SolicitudViajeMapper`, `DriverStatsMapper`, `DocumentoMapper`, `VehiculoMapper` | Convierte entre entidades de dominio (puras) y el formato del backend (JSON), manteniendo el dominio aislado. |
 | **Bridge** | `MockLocationDetector` / `MockLocationDetectorImpl`, `UsbDebugDetector` / `UsbDebugDetectorImpl` | Interfaz abstracta en domain, implementación nativa Android via `MethodChannel`. El domain no depende de Flutter ni de Android. |
 | **Value Object** | `RegisterParams`, `ProfilePhotoUploadTicket` | Objetos inmutables que encapsulan datos sin identidad propia. |
 | **Global Key / Mediator** | `AppNavigator` | Singleton con `GlobalKey<NavigatorState>` que permite navegar desde código que no tiene `BuildContext` (por ejemplo, el handler de notificaciones FCM en segundo plano). |
 | **Data Seeder** | `SensitiveDataSeeder` | Siembra datos de demostración en el primer inicio, siguiendo el patrón Strategy para no acoplar la siembra al storage concreto. |
+| **Service Layer** | `SessionService` / `AuthSessionService` | Interfaz en `core/session/`, implementación en `auth/data/`. Separa la gestión de sesión de cualquier feature concreta, permitiendo que `splash` y `profile` dependan de una abstracción sin acoplarse a `auth`. |
 
 ---
 
@@ -558,7 +611,13 @@ Preparar una capa de conexión utilizando `socket_io_client`.
 - Los nombres específicos de los eventos se entregarán junto con la especificación técnica
 - El `socket_io_client` ya está agregado en `pubspec.yaml`
 
-### 4. Otras mejoras pendientes
+### 4. Features ya implementados
+
+- **Rides**: Gestión de solicitudes de viaje en tiempo real (pendientes, aceptar/rechazar), estadísticas del conductor, historial de viajes.
+- **Documents**: Carga y verificación de documentos del conductor (licencia, INE, tarjeta de circulación, foto del vehículo) con seguimiento de estado (aprobado/revisión/rechazado).
+- **Vehicle**: CRUD completo de vehículos del conductor (registro, edición, eliminación, listado).
+
+### 5. Otras mejoras pendientes
 
 - **`data/local/`**: cuando agreguemos cache (perfil offline, lista de viajes recientes) va aquí.
 - **Refresh token**: el backend emite un JWT con expiración. Cuando se venza, el `UnauthorizedException` manda al usuario a Login. Se puede agregar refresh transparente.

@@ -4,10 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/core_module.dart';
 import '../../../../core/http/api_exception.dart';
 import '../../../../core/security/sensitive_data_processor.dart';
+import '../../../../core/session/session_service.dart';
 import '../../../../core/storage/sensitive_data_storage.dart';
 import '../../../../shared/domain/entities/user.dart';
-import '../../../auth/di/auth_module.dart';
-import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../di/profile_module.dart';
 import '../../domain/repositories/profile_repository.dart';
 
@@ -15,16 +14,16 @@ final profileViewModelProvider =
     ChangeNotifierProvider.autoDispose<ProfileViewModel>((ref) {
   return ProfileViewModel(
     ref.watch(profileRepositoryProvider),
-    ref.watch(authRepositoryProvider),
+    ref.watch(sessionServiceProvider),
     ref.watch(sensitiveDataStorageProvider),
   );
 });
 
 class ProfileViewModel extends ChangeNotifier {
-  ProfileViewModel(this._profileRepo, this._authRepo, this._sensitiveStorage);
+  ProfileViewModel(this._profileRepo, this._sessionService, this._sensitiveStorage);
 
   final ProfileRepository _profileRepo;
-  final AuthRepository _authRepo;
+  final SessionService _sessionService;
   final SensitiveDataStorage _sensitiveStorage;
 
   User? _user;
@@ -75,7 +74,7 @@ class ProfileViewModel extends ChangeNotifier {
     } on UnauthorizedException {
       // JWT vencido o invalido. La View detectara `user == null` y
       // sabra que tiene que ir al login.
-      await _authRepo.logout();
+      await _sessionService.logout();
       _errorMessage = 'Tu sesion expiro. Inicia sesion de nuevo.';
     } on ApiException catch (e) {
       _errorMessage = e.message;
@@ -129,7 +128,7 @@ class ProfileViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       await _profileRepo.deleteAccount();
-      await _authRepo.logout();
+      await _sessionService.logout();
       _user = null;
       return true;
     } on ApiException catch (e) {
@@ -145,7 +144,7 @@ class ProfileViewModel extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await _authRepo.logout();
+    await _sessionService.logout();
     _user = null;
     notifyListeners();
   }

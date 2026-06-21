@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/core_module.dart';
 import '../../../core/widgets/logo_badge.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/theme.dart';
-import '../../auth/di/auth_module.dart';
 
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -22,9 +22,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _decideRoute() async {
-    final authRepo = ref.read(authRepositoryProvider);
+    final session = ref.read(sessionServiceProvider);
     final results = await Future.wait<dynamic>([
-      authRepo.hasSession(),
+      session.hasSession(),
       Future<void>.delayed(const Duration(milliseconds: 600)),
     ]);
     final hasSession = results[0] as bool;

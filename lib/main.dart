@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
+import 'core/di/core_module.dart';
 import 'core/env/api_config.dart';
 import 'core/messaging/background_message_handler.dart';
 import 'core/messaging/firebase_push_messaging_service.dart';
@@ -16,6 +17,7 @@ import 'core/storage/secure_auth_storage.dart';
 import 'core/storage/secure_sensitive_data_storage.dart';
 import 'core/storage/sensitive_data_debug.dart';
 import 'core/storage/sensitive_data_seeder.dart';
+import 'features/auth/di/auth_module.dart';
 import 'firebase_options.dart';
 
 
@@ -54,6 +56,9 @@ Future<void> main() async {
 
   runApp(
     ProviderScope(
+      overrides: [
+        sessionServiceProvider.overrideWith((ref) => ref.watch(authSessionServiceProvider)),
+      ],
       child: DevicePreview(
         enabled: _shouldEnableDevicePreview(),
         builder: (context) => const JalaApp(),
