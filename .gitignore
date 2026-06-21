@@ -38,6 +38,8 @@ app.*.symbols
 
 opencode.json
 .env
+lib/google-services.json
+config/prod.json
 
 # Obfuscation related
 app.*.map.json
