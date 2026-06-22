@@ -27,8 +27,20 @@ class RidesApi {
   Future<Map<String, dynamic>> completeRide(String rideId) =>
       _api.post(ApiEndpoints.viajeCompletar(rideId), auth: true);
 
-  Future<Map<String, dynamic>> toggleAvailability() =>
-      _api.post(ApiEndpoints.conductorDisponibilidad);
+  Future<Map<String, dynamic>> toggleAvailability({
+    required bool disponible,
+    required double lat,
+    required double lng,
+  }) =>
+      _api.post(
+        ApiEndpoints.conductorDisponibilidad,
+        auth: true,
+        body: <String, dynamic>{
+          'disponible': disponible,
+          'lat': lat,
+          'lng': lng,
+        },
+      );
 
   Future<Map<String, dynamic>> getAvailability() =>
       _api.get(ApiEndpoints.conductorDisponibilidad);

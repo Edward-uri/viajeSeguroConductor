@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 
+import '../../../../core/env/api_config.dart';
 import '../../../../routes/app_routes.dart';
 import '../../domain/entities/solicitud_viaje.dart';
 import '../provider/home_viewmodel.dart';
@@ -13,18 +16,41 @@ class DriverHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
+  final _mapController = MapController();
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => ref.read(homeViewModelProvider).loadData(),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final vm = ref.read(homeViewModelProvider);
+      vm.loadData();
+      vm.initLocation().then((_) => _centerOnDriver());
+    });
+  }
+
+  void _centerOnDriver() {
+    final pos = ref.read(homeViewModelProvider).currentPosition;
+    if (pos != null) {
+      _mapController.move(pos, 15.0);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final vm = ref.watch(homeViewModelProvider);
     final scheme = Theme.of(context).colorScheme;
+
+    ref.listen<String?>(homeViewModelProvider.select((v) => v.errorMessage), (_, msg) {
+      if (msg != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    });
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
@@ -39,19 +65,68 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               text: text,
             ),
             Expanded(
-              child: Container(
-                width: double.infinity,
-                color: const Color(0xFFE9ECEA),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.map_outlined,
-                      size: 120,
-                      color: scheme.onSurfaceVariant.withValues(alpha: 0.2),
+              child: Stack(
+                children: [
+                  FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: vm.currentPosition ?? const LatLng(19.4326, -99.1332),
+                      initialZoom: 14.0,
+                      onTap: (_, _) {},
                     ),
-                  ],
-                ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/{z}/{x}/{y}?access_token=${ApiConfig.mapboxToken}',
+                        userAgentPackageName: 'com.example.viajeseguroconductor',
+                      ),
+                      if (vm.currentPosition != null)
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: vm.currentPosition!,
+                              width: 40,
+                              height: 40,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1E8E5A),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 3,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.motorcycle_outlined,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                  Positioned(
+                    right: 16,
+                    bottom: 16,
+                    child: FloatingActionButton.small(
+                      onPressed: _centerOnDriver,
+                      backgroundColor: Colors.white,
+                      child: const Icon(
+                        Icons.my_location,
+                        color: Color(0xFF1A1410),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             _BottomSheet(

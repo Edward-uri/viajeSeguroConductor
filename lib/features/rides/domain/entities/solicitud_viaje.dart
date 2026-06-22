@@ -10,6 +10,10 @@ class SolicitudViaje {
   final String origen;
   final String destino;
   final String origenDistancia;
+  final double? origenLat;
+  final double? origenLng;
+  final double? destinoLat;
+  final double? destinoLng;
 
   const SolicitudViaje({
     required this.id,
@@ -23,6 +27,10 @@ class SolicitudViaje {
     required this.origen,
     required this.destino,
     required this.origenDistancia,
+    this.origenLat,
+    this.origenLng,
+    this.destinoLat,
+    this.destinoLng,
   });
 }
 

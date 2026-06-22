@@ -15,11 +15,24 @@ const Map<String, String> _allowedImageMimeByExt = <String, String>{
 };
 
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(profileViewModelProvider).loadProfile();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final vm = ref.watch(profileViewModelProvider);
     final scheme = Theme.of(context).colorScheme;
 
@@ -88,14 +101,14 @@ class _ProfileContent extends ConsumerWidget {
         Center(
           child: _Avatar(
             url: user.fotoPerfilUrl,
-            initials: _initials(user.correoElectronico ?? '?'),
+            initials: _initials(user.correoElectronico ?? 'N/A'),
             isUploading: vm.isUploadingPhoto,
           ),
         ),
         const SizedBox(height: 16),
         Center(
           child: Text(
-            user.correoElectronico ?? 'Usuario',
+            user.correoElectronico ?? 'N/A',
             style: text.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
               color: scheme.onSurface,
@@ -122,7 +135,7 @@ class _ProfileContent extends ConsumerWidget {
             subtitle: Text(
               user.fechaRegistro != null
                   ? _formatDate(user.fechaRegistro!)
-                  : 'Sin dato',
+                  : 'N/A',
             ),
           ),
         ),
@@ -204,7 +217,7 @@ class _ProfileContent extends ConsumerWidget {
   }
 
   String _initials(String username) {
-    if (username.isEmpty) return '?';
+    if (username.isEmpty) return 'N/A';
     return username.substring(0, 1).toUpperCase();
   }
 

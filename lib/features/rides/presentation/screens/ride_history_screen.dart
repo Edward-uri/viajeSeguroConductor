@@ -1,68 +1,103 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class RideHistoryScreen extends StatelessWidget {
+import '../../domain/entities/ride_history_item.dart';
+import '../provider/ride_history_viewmodel.dart';
+
+class RideHistoryScreen extends ConsumerStatefulWidget {
   const RideHistoryScreen({super.key});
 
   @override
+  ConsumerState<RideHistoryScreen> createState() => _RideHistoryScreenState();
+}
+
+class _RideHistoryScreenState extends ConsumerState<RideHistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => ref.read(rideHistoryViewModelProvider).loadHistory(),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final vm = ref.watch(rideHistoryViewModelProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Historial de viajes')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Hoy',
-                style: text.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF6B6661),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: 3,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, i) {
-                    return _RideHistoryCard(
-                      hora: '${10 + i}:30',
-                      origen: 'Av. Hidalgo 123',
-                      destino: 'Primaria 5 de mayo',
-                      monto: 48.0 - i * 5,
-                      pasajero: 'María G.',
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+          child: _buildContent(vm),
         ),
       ),
+    );
+  }
+
+  Widget _buildContent(RideHistoryViewModel vm) {
+    if (vm.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (vm.errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              vm.errorMessage!,
+              style: const TextStyle(color: Color(0xFF6B6661)),
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => ref.read(rideHistoryViewModelProvider).loadHistory(),
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (vm.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.history, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            const Text(
+              'Sin viajes aún',
+              style: TextStyle(
+                fontSize: 16,
+                color: Color(0xFF6B6661),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      itemCount: vm.rides.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (context, i) => _RideHistoryCard(ride: vm.rides[i]),
     );
   }
 }
 
 class _RideHistoryCard extends StatelessWidget {
-  final String hora;
-  final String origen;
-  final String destino;
-  final double monto;
-  final String pasajero;
+  final RideHistoryItem ride;
 
-  const _RideHistoryCard({
-    required this.hora,
-    required this.origen,
-    required this.destino,
-    required this.monto,
-    required this.pasajero,
-  });
+  const _RideHistoryCard({required this.ride});
 
   @override
   Widget build(BuildContext context) {
+    final estadoStr = _estadoLabel(ride.estado);
+    final estadoColor = _estadoColor(ride.estado);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -79,14 +114,10 @@ class _RideHistoryCard extends StatelessWidget {
               color: const Color(0xFFFFF1E0),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(
-              pasajero[0],
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFFFF8F00),
-              ),
+            child: const Icon(
+              Icons.motorcycle_outlined,
+              color: Color(0xFFFF8F00),
+              size: 20,
             ),
           ),
           const SizedBox(width: 12),
@@ -95,26 +126,53 @@ class _RideHistoryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-          '$origen → $destino',
+                  '${ride.origen} → ${ride.destino}',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1A1410),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '$hora · $pasajero',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF6B6661),
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: estadoColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        estadoStr,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: estadoColor,
+                        ),
+                      ),
+                    ),
+                    if (ride.distanciaKm != null) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        '${ride.distanciaKm!.toStringAsFixed(1)} km',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF6B6661),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
           ),
           Text(
-            '\$${monto.toStringAsFixed(2)}',
+            '\$${ride.monto.toStringAsFixed(2)}',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -124,5 +182,36 @@ class _RideHistoryCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _estadoLabel(String estado) {
+    switch (estado) {
+      case 'solicitado':
+        return 'Solicitado';
+      case 'aceptado':
+        return 'Aceptado';
+      case 'en_curso':
+        return 'En curso';
+      case 'completado':
+        return 'Completado';
+      case 'cancelado':
+        return 'Cancelado';
+      default:
+        return estado;
+    }
+  }
+
+  Color _estadoColor(String estado) {
+    switch (estado) {
+      case 'completado':
+        return const Color(0xFF1E8E5A);
+      case 'en_curso':
+      case 'aceptado':
+        return const Color(0xFFFF8F00);
+      case 'cancelado':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 }

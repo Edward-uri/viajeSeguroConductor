@@ -10,7 +10,8 @@ class ProfileApi {
   final ApiClient _api;
   final http.Client _rawClient;
 
-  Future<Map<String, dynamic>> getMe() => _api.get(ApiEndpoints.usersMe);
+  Future<Map<String, dynamic>> getMe() =>
+      _api.get(ApiEndpoints.usersMe, auth: true);
 
   Future<Map<String, dynamic>> requestPhotoUpload(String contentType) =>
       _api.post(
@@ -21,10 +22,12 @@ class ProfileApi {
 
   Future<Map<String, dynamic>> confirmPhotoUpload(String s3Key) => _api.put(
         ApiEndpoints.usersMePhotoConfirm,
+        auth: true,
         body: <String, dynamic>{'s3Key': s3Key},
       );
 
-  Future<void> deleteAccount() => _api.delete(ApiEndpoints.usersMe);
+  Future<void> deleteAccount() =>
+      _api.delete(ApiEndpoints.usersMe, auth: true);
 
   Future<void> uploadBytesToS3({
     required String uploadUrl,

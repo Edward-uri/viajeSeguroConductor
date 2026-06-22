@@ -10,9 +10,13 @@ class VehicleRepositoryImpl implements VehicleRepository {
 
   @override
   Future<List<Vehiculo>> getVehiculos() async {
-    final res = await _api.getVehiculos();
-    final data = res['data'] as List<dynamic>? ?? [];
-    return data.map((e) => VehiculoMapper.fromJson(e as Map<String, dynamic>)).toList();
+    try {
+      final res = await _api.getVehiculos();
+      final data = res['data'] as List<dynamic>? ?? [];
+      return data.map((e) => VehiculoMapper.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   @override

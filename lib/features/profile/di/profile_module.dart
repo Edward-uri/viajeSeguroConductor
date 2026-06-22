@@ -1,7 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/mock_profile_repository.dart';
+import '../../../core/di/core_module.dart';
+import '../data/profile_repository_impl.dart';
+import '../data/remote/profile_api.dart';
 import '../domain/repositories/profile_repository.dart';
 
+final profileApiProvider = Provider<ProfileApi>((ref) => ProfileApi(
+      ref.watch(apiClientProvider),
+      ref.watch(httpClientProvider),
+    ));
+
 final profileRepositoryProvider =
-    Provider<ProfileRepository>((ref) => MockProfileRepository());
+    Provider<ProfileRepository>((ref) => ProfileRepositoryImpl(
+      ref.watch(profileApiProvider),
+    ));

@@ -2,14 +2,68 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../routes/app_routes.dart';
+import '../provider/driver_profile_viewmodel.dart';
 
-class DriverProfileScreen extends ConsumerWidget {
+
+String _estadoLabel(String estado) {
+  switch (estado.toLowerCase()) {
+    case 'activo':
+      return 'Habilitado';
+    case 'suspendido':
+      return 'Suspendido';
+    case 'eliminado':
+      return 'Eliminado';
+    default:
+      return 'N/A';
+  }
+}
+
+Color _estadoColor(String estado) {
+  switch (estado.toLowerCase()) {
+    case 'activo':
+      return const Color(0xFF1E8E5A);
+    case 'suspendido':
+      return const Color(0xFFD84315);
+    case 'eliminado':
+      return const Color(0xFFB71C1C);
+    default:
+      return Colors.grey;
+  }
+}
+
+
+class DriverProfileScreen extends ConsumerStatefulWidget {
   const DriverProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DriverProfileScreen> createState() =>
+      _DriverProfileScreenState();
+}
+
+class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(driverProfileViewModelProvider).loadData();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = ref.watch(driverProfileViewModelProvider);
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+
+    if (vm.isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Perfil')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final user = vm.user;
+    final vehicle = vm.vehiculo;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Perfil')),
@@ -17,12 +71,13 @@ class DriverProfileScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            // ─── Avatar ───
             Center(
               child: CircleAvatar(
                 radius: 44,
                 backgroundColor: const Color(0xFFFF8F00),
                 child: Text(
-                  'CM',
+                  _initials(vm.displayName),
                   style: text.headlineMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
@@ -31,23 +86,25 @@ class DriverProfileScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 12),
+            // ─── Nombre ───
             Center(
               child: Text(
-                'Carlos Méndez',
+                vm.displayName,
                 style: text.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
             const SizedBox(height: 4),
+            // ─── Rol ───
             Center(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.star, size: 16, color: Color(0xFFFF8F00)),
-                  const SizedBox(width: 4),
                   Text(
-                    '4.9 — Conductor',
+                    user != null
+                        ? user.rol.toUpperCase()
+                        : 'N/A',
                     style: text.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
@@ -56,42 +113,60 @@ class DriverProfileScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Center(
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E8E5A).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'Habilitado',
-                  style: TextStyle(
-                    color: Color(0xFF1E8E5A),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
+            // ─── Estado badge ───
+            if (user != null)
+              Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _estadoColor(user.estadoCuenta).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    _estadoLabel(user.estadoCuenta),
+                    style: TextStyle(
+                      color: _estadoColor(user.estadoCuenta),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ),
-            ),
             const SizedBox(height: 24),
+            // ─── Stats ───
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _statItem('4.9', 'Calificación', text),
-                _statItem('320', 'Viajes', text),
-                _statItem('95%', 'Aceptación', text),
+                _statItem('0', 'Calificación', text),
+                _statItem('${vm.viajes}', 'Viajes', text),
+                _statItem('0', 'Aceptación', text),
               ],
             ),
             const SizedBox(height: 16),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.directions_bike_outlined),
-                title: const Text('Mototaxi — Naranja'),
-                subtitle: const Text('Placa ABC-123'),
+            // ─── Vehículo ───
+            if (vehicle != null)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.directions_bike_outlined),
+                  title: Text(
+                    vehicle.marca.isNotEmpty && vehicle.modelo.isNotEmpty
+                        ? '${vehicle.marca} — ${vehicle.modelo}'
+                        : vehicle.placa,
+                  ),
+                  subtitle: Text('Placa ${vehicle.placa.isNotEmpty ? vehicle.placa : 'N/A'}'),
+                ),
               ),
-            ),
+            if (vehicle == null)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.directions_bike_outlined),
+                  title: const Text('Sin vehículo registrado'),
+                  subtitle: const Text('N/A'),
+                ),
+              ),
             const SizedBox(height: 24),
+            // ─── CUENTA ───
             Text('CUENTA',
                 style: text.labelSmall?.copyWith(
                     color: scheme.onSurfaceVariant,
@@ -126,6 +201,7 @@ class DriverProfileScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 24),
+            // ─── ACTIVIDAD ───
             Text('ACTIVIDAD',
                 style: text.labelSmall?.copyWith(
                     color: scheme.onSurfaceVariant,
@@ -160,11 +236,42 @@ class DriverProfileScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 24),
-            TextButton.icon(
-              onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
-                AppRoutes.getstarted,
-                (route) => false,
+            // ─── Error ───
+            if (vm.errorMessage != null) ...[
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: scheme.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline,
+                        size: 18, color: scheme.onErrorContainer),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        vm.errorMessage!,
+                        style: text.bodySmall
+                            ?.copyWith(color: scheme.onErrorContainer),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(height: 24),
+            ],
+            // ─── Logout ───
+            TextButton.icon(
+              onPressed: () async {
+                await vm.logout();
+                if (!context.mounted) return;
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  AppRoutes.getstarted,
+                  (route) => false,
+                );
+              },
               icon: Icon(Icons.logout, color: scheme.error),
               label: Text('Cerrar sesión',
                   style: TextStyle(color: scheme.error)),
@@ -174,6 +281,15 @@ class DriverProfileScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _initials(String name) {
+    if (name.isEmpty || name == 'N/A') return 'N/A';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+    }
+    return name.substring(0, 1).toUpperCase();
   }
 
   Widget _statItem(String value, String label, TextTheme text) {

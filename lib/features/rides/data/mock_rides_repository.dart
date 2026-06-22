@@ -1,3 +1,4 @@
+import '../domain/entities/ride_history_item.dart';
 import '../domain/entities/solicitud_viaje.dart';
 import '../domain/repositories/rides_repository.dart';
 
@@ -10,6 +11,29 @@ class MockRidesRepository implements RidesRepository {
       viajesHoy: 8,
       horasEnLinea: 5.2,
     );
+  }
+
+  @override
+  Future<List<RideHistoryItem>> getAssignedRides() async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return [
+      const RideHistoryItem(
+        id: '1',
+        origen: 'Av. Hidalgo 123',
+        destino: 'Primaria 5 de mayo',
+        monto: 48.0,
+        estado: 'completado',
+        distanciaKm: 4.2,
+      ),
+      const RideHistoryItem(
+        id: '2',
+        origen: 'Parque Central',
+        destino: 'Col. Linda Vista',
+        monto: 35.0,
+        estado: 'completado',
+        distanciaKm: 3.1,
+      ),
+    ];
   }
 
   @override
@@ -37,5 +61,24 @@ class MockRidesRepository implements RidesRepository {
   @override
   Future<void> rejectRide(String rideId) async {
     await Future.delayed(const Duration(milliseconds: 500));
+  }
+
+  @override
+  Future<void> startRide(String rideId) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+
+  @override
+  Future<void> completeRide(String rideId) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+
+  @override
+  Future<void> toggleAvailability({
+    required bool disponible,
+    required double lat,
+    required double lng,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
   }
 }
