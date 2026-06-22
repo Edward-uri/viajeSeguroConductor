@@ -53,6 +53,17 @@ class AuthApi {
         if (dispositivo != null) 'dispositivo': dispositivo,
       });
 
+  Future<Map<String, dynamic>> loginPassword({
+    required String correo,
+    required String password,
+    String? dispositivo,
+  }) =>
+      _api.post(ApiEndpoints.loginPassword, body: {
+        'correo': correo,
+        'password': password,
+        if (dispositivo != null) 'dispositivo': dispositivo,
+      });
+
   Future<void> logout({
     required String refreshToken,
   }) =>

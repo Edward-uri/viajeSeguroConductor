@@ -7,6 +7,7 @@ class ApiEndpoints {
   static const String registerComplete = '/api/auth/register/complete';
   static const String loginStart = '/api/auth/login/start';
   static const String loginVerify = '/api/auth/login/verify';
+  static const String loginPassword = '/api/auth/login/password';
   static const String logout = '/api/auth/logout';
   static const String refresh = '/api/auth/refresh';
 
@@ -33,11 +34,16 @@ class ApiEndpoints {
   // ───── Rides ─────
   static const String viajesPendientes = '/api/viajes/pendientes';
   static const String viajesAsignados = '/api/viajes/asignados';
+  static const String viajesMios = '/api/viajes/mios';
   static String viajeAceptar(String rideId) => '/api/viajes/$rideId/aceptar';
-  static String viajeRechazar(String rideId) => '/api/viajes/$rideId/rechazar';
   static String viajeIniciar(String rideId) => '/api/viajes/$rideId/iniciar';
   static String viajeCompletar(String rideId) =>
       '/api/viajes/$rideId/completar';
+  static String viajeCancelar(String rideId) =>
+      '/api/viajes/$rideId/cancelar';
+  static String viajeEvaluacion(String rideId) =>
+      '/api/viajes/$rideId/evaluacion';
+  static String viajeDetalle(String rideId) => '/api/viajes/$rideId';
 
   // ───── Flotillas / Vehículos ─────
   static const String flotillasVehiculos = '/api/flotillas/vehiculos';
@@ -51,6 +57,13 @@ class ApiEndpoints {
   static const String usersMe = '/api/users/me';
   static const String usersMePhotoPresign = '/api/users/me/photo/presign';
   static const String usersMePhotoConfirm = '/api/users/me/photo/confirm';
+
+  // ───── Tarifas ─────
+  static String municipioTarifas(int idMunicipio) =>
+      '/api/municipios/$idMunicipio/tarifas';
+
+  // ───── Dispositivos / FCM ─────
+  static const String dispositivos = '/api/dispositivos';
 
   // ───── Shared ─────
   static const String municipios = '/api/municipios';

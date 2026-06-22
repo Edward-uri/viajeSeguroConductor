@@ -48,9 +48,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 24),
-                  Icon(Icons.motorcycle_outlined,
-                      size: 80, color: const Color(0xFFFF8F00)),
-                  const SizedBox(height: 24),
                   Text(
                     'Jala',
                     textAlign: TextAlign.center,
@@ -95,6 +92,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onPressed: vm.isLoading ? null : _onContinue,
                   ),
                   const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: vm.isLoading
+                        ? null
+                        : () => Navigator.of(context)
+                            .pushNamed(AppRoutes.loginPassword),
+                    child: const Text('Iniciar sesión con contraseña'),
+                  ),
+                  const SizedBox(height: 8),
                   TextButton(
                     onPressed: vm.isLoading
                         ? null

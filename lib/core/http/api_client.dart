@@ -12,7 +12,8 @@ import 'api_endpoints.dart';
 import 'api_exception.dart';
 
 class ApiClient {
-  ApiClient(this._client, this._authStorage, {this.baseUrl = ApiConfig.baseUrl});
+  ApiClient(this._client, this._authStorage, {String? baseUrl})
+      : baseUrl = baseUrl ?? ApiConfig.baseUrl;
 
   final http.Client _client;
   final AuthStorage _authStorage;

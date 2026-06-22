@@ -228,7 +228,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                       child: GradientButton(
                         label: 'Aceptar viaje',
                         onPressed: () {
-                          vm.acceptRide();
+                          vm.acceptRide(idVehiculo: 1);
                           Navigator.of(context).pop();
                         },
                       ),

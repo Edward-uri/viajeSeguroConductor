@@ -64,6 +64,18 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> loginPassword({
+    required String correo,
+    required String password,
+  }) async {
+    final response = await _api.loginPassword(
+      correo: correo,
+      password: password,
+    );
+    await _persistSession(response);
+  }
+
+  @override
   Future<bool> hasSession() async {
     final token = await _storage.readAccessToken();
     return token != null && token.isNotEmpty;

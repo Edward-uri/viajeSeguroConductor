@@ -4,6 +4,7 @@ class AppRoutes {
   static const String splash = '/';
   static const String login = '/login';
   static const String loginOtp = '/login-otp';
+  static const String loginPassword = '/login-password';
   static const String register = '/register';
   static const String profile = '/profile';
 
@@ -33,6 +34,7 @@ class AppRoutes {
   static const String vehicleOwner = '/vehicle-owner';
 
   static const String rideInProgress = '/ride-in-progress';
+  static const String rideEvaluation = '/ride-evaluation';
   static const String rideHistory = '/ride-history';
   static const String earnings = '/earnings';
   static const String paymentMethods = '/payment-methods';

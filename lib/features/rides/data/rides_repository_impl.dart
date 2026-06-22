@@ -54,13 +54,15 @@ class RidesRepositoryImpl implements RidesRepository {
   }
 
   @override
-  Future<void> acceptRide(String rideId) async {
-    await _api.acceptRide(rideId);
+  Future<SolicitudViaje> getRideById(String rideId) async {
+    final res = await _api.getRideById(rideId);
+    final data = res['data'] as Map<String, dynamic>? ?? res;
+    return SolicitudViajeMapper.fromJson(data);
   }
 
   @override
-  Future<void> rejectRide(String rideId) async {
-    await _api.rejectRide(rideId);
+  Future<void> acceptRide(String rideId, {required int idVehiculo}) async {
+    await _api.acceptRide(rideId, idVehiculo: idVehiculo);
   }
 
   @override
@@ -74,6 +76,16 @@ class RidesRepositoryImpl implements RidesRepository {
   }
 
   @override
+  Future<void> cancelRide(String rideId, {String? motivo}) async {
+    await _api.cancelRide(rideId, motivo: motivo);
+  }
+
+  @override
+  Future<void> rateRide(String rideId, {required int calificacion, String? comentario}) async {
+    await _api.rateRide(rideId, calificacion: calificacion, comentario: comentario);
+  }
+
+  @override
   Future<void> toggleAvailability({
     required bool disponible,
     required double lat,
@@ -83,6 +95,17 @@ class RidesRepositoryImpl implements RidesRepository {
       disponible: disponible,
       lat: lat,
       lng: lng,
+    );
+  }
+
+  @override
+  Future<void> registerDevice({
+    required String tokenFcm,
+    required String plataforma,
+  }) async {
+    await _api.registerDevice(
+      tokenFcm: tokenFcm,
+      plataforma: plataforma,
     );
   }
 }

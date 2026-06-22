@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../../core/env/api_config.dart';
+import '../../../../routes/app_routes.dart';
 import '../../domain/entities/solicitud_viaje.dart';
 import '../provider/home_viewmodel.dart';
 import '../provider/ride_progress_viewmodel.dart';
@@ -178,9 +179,8 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       ),
       children: [
         TileLayer(
-          urlTemplate:
-              'https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/{z}/{x}/{y}?access_token=${ApiConfig.mapboxToken}',
-          userAgentPackageName: 'com.example.viajeseguroconductor',
+          urlTemplate: ApiConfig.mapboxTilesUrl,
+          userAgentPackageName: 'com.uriel.viajeseguroapp',
         ),
         if (markers.isNotEmpty) MarkerLayer(markers: markers),
       ],
@@ -267,9 +267,17 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
                     ? null
                     : () {
                         final navigator = Navigator.of(context);
+                        final rideId = vm.ride?.id;
                         vm.completeRide().then((_) {
                           if (vm.errorMessage == null) {
-                            navigator.pop();
+                            if (rideId != null) {
+                              navigator.pushReplacementNamed(
+                                AppRoutes.rideEvaluation,
+                                arguments: rideId,
+                              );
+                            } else {
+                              navigator.pop();
+                            }
                           }
                         });
                       },

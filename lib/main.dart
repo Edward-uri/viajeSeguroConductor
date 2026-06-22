@@ -11,13 +11,16 @@ import 'core/di/core_module.dart';
 import 'core/env/api_config.dart';
 import 'core/messaging/background_message_handler.dart';
 import 'core/messaging/firebase_push_messaging_service.dart';
+import 'core/messaging/messaging_globals.dart';
 import 'core/navigation/app_navigator.dart';
 import 'core/security/remote_wipe_handler.dart';
 import 'core/storage/secure_auth_storage.dart';
 import 'core/storage/secure_sensitive_data_storage.dart';
 import 'core/storage/sensitive_data_debug.dart';
 import 'core/storage/sensitive_data_seeder.dart';
+import 'features/auth/data/device_registration_service.dart';
 import 'features/auth/di/auth_module.dart';
+import 'features/rides/di/rides_module.dart';
 import 'firebase_options.dart';
 
 
@@ -58,6 +61,11 @@ Future<void> main() async {
     ProviderScope(
       overrides: [
         sessionServiceProvider.overrideWith((ref) => ref.watch(authSessionServiceProvider)),
+        deviceRegistrationServiceProvider.overrideWith((ref) {
+          final messaging = MessagingGlobals.messaging!;
+          final repository = ref.watch(ridesRepositoryProvider);
+          return DeviceRegistrationService(messaging, repository);
+        }),
       ],
       child: DevicePreview(
         enabled: _shouldEnableDevicePreview(),
@@ -88,6 +96,7 @@ Future<void> _initSecureDataAndRemoteWipe() async {
     sensitiveStorage: sensitiveStorage,
     onWipeCompleted: AppNavigator.goToLogin,
   );
+  MessagingGlobals.init(messaging);
   
   // No esperamos (await) a que termine la inicialización de mensajería para no bloquear el UI
   // si el servicio de tokens de Google está caído.

@@ -12,6 +12,7 @@ import 'features/auth/presentation/screens/registration/register_names_screen.da
 import 'features/auth/presentation/screens/registration/register_otp_screen.dart';
 import 'features/auth/presentation/screens/registration/register_personal_data_screen.dart';
 import 'features/auth/presentation/screens/login_otp_screen.dart';
+import 'features/auth/presentation/screens/login_password_screen.dart';
 import 'features/documents/presentation/screens/document_upload_screen.dart';
 import 'features/documents/presentation/screens/document_view_screen.dart';
 import 'features/documents/presentation/screens/documents_approved_screen.dart';
@@ -22,6 +23,7 @@ import 'features/profile/presentation/screens/profile_screen.dart';
 import 'features/rides/presentation/screens/driver_home_screen.dart';
 import 'features/rides/presentation/screens/earnings_screen.dart';
 import 'features/rides/presentation/screens/payment_methods_screen.dart';
+import 'features/rides/presentation/screens/ride_evaluation_screen.dart';
 import 'features/rides/presentation/screens/ride_history_screen.dart';
 import 'features/rides/presentation/screens/ride_in_progress_screen.dart';
 import 'features/rides/presentation/screens/ride_request_screen.dart';
@@ -60,6 +62,7 @@ class JalaApp extends StatelessWidget {
         AppRoutes.splash: (_) => const SplashScreen(),
         AppRoutes.login: (_) => const LoginScreen(),
         AppRoutes.loginOtp: (_) => const LoginOtpScreen(),
+        AppRoutes.loginPassword: (_) => const LoginPasswordScreen(),
         AppRoutes.profile: (_) => const ProfileScreen(),
         AppRoutes.getstarted: (_) => const GetstartedScreen(),
         AppRoutes.registerEmail: (_) => const RegisterEmailScreen(),
@@ -84,6 +87,7 @@ class JalaApp extends StatelessWidget {
         AppRoutes.vehicleEdit: (_) => const VehicleEditScreen(),
         AppRoutes.vehicleOwner: (_) => const VehicleOwnerScreen(),
         AppRoutes.rideInProgress: (_) => const RideInProgressScreen(),
+        AppRoutes.rideEvaluation: (_) => const RideEvaluationScreen(),
         AppRoutes.rideHistory: (_) => const RideHistoryScreen(),
         AppRoutes.earnings: (_) => const EarningsScreen(),
         AppRoutes.paymentMethods: (_) => const PaymentMethodsScreen(),

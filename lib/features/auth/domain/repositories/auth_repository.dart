@@ -21,6 +21,11 @@ abstract class AuthRepository {
     required String codigo,
   });
 
+  Future<void> loginPassword({
+    required String correo,
+    required String password,
+  });
+
   Future<bool> hasSession();
 
   Future<void> logout();

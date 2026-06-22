@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../../core/socket/socket_module.dart';
+import '../../../../core/socket/socket_service.dart';
+import '../../data/mappers/solicitud_viaje_mapper.dart';
 import '../../data/services/location_service.dart';
 import '../../di/rides_module.dart';
 import '../../domain/entities/solicitud_viaje.dart';
@@ -12,16 +17,18 @@ final homeViewModelProvider =
   final vm = HomeViewModel(
     ref.watch(ridesRepositoryProvider),
     ref.watch(locationServiceProvider),
+    ref.watch(socketServiceProvider),
   );
   ref.onDispose(() => vm.dispose());
   return vm;
 });
 
 class HomeViewModel extends ChangeNotifier {
-  HomeViewModel(this._repository, this._locationService);
+  HomeViewModel(this._repository, this._locationService, this._socketService);
 
   final RidesRepository _repository;
   final LocationService _locationService;
+  final SocketService _socketService;
 
   DriverStats? _stats;
   SolicitudViaje? _currentRequest;
@@ -29,6 +36,10 @@ class HomeViewModel extends ChangeNotifier {
   bool _isOnline = false;
   String? _errorMessage;
   LatLng? _currentPosition;
+  SocketStatus _socketStatus = SocketStatus.disconnected;
+  StreamSubscription? _rideRequestedSub;
+  StreamSubscription? _rideStateChangedSub;
+  StreamSubscription? _socketStatusSub;
 
   DriverStats? get stats => _stats;
   SolicitudViaje? get currentRequest => _currentRequest;
@@ -36,6 +47,43 @@ class HomeViewModel extends ChangeNotifier {
   bool get isOnline => _isOnline;
   String? get errorMessage => _errorMessage;
   LatLng? get currentPosition => _currentPosition;
+  SocketStatus get socketStatus => _socketStatus;
+
+  void initSocket({required String token}) {
+    _socketService.connect(token: token);
+
+    _socketStatusSub?.cancel();
+    _socketStatusSub = _socketService.statusStream.listen((status) {
+      _socketStatus = status;
+      notifyListeners();
+    });
+
+    _rideRequestedSub?.cancel();
+    _rideRequestedSub = _socketService.onRideRequested.listen((data) {
+      _currentRequest = SolicitudViajeMapper.fromJson(data);
+      notifyListeners();
+    });
+
+    _rideStateChangedSub?.cancel();
+    _rideStateChangedSub = _socketService.onRideStateChanged.listen((data) {
+      final idViaje = data['idViaje']?.toString();
+      final estado = data['estado']?.toString();
+      if (idViaje != null && _currentRequest?.id == idViaje) {
+        if (estado == 'cancelado') {
+          _currentRequest = null;
+        }
+        notifyListeners();
+      }
+    });
+  }
+
+  void goOnline(int idMunicipio) {
+    _socketService.emitOnline(idMunicipio);
+  }
+
+  void goOffline() {
+    _socketService.emitOffline();
+  }
 
   Future<void> loadData() async {
     _isLoading = true;
@@ -95,12 +143,14 @@ class HomeViewModel extends ChangeNotifier {
       _errorMessage = null;
 
       if (_isOnline) {
+        _socketService.emitOnline(1);
         _locationService.startTracking();
         _locationService.positionStream.listen((latLng) {
           _currentPosition = latLng;
           notifyListeners();
         });
       } else {
+        _socketService.emitOffline();
         _locationService.stopTracking();
       }
     } catch (e) {
@@ -109,10 +159,13 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> acceptRide() async {
+  Future<void> acceptRide({required int idVehiculo}) async {
     if (_currentRequest == null) return;
     try {
-      await _repository.acceptRide(_currentRequest!.id);
+      await _repository.acceptRide(
+        _currentRequest!.id,
+        idVehiculo: idVehiculo,
+      );
       _currentRequest = null;
       _errorMessage = null;
     } catch (e) {
@@ -121,15 +174,8 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> rejectRide() async {
-    if (_currentRequest == null) return;
-    try {
-      await _repository.rejectRide(_currentRequest!.id);
-      _currentRequest = null;
-      _errorMessage = null;
-    } catch (e) {
-      _errorMessage = 'Error al rechazar viaje';
-    }
+  void rejectRide() {
+    _currentRequest = null;
     notifyListeners();
   }
 
@@ -151,9 +197,22 @@ class HomeViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> cancelRide(String rideId, {String? motivo}) async {
+    try {
+      await _repository.cancelRide(rideId, motivo: motivo);
+    } catch (e) {
+      _errorMessage = 'Error al cancelar viaje';
+      notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
-    super.dispose();
+    _rideRequestedSub?.cancel();
+    _rideStateChangedSub?.cancel();
+    _socketStatusSub?.cancel();
+    _socketService.disconnect();
     _locationService.dispose();
+    super.dispose();
   }
 }

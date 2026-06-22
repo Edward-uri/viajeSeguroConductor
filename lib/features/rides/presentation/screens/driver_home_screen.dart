@@ -3,7 +3,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../../core/di/core_module.dart';
 import '../../../../core/env/api_config.dart';
+import '../../../../features/auth/di/auth_module.dart';
 import '../../../../routes/app_routes.dart';
 import '../../domain/entities/solicitud_viaje.dart';
 import '../provider/home_viewmodel.dart';
@@ -17,14 +19,30 @@ class DriverHomeScreen extends ConsumerStatefulWidget {
 
 class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   final _mapController = MapController();
+  bool _socketInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final vm = ref.read(homeViewModelProvider);
       vm.loadData();
-      vm.initLocation().then((_) => _centerOnDriver());
+      await vm.initLocation();
+      _centerOnDriver();
+
+      if (!_socketInitialized) {
+        _socketInitialized = true;
+        final storage = ref.read(authStorageProvider);
+        final token = await storage.readAccessToken();
+        if (token != null && token.isNotEmpty) {
+          vm.initSocket(token: token);
+        }
+
+        try {
+          final deviceReg = ref.read(deviceRegistrationServiceProvider);
+          await deviceReg.registerCurrentDevice();
+        } catch (_) {}
+      }
     });
   }
 
@@ -51,6 +69,16 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         );
       }
     });
+
+    ref.listen<SolicitudViaje?>(
+      homeViewModelProvider.select((v) => v.currentRequest),
+      (_, request) {
+        if (request != null && context.mounted) {
+          Navigator.of(context).pushNamed(AppRoutes.rideRequest);
+        }
+      },
+    );
+
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
@@ -76,9 +104,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                     ),
                     children: [
                       TileLayer(
-                        urlTemplate:
-                            'https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/{z}/{x}/{y}?access_token=${ApiConfig.mapboxToken}',
-                        userAgentPackageName: 'com.example.viajeseguroconductor',
+                        urlTemplate: ApiConfig.mapboxTilesUrl,
+                        userAgentPackageName: 'com.uriel.viajeseguroapp',
                       ),
                       if (vm.currentPosition != null)
                         MarkerLayer(

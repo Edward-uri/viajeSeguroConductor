@@ -38,29 +38,46 @@ class MockRidesRepository implements RidesRepository {
 
   @override
   Future<SolicitudViaje?> getCurrentRequest() async {
-    return const SolicitudViaje(
-      id: '1',
-      pasajeroNombre: 'Maria G.',
-      pasajeroIniciales: 'MG',
-      pasajeroCalificacion: 4.8,
-      monto: 48.00,
-      metodoPago: 'Efectivo',
+    return SolicitudViaje(
+      idViaje: 1,
+      idPasajero: 7,
+      idMunicipio: 1,
+      tipoServicio: 'viaje',
+      origenTexto: 'Av. Hidalgo 123',
+      origenLat: 16.62,
+      origenLng: -93.10,
+      destinoTexto: 'Primaria 5 de mayo',
+      destinoLat: 16.60,
+      destinoLng: -93.12,
       distanciaKm: 4.2,
-      duracionMin: 12,
-      origen: 'Av. Hidalgo 123',
-      destino: 'Primaria 5 de mayo',
-      origenDistancia: 'a 3 min de ti',
+      tarifa: 48.00,
+      tarifaEstimada: false,
+      estado: 'solicitado',
+      fechaSolicitud: DateTime.now().toIso8601String(),
     );
   }
 
   @override
-  Future<void> acceptRide(String rideId) async {
-    await Future.delayed(const Duration(seconds: 1));
+  Future<SolicitudViaje> getRideById(String rideId) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return SolicitudViaje(
+      idViaje: int.tryParse(rideId) ?? 0,
+      idPasajero: 7,
+      idMunicipio: 1,
+      tipoServicio: 'viaje',
+      origenTexto: 'Av. Hidalgo 123',
+      destinoTexto: 'Primaria 5 de mayo',
+      distanciaKm: 4.2,
+      tarifa: 48.00,
+      tarifaEstimada: false,
+      estado: 'aceptado',
+      fechaSolicitud: DateTime.now().toIso8601String(),
+    );
   }
 
   @override
-  Future<void> rejectRide(String rideId) async {
-    await Future.delayed(const Duration(milliseconds: 500));
+  Future<void> acceptRide(String rideId, {required int idVehiculo}) async {
+    await Future.delayed(const Duration(seconds: 1));
   }
 
   @override
@@ -74,10 +91,28 @@ class MockRidesRepository implements RidesRepository {
   }
 
   @override
+  Future<void> cancelRide(String rideId, {String? motivo}) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+
+  @override
+  Future<void> rateRide(String rideId, {required int calificacion, String? comentario}) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+
+  @override
   Future<void> toggleAvailability({
     required bool disponible,
     required double lat,
     required double lng,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
+  Future<void> registerDevice({
+    required String tokenFcm,
+    required String plataforma,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
   }
