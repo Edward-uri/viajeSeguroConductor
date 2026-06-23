@@ -48,6 +48,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 24),
+                  Icon(Icons.motorcycle_outlined,
+                      size: 80, color: const Color(0xFFFF8F00)),
+                  const SizedBox(height: 24),
                   Text(
                     'Jala',
                     textAlign: TextAlign.center,
