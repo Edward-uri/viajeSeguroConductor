@@ -97,6 +97,25 @@ class DriverProfileViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateProfile(Map<String, dynamic> data) async {
+    _errorMessage = null;
+    try {
+      _user = await _profileRepo.updateMe(data);
+      notifyListeners();
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) {
+        _errorMessage =
+            'La edición de perfil no está disponible por el momento. Contacta al administrador.';
+      } else {
+        _errorMessage = e.message;
+      }
+      notifyListeners();
+    } catch (_) {
+      _errorMessage = 'Error al actualizar perfil';
+      notifyListeners();
+    }
+  }
+
   Future<void> logout() async {
     await _sessionService.logout();
     _user = null;

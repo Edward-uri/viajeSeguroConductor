@@ -28,6 +28,11 @@ class RidesApi {
         body: <String, dynamic>{'idVehiculo': idVehiculo},
       );
 
+  Future<Map<String, dynamic>> rejectRide(String rideId) => _api.post(
+        ApiEndpoints.viajeRechazar(rideId),
+        auth: true,
+      );
+
   Future<Map<String, dynamic>> startRide(String rideId) =>
       _api.post(ApiEndpoints.viajeIniciar(rideId), auth: true);
 

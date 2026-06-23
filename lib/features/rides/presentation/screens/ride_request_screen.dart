@@ -153,7 +153,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                 const SizedBox(height: 12),
                 Center(
                   child: Text(
-                    request.pasajeroNombre,
+                    request.nombreCompleto,
                     style: text.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: const Color(0xFF1A1410),
@@ -205,8 +205,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () {
-                        vm.rejectRide();
+                      onPressed: () async {
+                        await vm.rejectRide();
+                        if (!context.mounted) return;
                         Navigator.of(context).pop();
                       },
                       style: OutlinedButton.styleFrom(

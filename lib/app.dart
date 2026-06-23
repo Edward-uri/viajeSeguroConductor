@@ -19,6 +19,7 @@ import 'features/documents/presentation/screens/documents_approved_screen.dart';
 import 'features/documents/presentation/screens/documents_list_screen.dart';
 import 'features/documents/presentation/screens/documents_review_screen.dart';
 import 'features/profile/presentation/screens/driver_profile_screen.dart';
+import 'features/profile/presentation/screens/edit_profile_screen.dart';
 import 'features/profile/presentation/screens/profile_screen.dart';
 import 'features/rides/presentation/screens/driver_home_screen.dart';
 import 'features/rides/presentation/screens/earnings_screen.dart';
@@ -81,6 +82,7 @@ class JalaApp extends StatelessWidget {
         AppRoutes.driverHome: (_) => const DriverHomeScreen(),
         AppRoutes.rideRequest: (_) => const RideRequestScreen(),
         AppRoutes.driverProfile: (_) => const DriverProfileScreen(),
+        AppRoutes.editProfile: (_) => const EditProfileScreen(),
         AppRoutes.vehicles: (_) => const VehicleListScreen(),
         AppRoutes.vehicleRegister: (_) => const VehicleRegisterScreen(),
         AppRoutes.vehicleDetail: (_) => const VehicleDetailScreen(),

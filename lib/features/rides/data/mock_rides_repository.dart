@@ -10,6 +10,8 @@ class MockRidesRepository implements RidesRepository {
       gananciasHoy: 340.00,
       viajesHoy: 8,
       horasEnLinea: 5.2,
+      calificacion: 4.8,
+      tasaAceptacion: 95,
     );
   }
 
@@ -54,6 +56,12 @@ class MockRidesRepository implements RidesRepository {
       tarifaEstimada: false,
       estado: 'solicitado',
       fechaSolicitud: DateTime.now().toIso8601String(),
+      pasajeroNombre: 'María',
+      pasajeroApellido: 'García',
+      pasajeroCalificacion: 4.8,
+      metodoPago: 'Efectivo',
+      duracionMin: 12,
+      origenDistancia: '0.5 km',
     );
   }
 
@@ -72,12 +80,19 @@ class MockRidesRepository implements RidesRepository {
       tarifaEstimada: false,
       estado: 'aceptado',
       fechaSolicitud: DateTime.now().toIso8601String(),
+      pasajeroNombre: 'María',
+      pasajeroApellido: 'García',
     );
   }
 
   @override
   Future<void> acceptRide(String rideId, {required int idVehiculo}) async {
     await Future.delayed(const Duration(seconds: 1));
+  }
+
+  @override
+  Future<void> rejectRide(String rideId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
   }
 
   @override

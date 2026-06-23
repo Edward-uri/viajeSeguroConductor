@@ -13,6 +13,9 @@ class ProfileApi {
   Future<Map<String, dynamic>> getMe() =>
       _api.get(ApiEndpoints.usersMe, auth: true);
 
+  Future<Map<String, dynamic>> updateMe(Map<String, dynamic> data) =>
+      _api.put(ApiEndpoints.usersMe, auth: true, body: data);
+
   Future<Map<String, dynamic>> requestPhotoUpload(String contentType) =>
       _api.post(
         ApiEndpoints.usersMePhotoPresign,

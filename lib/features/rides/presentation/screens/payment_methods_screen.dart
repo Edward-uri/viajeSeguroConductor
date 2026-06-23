@@ -1,17 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class PaymentMethodsScreen extends StatefulWidget {
+import '../provider/metodo_cobro_viewmodel.dart';
+import '../../domain/entities/metodo_cobro.dart';
+
+class PaymentMethodsScreen extends ConsumerStatefulWidget {
   const PaymentMethodsScreen({super.key});
 
   @override
-  State<PaymentMethodsScreen> createState() => _PaymentMethodsScreenState();
+  ConsumerState<PaymentMethodsScreen> createState() =>
+      _PaymentMethodsScreenState();
 }
 
-class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
+class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
+  final _clabeController = TextEditingController();
+  final _bankController = TextEditingController();
+  final _nameController = TextEditingController();
   String _selectedMethod = 'transferencia';
-  final _clabeController = TextEditingController(text: '1234 5678 9012 3456 7890');
-  final _bankController = TextEditingController(text: 'BBVA');
-  final _nameController = TextEditingController(text: 'Carlos Méndez');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(metodoCobroViewModelProvider.notifier).load();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final vm = ref.watch(metodoCobroViewModelProvider);
+    final mc = vm.metodoCobro;
+    if (mc != null) {
+      if (_clabeController.text.isEmpty) {
+        _clabeController.text = mc.clabe;
+        _bankController.text = mc.banco;
+        _nameController.text = mc.titular;
+        _selectedMethod = mc.tipo;
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -23,132 +51,190 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final vm = ref.watch(metodoCobroViewModelProvider);
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Métodos de cobro')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Selecciona tu método de cobro',
-                style: text.bodyMedium?.copyWith(
-                  color: const Color(0xFF6B6661),
-                ),
-              ),
-              const SizedBox(height: 20),
-              _MethodOption(
-                icon: Icons.account_balance,
-                title: 'Transferencia bancaria',
-                selected: _selectedMethod == 'transferencia',
-                onTap: () => setState(() => _selectedMethod = 'transferencia'),
-              ),
-              const SizedBox(height: 12),
-              _MethodOption(
-                icon: Icons.payments_outlined,
-                title: 'Efectivo',
-                subtitle: 'Cobras en el momento',
-                selected: _selectedMethod == 'efectivo',
-                onTap: () => setState(() => _selectedMethod = 'efectivo'),
-              ),
-              const SizedBox(height: 12),
-              _MethodOption(
-                icon: Icons.credit_card_outlined,
-                title: 'Tarjeta de débito',
-                subtitle: 'Próximamente',
-                selected: _selectedMethod == 'tarjeta',
-                onTap: null,
-              ),
-              if (_selectedMethod == 'transferencia') ...[
-                const SizedBox(height: 32),
-                const Text(
-                  'CLABE',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1410),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _clabeController,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF1A1410),
-                  ),
-                  decoration: _inputDecoration('18 dígitos'),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Banco',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1410),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _bankController,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF1A1410),
-                  ),
-                  decoration: _inputDecoration('Nombre del banco'),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Titular',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1410),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _nameController,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFF1A1410),
-                  ),
-                  decoration: _inputDecoration('Nombre del titular'),
-                ),
-              ],
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF8F00),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+        child: vm.isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Selecciona tu método de cobro',
+                            style: text.bodyMedium?.copyWith(
+                              color: const Color(0xFF6B6661),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          _MethodOption(
+                            icon: Icons.account_balance,
+                            title: 'Transferencia bancaria',
+                            selected: _selectedMethod == 'transferencia',
+                            onTap: () => setState(
+                                () => _selectedMethod = 'transferencia'),
+                          ),
+                          const SizedBox(height: 12),
+                          _MethodOption(
+                            icon: Icons.payments_outlined,
+                            title: 'Efectivo',
+                            subtitle: 'Cobras en el momento',
+                            selected: _selectedMethod == 'efectivo',
+                            onTap: () =>
+                                setState(() => _selectedMethod = 'efectivo'),
+                          ),
+                          const SizedBox(height: 12),
+                          _MethodOption(
+                            icon: Icons.credit_card_outlined,
+                            title: 'Tarjeta de débito',
+                            subtitle: 'Próximamente',
+                            selected: _selectedMethod == 'tarjeta',
+                            onTap: null,
+                          ),
+                          if (_selectedMethod == 'transferencia') ...[
+                            const SizedBox(height: 32),
+                            const Text(
+                              'CLABE',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1410),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            TextField(
+                              controller: _clabeController,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF1A1410),
+                              ),
+                              decoration: _inputDecoration('18 dígitos'),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Banco',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1410),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            TextField(
+                              controller: _bankController,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF1A1410),
+                              ),
+                              decoration: _inputDecoration('Nombre del banco'),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Titular',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1410),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            TextField(
+                              controller: _nameController,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF1A1410),
+                              ),
+                              decoration:
+                                  _inputDecoration('Nombre del titular'),
+                            ),
+                          ],
+                          if (vm.errorMessage != null) ...[
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: vm.noDisponible
+                                    ? const Color(0xFFE3F2FD)
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .errorContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(vm.errorMessage!,
+                                  style: TextStyle(
+                                      color: vm.noDisponible
+                                          ? const Color(0xFF1565C0)
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .onErrorContainer)),
+                            ),
+                          ],
+                          const SizedBox(height: 24),
+                        ],
+                      ),
                     ),
-                    elevation: 0,
                   ),
-                  child: const Text(
-                    'Guardar',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: vm.isSaving || vm.noDisponible
+                            ? null
+                            : _guardar,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF8F00),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: vm.isSaving
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : const Text(
+                                'Guardar',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
       ),
     );
+  }
+
+  Future<void> _guardar() async {
+    final mc = MetodoCobro(
+      tipo: _selectedMethod,
+      clabe: _clabeController.text,
+      banco: _bankController.text,
+      titular: _nameController.text,
+    );
+    final success =
+        await ref.read(metodoCobroViewModelProvider.notifier).save(mc);
+    if (success && mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   InputDecoration _inputDecoration(String hint) {

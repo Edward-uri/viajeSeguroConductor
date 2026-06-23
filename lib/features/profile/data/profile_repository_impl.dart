@@ -19,6 +19,12 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
+  Future<User> updateMe(Map<String, dynamic> data) async {
+    final response = await _api.updateMe(data);
+    return UserMapper.fromJson(_unwrapData(response));
+  }
+
+  @override
   Future<ProfilePhotoUploadTicket> requestPhotoUpload({
     required String contentType,
   }) async {

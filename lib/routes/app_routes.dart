@@ -27,6 +27,7 @@ class AppRoutes {
   static const String rideRequest = '/ride-request';
 
   static const String driverProfile = '/driver-profile';
+  static const String editProfile = '/edit-profile';
   static const String vehicles = '/vehicles';
   static const String vehicleRegister = '/vehicle-register';
   static const String vehicleDetail = '/vehicle-detail';

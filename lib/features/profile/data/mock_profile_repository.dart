@@ -4,14 +4,33 @@ import '../domain/repositories/profile_repository.dart';
 
 
 class MockProfileRepository implements ProfileRepository {
+  User _currentUser = const User(
+    idUsuario: 1,
+    rol: 'conductor',
+    estadoCuenta: 'activo',
+    fechaRegistro: null,
+  );
+
   @override
   Future<User> getMe() async {
-    return const User(
-      idUsuario: 1,
-      rol: 'conductor',
-      estadoCuenta: 'activo',
-      fechaRegistro: null,
+    return _currentUser;
+  }
+
+  @override
+  Future<User> updateMe(Map<String, dynamic> data) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    _currentUser = User(
+      idUsuario: _currentUser.idUsuario,
+      rol: _currentUser.rol,
+      estadoCuenta: _currentUser.estadoCuenta,
+      telefono: data['telefono'] as String? ?? _currentUser.telefono,
+      correoElectronico: data['correoElectronico'] as String? ?? _currentUser.correoElectronico,
+      telefonoVerificado: _currentUser.telefonoVerificado,
+      idMunicipio: (data['idMunicipio'] as num?)?.toInt() ?? _currentUser.idMunicipio,
+      fotoPerfilUrl: _currentUser.fotoPerfilUrl,
+      fechaRegistro: _currentUser.fechaRegistro,
     );
+    return _currentUser;
   }
 
   @override
@@ -30,13 +49,18 @@ class MockProfileRepository implements ProfileRepository {
 
   @override
   Future<User> confirmPhotoUpload({required String s3Key}) async {
-    return const User(
-      idUsuario: 1,
-      rol: 'conductor',
-      estadoCuenta: 'activo',
-      fechaRegistro: null,
+    _currentUser = User(
+      idUsuario: _currentUser.idUsuario,
+      rol: _currentUser.rol,
+      estadoCuenta: _currentUser.estadoCuenta,
+      telefono: _currentUser.telefono,
+      correoElectronico: _currentUser.correoElectronico,
+      telefonoVerificado: _currentUser.telefonoVerificado,
+      idMunicipio: _currentUser.idMunicipio,
       fotoPerfilUrl: 'https://mock-s3.example.com/mock-s3-key',
+      fechaRegistro: _currentUser.fechaRegistro,
     );
+    return _currentUser;
   }
 
   @override

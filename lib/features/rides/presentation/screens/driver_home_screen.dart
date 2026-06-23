@@ -34,6 +34,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         _socketInitialized = true;
         final storage = ref.read(authStorageProvider);
         final token = await storage.readAccessToken();
+        debugPrint('TOKEN: $token');
         if (token != null && token.isNotEmpty) {
           vm.initSocket(token: token);
         }

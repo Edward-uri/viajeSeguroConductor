@@ -30,12 +30,15 @@ class ApiEndpoints {
   static const String conductorStats = '/api/conductor/stats';
   static const String conductorDisponibilidad =
       '/api/conductor/disponibilidad';
+  static const String conductorMetodoCobro =
+      '/api/conductor/metodo-cobro';
 
   // ───── Rides ─────
   static const String viajesPendientes = '/api/viajes/pendientes';
   static const String viajesAsignados = '/api/viajes/asignados';
   static const String viajesMios = '/api/viajes/mios';
   static String viajeAceptar(String rideId) => '/api/viajes/$rideId/aceptar';
+  static String viajeRechazar(String rideId) => '/api/viajes/$rideId/rechazar';
   static String viajeIniciar(String rideId) => '/api/viajes/$rideId/iniciar';
   static String viajeCompletar(String rideId) =>
       '/api/viajes/$rideId/completar';

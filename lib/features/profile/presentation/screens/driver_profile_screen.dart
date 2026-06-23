@@ -138,9 +138,17 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _statItem('0', 'Calificación', text),
+                _statItem(
+                  vm.stats?.calificacion?.toStringAsFixed(1) ?? '0',
+                  'Calificación',
+                  text,
+                ),
                 _statItem('${vm.viajes}', 'Viajes', text),
-                _statItem('0', 'Aceptación', text),
+                _statItem(
+                  vm.stats?.tasaAceptacion?.toStringAsFixed(0) ?? '0',
+                  'Aceptación',
+                  text,
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -179,7 +187,8 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                     leading: const Icon(Icons.person_outline),
                     title: const Text('Editar perfil'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () {},
+                    onTap: () => Navigator.of(context)
+                        .pushNamed(AppRoutes.editProfile),
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(

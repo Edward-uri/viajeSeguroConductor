@@ -66,6 +66,11 @@ class RidesRepositoryImpl implements RidesRepository {
   }
 
   @override
+  Future<void> rejectRide(String rideId) async {
+    await _api.rejectRide(rideId);
+  }
+
+  @override
   Future<void> startRide(String rideId) async {
     await _api.startRide(rideId);
   }

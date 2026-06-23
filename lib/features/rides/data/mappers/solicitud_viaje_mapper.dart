@@ -11,6 +11,7 @@ class SolicitudViajeMapper {
   static SolicitudViaje fromJson(Map<String, dynamic> json) {
     final origenRaw = _extractOrigenDestino(json['origen']);
     final destinoRaw = _extractOrigenDestino(json['destino']);
+    final pasajeroRaw = json['pasajero'] as Map<String, dynamic>?;
 
     return SolicitudViaje(
       idViaje: (json['idViaje'] as num?)?.toInt() ?? 0,
@@ -36,6 +37,12 @@ class SolicitudViajeMapper {
       fechaFin: json['fechaFin']?.toString(),
       canceladoPor: json['canceladoPor']?.toString(),
       motivoCancelacion: json['motivoCancelacion']?.toString(),
+      pasajeroNombre: pasajeroRaw?['nombre']?.toString() ?? '',
+      pasajeroApellido: pasajeroRaw?['apellidoPaterno']?.toString() ?? '',
+      pasajeroCalificacion: (pasajeroRaw?['calificacion'] as num?)?.toDouble() ?? 0,
+      metodoPago: json['metodoPago']?.toString() ?? 'Efectivo',
+      duracionMin: (json['duracionEstimada'] as num?)?.toInt() ?? 0,
+      origenDistancia: json['origenDistancia']?.toString() ?? '',
     );
   }
 }

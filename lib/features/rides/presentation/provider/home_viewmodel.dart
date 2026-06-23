@@ -174,8 +174,9 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void rejectRide() {
+  Future<void> rejectRide() async {
     _currentRequest = null;
+    _errorMessage = null;
     notifyListeners();
   }
 

@@ -4,6 +4,8 @@ import '../entities/profile_photo_upload_ticket.dart';
 abstract class ProfileRepository {
   Future<User> getMe();
 
+  Future<User> updateMe(Map<String, dynamic> data);
+
   Future<ProfilePhotoUploadTicket> requestPhotoUpload({
     required String contentType,
   });
