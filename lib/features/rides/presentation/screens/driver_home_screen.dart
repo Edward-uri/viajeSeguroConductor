@@ -6,6 +6,8 @@ import 'package:latlong2/latlong.dart';
 import '../../../../core/di/core_module.dart';
 import '../../../../core/env/api_config.dart';
 import '../../../../features/auth/di/auth_module.dart';
+import '../../../../features/documents/di/documents_module.dart';
+import '../../../../features/documents/presentation/utils/document_route_helper.dart';
 import '../../../../routes/app_routes.dart';
 import '../../domain/entities/solicitud_viaje.dart';
 import '../provider/home_viewmodel.dart';
@@ -25,6 +27,16 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final repo = ref.read(documentoRepositoryProvider);
+      final route = await resolveDocumentsRoute(repo);
+      if (route != AppRoutes.driverHome) {
+        if (!context.mounted) return;
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          route,
+          (route) => false,
+        );
+        return;
+      }
       final vm = ref.read(homeViewModelProvider);
       vm.loadData();
       await vm.initLocation();

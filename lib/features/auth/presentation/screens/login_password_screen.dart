@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
-import '../../../../routes/app_routes.dart';
+import '../../../../features/documents/di/documents_module.dart';
+import '../../../../features/documents/presentation/utils/document_route_helper.dart';
 import '../provider/login_password_viewmodel.dart';
 
 class LoginPasswordScreen extends ConsumerStatefulWidget {
@@ -31,8 +32,11 @@ class _LoginPasswordScreenState extends ConsumerState<LoginPasswordScreen> {
     vm.setPassword(_passwordCtrl.text);
     final ok = await vm.login();
     if (ok && context.mounted) {
+      final repo = ref.read(documentoRepositoryProvider);
+      final route = await resolveDocumentsRoute(repo);
+      if (!context.mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.driverHome,
+        route,
         (route) => false,
       );
     }

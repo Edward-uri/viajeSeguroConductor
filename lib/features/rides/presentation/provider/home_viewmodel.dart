@@ -6,6 +6,9 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../../core/socket/socket_module.dart';
 import '../../../../core/socket/socket_service.dart';
+import '../../../../features/documents/domain/entities/documento.dart';
+import '../../../../features/documents/domain/repositories/documento_repository.dart';
+import '../../../documents/di/documents_module.dart';
 import '../../data/mappers/solicitud_viaje_mapper.dart';
 import '../../data/services/location_service.dart';
 import '../../di/rides_module.dart';
@@ -18,17 +21,24 @@ final homeViewModelProvider =
     ref.watch(ridesRepositoryProvider),
     ref.watch(locationServiceProvider),
     ref.watch(socketServiceProvider),
+    ref.watch(documentoRepositoryProvider),
   );
   ref.onDispose(() => vm.dispose());
   return vm;
 });
 
 class HomeViewModel extends ChangeNotifier {
-  HomeViewModel(this._repository, this._locationService, this._socketService);
+  HomeViewModel(
+    this._repository,
+    this._locationService,
+    this._socketService,
+    this._documentoRepository,
+  );
 
   final RidesRepository _repository;
   final LocationService _locationService;
   final SocketService _socketService;
+  final DocumentoRepository _documentoRepository;
 
   DriverStats? _stats;
   SolicitudViaje? _currentRequest;
@@ -117,6 +127,23 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   Future<void> toggleOnline() async {
+    if (!_isOnline) {
+      try {
+        final docs = await _documentoRepository.getDocumentos();
+        final allApproved =
+            docs.every((d) => d.status == DocumentStatus.approved);
+        if (!allApproved) {
+          _errorMessage =
+              'Tus documentos aún no están aprobados. Revisa la sección de documentos.';
+          notifyListeners();
+          return;
+        }
+      } catch (_) {
+        _errorMessage = 'Error al verificar documentos';
+        notifyListeners();
+        return;
+      }
+    }
     final newState = !_isOnline;
     try {
       LatLng pos;

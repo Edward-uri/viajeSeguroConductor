@@ -23,6 +23,23 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   String _detectedExt = '';
   String? _formatError;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final doc = ModalRoute.of(context)?.settings.arguments as Documento?;
+      if (doc != null && doc.status == DocumentStatus.approved) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('Este documento ya está aprobado y no puede modificarse'),
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+    });
+  }
+
   static bool _isHeic(Uint8List bytes) {
     if (bytes.length < 12) return false;
     final h = bytes.sublist(0, 12);

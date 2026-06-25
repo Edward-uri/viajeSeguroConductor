@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/core_module.dart';
 import '../../../core/widgets/logo_badge.dart';
+import '../../../features/documents/di/documents_module.dart';
+import '../../../features/documents/presentation/utils/document_route_helper.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/theme.dart';
 
@@ -29,9 +31,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     ]);
     final hasSession = results[0] as bool;
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed(
-      hasSession ? AppRoutes.driverHome : AppRoutes.getstarted,
-    );
+    if (!hasSession) {
+      Navigator.of(context).pushReplacementNamed(AppRoutes.getstarted);
+      return;
+    }
+    final repo = ref.read(documentoRepositoryProvider);
+    final route = await resolveDocumentsRoute(repo);
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed(route);
   }
 
   @override

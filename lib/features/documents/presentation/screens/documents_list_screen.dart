@@ -105,19 +105,21 @@ class _DocumentsListScreenState extends ConsumerState<DocumentsListScreen> {
                       statusColor: _statusColor(doc.status),
                       iconBgColor: _iconBgColor(doc.status),
                       statusLabel: _statusLabel(doc.status),
-                      onTap: () {
-                        if (doc.status == DocumentStatus.pending) {
-                          Navigator.of(context).pushNamed(
-                            AppRoutes.documentUpload,
-                            arguments: doc,
-                          );
-                        } else {
-                          Navigator.of(context).pushNamed(
-                            AppRoutes.documentView,
-                            arguments: doc,
-                          );
-                        }
-                      },
+                      onTap: doc.status == DocumentStatus.approved
+                      ? null
+                      : () {
+                          if (doc.status == DocumentStatus.pending) {
+                            Navigator.of(context).pushNamed(
+                              AppRoutes.documentUpload,
+                              arguments: doc,
+                            );
+                          } else {
+                            Navigator.of(context).pushNamed(
+                              AppRoutes.documentView,
+                              arguments: doc,
+                            );
+                          }
+                        },
                     );
                   },
                 ),
@@ -217,7 +219,7 @@ class _DocumentCard extends StatelessWidget {
   final Color statusColor;
   final Color iconBgColor;
   final String statusLabel;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _DocumentCard({
     required this.doc,

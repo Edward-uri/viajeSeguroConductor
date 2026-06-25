@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
-import '../../../../routes/app_routes.dart';
+import '../../../../features/documents/di/documents_module.dart';
+import '../../../../features/documents/presentation/utils/document_route_helper.dart';
 import '../provider/login_viewmodel.dart';
 
 class LoginOtpScreen extends ConsumerStatefulWidget {
@@ -58,8 +59,11 @@ class _LoginOtpScreenState extends ConsumerState<LoginOtpScreen> {
     final vm = ref.read(loginViewModelProvider);
     final ok = await vm.verifyOtp(code);
     if (ok && context.mounted) {
+      final repo = ref.read(documentoRepositoryProvider);
+      final route = await resolveDocumentsRoute(repo);
+      if (!context.mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.driverHome,
+        route,
         (route) => false,
       );
     }
