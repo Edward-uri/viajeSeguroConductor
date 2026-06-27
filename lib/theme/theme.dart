@@ -165,6 +165,14 @@ class MaterialTheme {
             color: colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
         ),
+        helperStyle: refinedText.bodySmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+        ),
+        errorStyle: refinedText.bodySmall?.copyWith(
+          color: colorScheme.error,
+          fontWeight: FontWeight.w500,
+        ),
+        helperMaxLines: 2,
       ),
 
       filledButtonTheme: FilledButtonThemeData(

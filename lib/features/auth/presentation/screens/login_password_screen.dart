@@ -17,12 +17,14 @@ class LoginPasswordScreen extends ConsumerStatefulWidget {
 class _LoginPasswordScreenState extends ConsumerState<LoginPasswordScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _passwordFocus = FocusNode();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -76,6 +78,7 @@ class _LoginPasswordScreenState extends ConsumerState<LoginPasswordScreen> {
                     controller: _emailCtrl,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
+                    textCapitalization: TextCapitalization.none,
                     decoration: const InputDecoration(
                       labelText: 'Correo electrónico',
                       prefixIcon: Padding(
@@ -87,28 +90,40 @@ class _LoginPasswordScreenState extends ConsumerState<LoginPasswordScreen> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: _passwordCtrl,
+                    focusNode: _passwordFocus,
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.done,
+                    textCapitalization: TextCapitalization.none,
+                    keyboardType: TextInputType.visiblePassword,
+                    autocorrect: false,
+                    enableSuggestions: false,
                     decoration: InputDecoration(
                       labelText: 'Contraseña',
+                      helperText: 'Mínimo 6 caracteres',
+                      errorText: vm.passwordError,
                       prefixIcon: const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 12),
                         child: Icon(Icons.lock_outlined),
                       ),
                       suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
+                        icon: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            key: ValueKey(_obscurePassword),
+                          ),
                         ),
                         onPressed: () =>
                             setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
                     onSubmitted: (_) => _onLogin(),
+                    onChanged: (v) => vm.setPassword(v),
                   ),
-                  if (vm.errorMessage != null) ...[
-                    const SizedBox(height: 16),
+                  if (vm.errorMessage != null && vm.passwordError == null) ...[
+                    const SizedBox(height: 8),
                     Text(
                       vm.errorMessage!,
                       style: text.bodySmall?.copyWith(color: scheme.error),

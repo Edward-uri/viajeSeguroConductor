@@ -19,9 +19,11 @@ class LoginPasswordViewModel extends ChangeNotifier {
   String _password = '';
   bool _isLoading = false;
   String? _errorMessage;
+  String? _passwordError;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get passwordError => _passwordError;
 
   void setEmail(String v) {
     _email = v;
@@ -30,7 +32,13 @@ class LoginPasswordViewModel extends ChangeNotifier {
 
   void setPassword(String v) {
     _password = v;
+    if (v.isNotEmpty && v.length < 6) {
+      _passwordError = 'La contraseña debe tener al menos 6 caracteres';
+    } else {
+      _passwordError = null;
+    }
     clearError();
+    notifyListeners();
   }
 
   void clearError() {
@@ -45,8 +53,15 @@ class LoginPasswordViewModel extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    if (_password.length < 6) {
+      _errorMessage = 'La contraseña debe tener al menos 6 caracteres';
+      _passwordError = _errorMessage;
+      notifyListeners();
+      return false;
+    }
     _isLoading = true;
     _errorMessage = null;
+    _passwordError = null;
     notifyListeners();
     try {
       await _repository.loginPassword(
