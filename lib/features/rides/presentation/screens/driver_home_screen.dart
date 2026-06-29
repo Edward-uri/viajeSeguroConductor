@@ -8,6 +8,7 @@ import '../../../../core/env/api_config.dart';
 import '../../../../features/auth/di/auth_module.dart';
 import '../../../../features/documents/di/documents_module.dart';
 import '../../../../features/documents/presentation/utils/document_route_helper.dart';
+import '../../../../features/heatmap/data/models/heat_zone.dart';
 import '../../../../routes/app_routes.dart';
 import '../../domain/entities/solicitud_viaje.dart';
 import '../provider/home_viewmodel.dart';
@@ -21,7 +22,9 @@ class DriverHomeScreen extends ConsumerStatefulWidget {
 
 class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   final _mapController = MapController();
+  final _heatHitNotifier = LayerHitNotifier<HeatZone>(null);
   bool _socketInitialized = false;
+  bool _heatListenerSet = false;
 
   @override
   void initState() {
@@ -56,7 +59,18 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           await deviceReg.registerCurrentDevice();
         } catch (_) {}
       }
+
+      if (!_heatListenerSet) {
+        _heatListenerSet = true;
+        _heatHitNotifier.addListener(_onHeatZoneTap);
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _heatHitNotifier.removeListener(_onHeatZoneTap);
+    super.dispose();
   }
 
   void _centerOnDriver() {
@@ -64,6 +78,79 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     if (pos != null) {
       _mapController.move(pos, 15.0);
     }
+  }
+
+  void _onHeatZoneTap() {
+    final hit = _heatHitNotifier.value;
+    if (hit != null && hit.hitValues.isNotEmpty && context.mounted) {
+      _showZoneDetails(hit.hitValues.first);
+    }
+  }
+
+  void _showZoneDetails(HeatZone zone) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurfaceVariant
+                          .withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Zona caliente',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _ZoneDetailRow(
+                  label: 'Densidad de demanda',
+                  value: zone.demandDensity.toStringAsFixed(2),
+                ),
+                const SizedBox(height: 8),
+                _ZoneDetailRow(
+                  label: 'Relación oferta/demanda',
+                  value: zone.supplyDemandRatio.toStringAsFixed(3),
+                ),
+                const SizedBox(height: 8),
+                _ZoneDetailRow(
+                  label: 'Solicitudes',
+                  value: '${zone.nRequests}',
+                ),
+                const SizedBox(height: 8),
+                _ZoneDetailRow(
+                  label: 'Intensidad',
+                  value: '${(zone.intensidad * 100).toStringAsFixed(0)}%',
+                ),
+                const SizedBox(height: 8),
+                _ZoneDetailRow(
+                  label: 'Radio',
+                  value: '${zone.radioM.toStringAsFixed(0)} m',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -152,8 +239,58 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                             ),
                           ],
                         ),
+                      if (vm.zonasCalientes.isNotEmpty)
+                        CircleLayer(
+                          circles: vm.zonasCalientes.map((z) {
+                            final opacity = 0.3 + (z.intensidad * 0.5);
+                            return CircleMarker(
+                              point: LatLng(z.lat, z.lng),
+                              radius: z.radioM,
+                              useRadiusInMeter: true,
+                              color: Color.lerp(
+                                Colors.orange.withValues(alpha: opacity),
+                                Colors.red.withValues(alpha: opacity),
+                                z.intensidad,
+                              )!,
+                              borderColor: Colors.red.shade900,
+                              borderStrokeWidth: 1,
+                              hitValue: z,
+                            );
+                          }).toList(),
+                          hitNotifier: _heatHitNotifier,
+                        ),
                     ],
                   ),
+                  if (vm.isLoadingZonas)
+                    const Positioned(
+                      top: 16,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Card(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text('Cargando zonas calientes…'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   Positioned(
                     right: 16,
                     bottom: 16,
@@ -470,6 +607,35 @@ class _NavButton extends StatelessWidget {
           foregroundColor: const Color(0xFF1A1410),
         ),
       ),
+    );
+  }
+}
+
+class _ZoneDetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ZoneDetailRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        Text(
+          value,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

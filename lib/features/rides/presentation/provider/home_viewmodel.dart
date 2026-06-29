@@ -8,6 +8,9 @@ import '../../../../core/socket/socket_module.dart';
 import '../../../../core/socket/socket_service.dart';
 import '../../../../features/documents/domain/entities/documento.dart';
 import '../../../../features/documents/domain/repositories/documento_repository.dart';
+import '../../../../features/heatmap/data/models/heat_zone.dart';
+import '../../../../features/heatmap/domain/repositories/heatmap_repository.dart';
+import '../../../../features/heatmap/di/heatmap_module.dart';
 import '../../../documents/di/documents_module.dart';
 import '../../data/mappers/solicitud_viaje_mapper.dart';
 import '../../data/services/location_service.dart';
@@ -22,6 +25,7 @@ final homeViewModelProvider =
     ref.watch(locationServiceProvider),
     ref.watch(socketServiceProvider),
     ref.watch(documentoRepositoryProvider),
+    ref.watch(heatmapRepositoryProvider),
   );
   ref.onDispose(() => vm.dispose());
   return vm;
@@ -33,12 +37,14 @@ class HomeViewModel extends ChangeNotifier {
     this._locationService,
     this._socketService,
     this._documentoRepository,
+    this._heatmapRepository,
   );
 
   final RidesRepository _repository;
   final LocationService _locationService;
   final SocketService _socketService;
   final DocumentoRepository _documentoRepository;
+  final HeatmapRepository _heatmapRepository;
 
   DriverStats? _stats;
   SolicitudViaje? _currentRequest;
@@ -51,6 +57,10 @@ class HomeViewModel extends ChangeNotifier {
   StreamSubscription? _rideStateChangedSub;
   StreamSubscription? _socketStatusSub;
 
+  List<HeatZone> _zonasCalientes = [];
+  bool _isLoadingZonas = false;
+  int idMunicipio = 1;
+
   DriverStats? get stats => _stats;
   SolicitudViaje? get currentRequest => _currentRequest;
   bool get isLoading => _isLoading;
@@ -58,6 +68,8 @@ class HomeViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   LatLng? get currentPosition => _currentPosition;
   SocketStatus get socketStatus => _socketStatus;
+  List<HeatZone> get zonasCalientes => _zonasCalientes;
+  bool get isLoadingZonas => _isLoadingZonas;
 
   void initSocket({required String token}) {
     _socketService.connect(token: token);
@@ -170,20 +182,35 @@ class HomeViewModel extends ChangeNotifier {
       _errorMessage = null;
 
       if (_isOnline) {
-        _socketService.emitOnline(1);
+        _socketService.emitOnline(idMunicipio);
         _locationService.startTracking();
         _locationService.positionStream.listen((latLng) {
           _currentPosition = latLng;
           notifyListeners();
         });
+        _fetchZonasCalientes();
       } else {
         _socketService.emitOffline();
         _locationService.stopTracking();
+        _zonasCalientes = [];
       }
     } catch (e) {
       _errorMessage = 'Error al cambiar disponibilidad';
     }
     notifyListeners();
+  }
+
+  Future<void> _fetchZonasCalientes() async {
+    _isLoadingZonas = true;
+    notifyListeners();
+    try {
+      _zonasCalientes = await _heatmapRepository.getZonasCalientes(idMunicipio);
+    } catch (e) {
+      _errorMessage = 'Error al cargar zonas calientes';
+    } finally {
+      _isLoadingZonas = false;
+      notifyListeners();
+    }
   }
 
   Future<void> acceptRide({required int idVehiculo}) async {
