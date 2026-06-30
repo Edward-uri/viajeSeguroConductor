@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 import '../env/api_config.dart';
+import '../navigation/app_navigator.dart';
 import '../storage/auth_storage.dart';
 import 'api_endpoints.dart';
 import 'api_exception.dart';
@@ -222,7 +223,16 @@ class ApiClient {
           )
           .timeout(ApiConfig.requestTimeout);
 
-      if (response.statusCode != 200) return false;
+      if (response.statusCode != 200) {
+        // Refresh rechazado (refresh token vencido/revocado): limpia la sesión y
+        // manda a login. Sin esto, cada request siguiente reintenta refrescar en
+        // cascada infinita hasta que el servidor responde 429.
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          await _authStorage.clear();
+          AppNavigator.goToLogin();
+        }
+        return false;
+      }
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       final accessToken = decoded['accessToken'] as String?;
