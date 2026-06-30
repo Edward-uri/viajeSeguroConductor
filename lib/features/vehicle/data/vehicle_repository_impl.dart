@@ -24,8 +24,9 @@ class VehicleRepositoryImpl implements VehicleRepository {
   @override
   Future<Vehiculo?> getMiVehiculo() async {
     final vehiculos = await getVehiculos();
-    // ponytail: el conductor-dueño tiene un vehículo; el backend lista los propios primero.
-    return vehiculos.isEmpty ? null : vehiculos.first;
+    if (vehiculos.isEmpty) return null;
+    // Prefiere un vehículo aprobado si lo hay (puede haber uno viejo incompleto).
+    return vehiculos.firstWhere((v) => v.aprobado, orElse: () => vehiculos.first);
   }
 
   @override

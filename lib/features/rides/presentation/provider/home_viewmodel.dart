@@ -235,11 +235,13 @@ class HomeViewModel extends ChangeNotifier {
     if (!_isOnline) {
       try {
         final docs = await _documentoRepository.getDocumentos();
-        final allApproved =
-            docs.isNotEmpty && docs.every((d) => d.status == DocumentStatus.approved);
-        if (!allApproved) {
-          _errorMessage =
-              'Tus documentos aún no están aprobados. Revisa la sección de documentos.';
+        debugPrint('[Gate] docs=${docs.map((d) => "${d.id}:${d.status.name}").toList()}');
+        final pendientes =
+            docs.where((d) => d.status != DocumentStatus.approved).toList();
+        if (docs.isEmpty || pendientes.isNotEmpty) {
+          _errorMessage = docs.isEmpty
+              ? 'Aún no pudimos verificar tus documentos. Revisa tu internet e intenta de nuevo.'
+              : 'Te falta que aprueben: ${pendientes.map((d) => d.nombre).join(', ')}.';
           notifyListeners();
           return;
         }
