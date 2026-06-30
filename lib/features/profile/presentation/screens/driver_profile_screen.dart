@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../features/documents/di/documents_module.dart';
 import '../../../../features/documents/domain/entities/documento.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../shared/widgets/authed_image.dart';
 import '../provider/driver_profile_viewmodel.dart';
 
 
@@ -93,14 +94,22 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
           children: [
             // ─── Avatar ───
             Center(
-              child: CircleAvatar(
-                radius: 44,
-                backgroundColor: const Color(0xFFFF8F00),
-                child: Text(
-                  _initials(vm.displayName),
-                  style: text.headlineMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
+              child: ClipOval(
+                child: Container(
+                  width: 88,
+                  height: 88,
+                  color: const Color(0xFFFF8F00),
+                  alignment: Alignment.center,
+                  child: AuthedImage(
+                    path: user?.fotoPerfilUrl,
+                    size: 88,
+                    fallback: Text(
+                      _initials(user?.nombreCompleto ?? vm.displayName),
+                      style: text.headlineMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -109,7 +118,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
             // ─── Nombre ───
             Center(
               child: Text(
-                vm.displayName,
+                user?.nombreCompleto ?? vm.displayName,
                 style: text.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
