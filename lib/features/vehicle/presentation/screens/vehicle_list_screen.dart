@@ -27,6 +27,7 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = ref.watch(vehicleViewModelProvider);
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Mi flotilla')),
@@ -34,7 +35,7 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(isLandscape ? 12 : 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -42,8 +43,9 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
                       rfc: vm.rfc,
                       razonSocial: vm.razonSocial,
                       onTap: () => context.push(AppRoutes.vehicleOwner),
+                      isLandscape: isLandscape,
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: isLandscape ? 12 : 24),
                     Text(
                       'TUS VEHÍCULOS (${vm.vehiculos.length})',
                       style: const TextStyle(
@@ -52,11 +54,11 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
                         color: Color(0xFF6B6661),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: isLandscape ? 8 : 12),
                     Expanded(
                       child: ListView.separated(
                         itemCount: vm.vehiculos.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 10),
+                        separatorBuilder: (_, _) => SizedBox(height: isLandscape ? 6 : 10),
                         itemBuilder: (context, i) {
                           final v = vm.vehiculos[i];
                           return _VehicleCard(
@@ -70,11 +72,12 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
                                   : AppRoutes.vehicleDetail,
                               extra: v,
                             ),
+                            isLandscape: isLandscape,
                           );
                         },
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: isLandscape ? 8 : 16),
                     GradientButton(
                       label: 'Registrar vehículo',
                       onPressed: () =>
@@ -92,11 +95,13 @@ class _RfcCard extends StatelessWidget {
   final String? rfc;
   final String? razonSocial;
   final VoidCallback onTap;
+  final bool isLandscape;
 
   const _RfcCard({
     required this.rfc,
     required this.razonSocial,
     required this.onTap,
+    this.isLandscape = false,
   });
 
   @override
@@ -104,7 +109,7 @@ class _RfcCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isLandscape ? 10 : 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -164,12 +169,14 @@ class _VehicleCard extends StatelessWidget {
   final String descripcion;
   final VehicleStatus status;
   final VoidCallback onTap;
+  final bool isLandscape;
 
   const _VehicleCard({
     required this.placa,
     required this.descripcion,
     required this.status,
     required this.onTap,
+    this.isLandscape = false,
   });
 
   Color get _iconBg {
@@ -230,7 +237,7 @@ class _VehicleCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isLandscape ? 10 : 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),

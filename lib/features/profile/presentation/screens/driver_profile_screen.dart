@@ -75,6 +75,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
     final vm = ref.watch(driverProfileViewModelProvider);
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     if (vm.isLoading) {
       return Scaffold(
@@ -90,7 +91,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
       appBar: AppBar(title: const Text('Perfil')),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(isLandscape ? 12 : 20),
           children: [
             // ─── Avatar ───
             Center(
@@ -162,25 +163,30 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                   ),
                 ),
               ),
-            const SizedBox(height: 24),
+            SizedBox(height: isLandscape ? 16 : 24),
             // ─── Stats ───
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _statItem(
-                  vm.stats?.calificacion?.toStringAsFixed(1) ?? '0',
-                  'Calificación',
-                  text,
+                Expanded(
+                  child: _statItem(
+                    vm.stats?.calificacion?.toStringAsFixed(1) ?? '0',
+                    'Calificación',
+                    text,
+                  ),
                 ),
-                _statItem('${vm.viajes}', 'Viajes', text),
-                _statItem(
-                  vm.stats?.tasaAceptacion?.toStringAsFixed(0) ?? '0',
-                  'Aceptación',
-                  text,
+                Expanded(
+                  child: _statItem('${vm.viajes}', 'Viajes', text),
+                ),
+                Expanded(
+                  child: _statItem(
+                    vm.stats?.tasaAceptacion?.toStringAsFixed(0) ?? '0',
+                    'Aceptación',
+                    text,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: isLandscape ? 8 : 16),
             // ─── Vehículo ───
             if (vehicle != null)
               Card(
@@ -202,7 +208,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                   subtitle: const Text('N/A'),
                 ),
               ),
-            const SizedBox(height: 24),
+            SizedBox(height: isLandscape ? 16 : 24),
             // ─── CUENTA ───
             Text('CUENTA',
                 style: text.labelSmall?.copyWith(
@@ -237,7 +243,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: isLandscape ? 16 : 24),
             // ─── ACTIVIDAD ───
             Text('ACTIVIDAD',
                 style: text.labelSmall?.copyWith(

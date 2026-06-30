@@ -66,6 +66,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
   Widget build(BuildContext context) {
     final vm = ref.watch(_earningsProvider);
     final text = Theme.of(context).textTheme;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ganancias')),
@@ -89,12 +90,12 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
                     ),
                   )
                 : Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(isLandscape ? 12 : 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _EarningsHeader(stats: vm.stats),
-                        const SizedBox(height: 24),
+                        _EarningsHeader(stats: vm.stats, isLandscape: isLandscape),
+                        SizedBox(height: isLandscape ? 12 : 24),
                         Text(
                           'Últimos viajes',
                           style: text.titleMedium?.copyWith(
@@ -102,7 +103,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
                             color: const Color(0xFF1A1410),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: isLandscape ? 8 : 12),
                         Expanded(
                           child: vm.recentRides.isEmpty
                               ? Center(
@@ -135,8 +136,9 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
 
 class _EarningsHeader extends StatelessWidget {
   final DriverStats? stats;
+  final bool isLandscape;
 
-  const _EarningsHeader({required this.stats});
+  const _EarningsHeader({required this.stats, this.isLandscape = false});
 
   @override
   Widget build(BuildContext context) {
@@ -146,28 +148,32 @@ class _EarningsHeader extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isLandscape ? 12 : 24),
       decoration: BoxDecoration(
         color: const Color(0xFFFF8F00),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             'Ganancias de hoy',
-            style: TextStyle(fontSize: 14, color: Colors.white70),
+            style: TextStyle(
+              fontSize: isLandscape ? 12 : 14,
+              color: Colors.white70,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             '\$${ganancias.toStringAsFixed(2)}',
-            style: const TextStyle(
-              fontSize: 36,
+            style: TextStyle(
+              fontSize: isLandscape ? 24 : 36,
               fontWeight: FontWeight.w700,
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: isLandscape ? 6 : 12),
           Row(
             children: [
               _Chip('$viajes viajes'),
