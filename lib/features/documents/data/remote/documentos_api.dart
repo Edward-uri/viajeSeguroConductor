@@ -19,10 +19,6 @@ class DocumentosApi {
         return ApiEndpoints.conductorDocumentosIneFrente;
       case 'ine-reverso':
         return ApiEndpoints.conductorDocumentosIneReverso;
-      case 'tarjeta-circulacion':
-        return ApiEndpoints.conductorDocumentosTarjetaCirculacion;
-      case 'foto-vehiculo':
-        return ApiEndpoints.conductorDocumentosFotoVehiculo;
       default:
         debugPrint('[DocumentosApi] tipo desconocido "$tipo" — usando licencia');
         return ApiEndpoints.conductorDocumentosLicencia;

@@ -7,7 +7,6 @@ import '../domain/repositories/profile_repository.dart';
 
 final profileApiProvider = Provider<ProfileApi>((ref) => ProfileApi(
       ref.watch(apiClientProvider),
-      ref.watch(httpClientProvider),
     ));
 
 final profileRepositoryProvider =

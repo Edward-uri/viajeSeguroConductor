@@ -18,6 +18,9 @@ import '../../../../features/documents/domain/repositories/documento_repository.
 import '../../../../features/heatmap/data/models/heat_zone.dart';
 import '../../../../features/heatmap/domain/repositories/heatmap_repository.dart';
 import '../../../../features/heatmap/di/heatmap_module.dart';
+import '../../../../features/vehicle/domain/entities/vehiculo.dart';
+import '../../../../features/vehicle/domain/repositories/vehicle_repository.dart';
+import '../../../../features/vehicle/di/vehicle_module.dart';
 import '../../../documents/di/documents_module.dart';
 import '../../data/mappers/solicitud_viaje_mapper.dart';
 import '../../data/services/location_service.dart';
@@ -34,6 +37,7 @@ final homeViewModelProvider =
     ref.watch(documentoRepositoryProvider),
     ref.watch(heatmapRepositoryProvider),
     ref.watch(authStorageProvider),
+    ref.watch(vehicleRepositoryProvider),
   );
   ref.onDispose(() => vm.dispose());
   return vm;
@@ -47,6 +51,7 @@ class HomeViewModel extends ChangeNotifier {
     this._documentoRepository,
     this._heatmapRepository,
     this._authStorage,
+    this._vehicleRepository,
   );
 
   final RidesRepository _repository;
@@ -55,6 +60,10 @@ class HomeViewModel extends ChangeNotifier {
   final DocumentoRepository _documentoRepository;
   final HeatmapRepository _heatmapRepository;
   final AuthStorage _authStorage;
+  final VehicleRepository _vehicleRepository;
+
+  Vehiculo? _miVehiculo;
+  Vehiculo? get miVehiculo => _miVehiculo;
 
   DriverStats? _stats;
   SolicitudViaje? _currentRequest;
@@ -175,9 +184,11 @@ class HomeViewModel extends ChangeNotifier {
       final results = await Future.wait([
         _repository.getStats(),
         _repository.getCurrentRequest(),
+        _vehicleRepository.getMiVehiculo(),
       ]);
       _stats = results[0] as DriverStats;
       final pending = results[1] as SolicitudViaje?;
+      _miVehiculo = results[2] as Vehiculo?;
       if (_isOnline && pending != null) {
         _currentRequest = pending;
       }
@@ -206,15 +217,28 @@ class HomeViewModel extends ChangeNotifier {
       try {
         final docs = await _documentoRepository.getDocumentos();
         final allApproved =
-            docs.every((d) => d.status == DocumentStatus.approved);
+            docs.isNotEmpty && docs.every((d) => d.status == DocumentStatus.approved);
         if (!allApproved) {
           _errorMessage =
               'Tus documentos aún no están aprobados. Revisa la sección de documentos.';
           notifyListeners();
           return;
         }
+        _miVehiculo = await _vehicleRepository.getMiVehiculo();
+        if (_miVehiculo == null) {
+          _errorMessage =
+              'Registra tu vehículo para poder recibir viajes.';
+          notifyListeners();
+          return;
+        }
+        if (!_miVehiculo!.aprobado) {
+          _errorMessage =
+              'Tu vehículo aún no está aprobado. Espera la revisión del administrador.';
+          notifyListeners();
+          return;
+        }
       } catch (_) {
-        _errorMessage = 'Error al verificar documentos';
+        _errorMessage = 'Error al verificar documentos y vehículo';
         notifyListeners();
         return;
       }
@@ -277,19 +301,27 @@ class HomeViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> acceptRide({required int idVehiculo}) async {
+  Future<void> acceptRide() async {
     if (_currentRequest == null) return;
+    final vehiculo = _miVehiculo;
+    if (vehiculo == null || !vehiculo.aprobado) {
+      _errorMessage = 'Necesitas un vehículo aprobado para aceptar viajes.';
+      notifyListeners();
+      return;
+    }
     try {
       await _repository.acceptRide(
         _currentRequest!.id,
-        idVehiculo: idVehiculo,
+        idVehiculo: vehiculo.idVehiculo,
       );
       _currentRequest = null;
       _errorMessage = null;
     } catch (e) {
       if (e is ApiException && e.statusCode == 409) {
         _currentRequest = null;
-        _errorMessage = 'Este viaje ya fue tomado por otro conductor';
+        _errorMessage = e.message.isNotEmpty
+            ? e.message
+            : 'Este viaje ya fue tomado por otro conductor';
       } else {
         _errorMessage = 'Error al aceptar viaje';
       }

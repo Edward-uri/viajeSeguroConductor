@@ -46,8 +46,9 @@ class _RegisterLicenseScreenState extends ConsumerState<RegisterLicenseScreen> {
     vm.setLicenciaFechaVencimiento(_expirationController.text);
     final ok = await vm.completeRegistration();
     if (ok && context.mounted) {
+      // Ya autenticado: paso opcional de foto de perfil antes de los documentos.
       Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.documents,
+        AppRoutes.registerPhoto,
         (route) => false,
       );
     }

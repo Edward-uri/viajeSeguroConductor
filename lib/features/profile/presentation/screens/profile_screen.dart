@@ -254,7 +254,7 @@ class _ProfileContent extends ConsumerWidget {
     if (!context.mounted) return;
 
     final vm = ref.read(profileViewModelProvider);
-    final ok = await vm.uploadNewPhoto(bytes: bytes, contentType: contentType);
+    final ok = await vm.uploadNewPhoto(bytes: bytes, fileName: file.name);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

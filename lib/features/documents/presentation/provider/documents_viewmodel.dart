@@ -26,16 +26,8 @@ const _defaultDocumentos = [
     nombre: 'INE (reverso)',
     status: DocumentStatus.pending,
   ),
-  Documento(
-    id: 'tarjeta-circulacion',
-    nombre: 'Tarjeta de circulación',
-    status: DocumentStatus.pending,
-  ),
-  Documento(
-    id: 'foto-vehiculo',
-    nombre: 'Foto del vehículo',
-    status: DocumentStatus.pending,
-  ),
+  // Los documentos del vehículo (tarjeta de circulación, foto) se suben en el
+  // alta del vehículo, no aquí. Aquí solo van los documentos personales.
 ];
 
 class DocumentsViewModel extends ChangeNotifier {

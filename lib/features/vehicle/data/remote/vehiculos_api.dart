@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:http_parser/http_parser.dart';
+
 import '../../../../core/http/api_client.dart';
 import '../../../../core/http/api_endpoints.dart';
 
@@ -25,17 +27,19 @@ class VehiculosApi {
   Future<void> eliminarVehiculo(String placa) =>
       _api.delete(ApiEndpoints.flotillasVehiculo(placa));
 
+  /// [tipo] en kebab-case según la ruta del backend: 'tarjeta-circulacion' | 'foto-vehiculo'.
   Future<Map<String, dynamic>> subirDocumentoVehiculo({
-    required String placa,
+    required int idVehiculo,
     required Uint8List bytes,
     required String fileName,
     required String tipo,
   }) =>
       _api.multipartPost(
-        ApiEndpoints.flotillasVehiculoDocumentos(placa),
+        ApiEndpoints.flotillasVehiculoDocumento(idVehiculo, tipo),
         bytes: bytes,
-        fieldName: tipo,
+        fieldName: 'archivo',
         fileName: fileName,
+        contentType: MediaType('image', 'jpeg'),
         auth: true,
       );
 

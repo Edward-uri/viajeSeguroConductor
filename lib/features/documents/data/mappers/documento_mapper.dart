@@ -4,8 +4,6 @@ const _tipoToNombre = {
   'licencia': 'Licencia de conducir',
   'ine-frente': 'INE (frente)',
   'ine-reverso': 'INE (reverso)',
-  'tarjeta-circulacion': 'Tarjeta de circulación',
-  'foto-vehiculo': 'Foto del vehículo',
 };
 
 class DocumentoMapper {

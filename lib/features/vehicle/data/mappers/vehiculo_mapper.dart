@@ -3,39 +3,42 @@ import '../../domain/entities/vehiculo.dart';
 class VehiculoMapper {
   const VehiculoMapper._();
 
+  /// Lee la forma que devuelve el backend (GET /api/flotillas/vehiculos):
+  /// { idVehiculo, placa, modelo, color, anio, idMunicipio, estadoVerificacion, origen }
   static Vehiculo fromJson(Map<String, dynamic> json) {
     return Vehiculo(
+      idVehiculo: (json['idVehiculo'] as num?)?.toInt() ?? 0,
       placa: json['placa']?.toString() ?? '',
-      marca: json['marca']?.toString() ?? '',
       modelo: json['modelo']?.toString() ?? '',
       color: json['color']?.toString() ?? '',
       anio: (json['anio'] as num?)?.toInt() ?? 0,
-      municipio: json['municipio']?.toString() ?? '',
-      status: _mapStatus(json['status']?.toString() ?? ''),
+      idMunicipio: (json['idMunicipio'] as num?)?.toInt() ?? 0,
+      status: _mapStatus(json['estadoVerificacion']?.toString() ?? ''),
       rfc: json['rfc']?.toString(),
       razonSocial: json['razonSocial']?.toString(),
     );
   }
 
+  /// Cuerpo que espera POST/PATCH /api/flotillas/vehiculos: sin marca ni nombre de municipio.
   static Map<String, dynamic> toJson(Vehiculo vehiculo) {
     return {
       'placa': vehiculo.placa,
-      'marca': vehiculo.marca,
       'modelo': vehiculo.modelo,
       'color': vehiculo.color,
       'anio': vehiculo.anio,
-      'municipio': vehiculo.municipio,
+      'idMunicipio': vehiculo.idMunicipio,
     };
   }
 
-  static VehicleStatus _mapStatus(String status) {
-    switch (status.toLowerCase()) {
-      case 'active':
+  /// estadoVerificacion del backend → status de UI.
+  static VehicleStatus _mapStatus(String estado) {
+    switch (estado.toLowerCase()) {
+      case 'aprobado':
         return VehicleStatus.active;
-      case 'incomplete':
-        return VehicleStatus.incomplete;
-      case 'reviewing':
+      case 'en_revision':
         return VehicleStatus.reviewing;
+      case 'rechazado':
+      case 'incompleto':
       default:
         return VehicleStatus.incomplete;
     }

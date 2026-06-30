@@ -1,9 +1,9 @@
+import 'dart:typed_data';
+
 import '../../../core/http/api_exception.dart';
 import '../../../shared/data/mappers/user_mapper.dart';
 import '../../../shared/domain/entities/user.dart';
-import '../domain/entities/profile_photo_upload_ticket.dart';
 import '../domain/repositories/profile_repository.dart';
-import 'mappers/profile_photo_upload_ticket_mapper.dart';
 import 'remote/profile_api.dart';
 
 
@@ -25,30 +25,13 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
-  Future<ProfilePhotoUploadTicket> requestPhotoUpload({
-    required String contentType,
+  Future<User> uploadPhoto({
+    required Uint8List bytes,
+    required String fileName,
   }) async {
-    final response = await _api.requestPhotoUpload(contentType);
-    return ProfilePhotoUploadTicketMapper.fromJson(_unwrapData(response));
-  }
-
-  @override
-  Future<User> confirmPhotoUpload({required String s3Key}) async {
-    final response = await _api.confirmPhotoUpload(s3Key);
+    final response = await _api.uploadPhoto(bytes: bytes, fileName: fileName);
     return UserMapper.fromJson(_unwrapData(response));
   }
-
-  @override
-  Future<void> uploadBytesToS3({
-    required String uploadUrl,
-    required List<int> bytes,
-    required String contentType,
-  }) =>
-      _api.uploadBytesToS3(
-        uploadUrl: uploadUrl,
-        bytes: bytes,
-        contentType: contentType,
-      );
 
   @override
   Future<void> deleteAccount() => _api.deleteAccount();

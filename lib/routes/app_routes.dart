@@ -14,6 +14,7 @@ class AppRoutes {
   static const String registerMunicipio = '/register-municipio';
 
   static const String license = '/license';
+  static const String registerPhoto = '/register-photo';
   static const String documents = '/documents';
   static const String documentUpload = '/document-upload';
   static const String documentView = '/document-view';

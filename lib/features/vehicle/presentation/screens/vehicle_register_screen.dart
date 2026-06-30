@@ -1,9 +1,18 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../shared/data/providers/municipio_provider.dart';
+import '../../../../shared/domain/entities/municipio.dart';
+import '../../domain/entities/vehiculo.dart';
+import '../provider/vehicle_viewmodel.dart';
 
+/// Alta del vehículo en 3 pasos guiados (datos → tarjeta de circulación → foto),
+/// con un stepper visible para que el conductor sepa cuánto le falta.
 class VehicleRegisterScreen extends ConsumerStatefulWidget {
   const VehicleRegisterScreen({super.key});
 
@@ -12,84 +21,490 @@ class VehicleRegisterScreen extends ConsumerStatefulWidget {
       _VehicleRegisterScreenState();
 }
 
-class _VehicleRegisterScreenState
-    extends ConsumerState<VehicleRegisterScreen> {
+// Paleta de la app (consistente con documentos).
+const _kDark = Color(0xFF1A1410);
+const _kGrey = Color(0xFF6B6661);
+const _kOrange = Color(0xFFFF8F00);
+const _kGreen = Color(0xFF1E8E5A);
+
+const _kPasos = ['Datos', 'Tarjeta', 'Foto'];
+
+class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
+  int _step = 0; // 0=datos, 1=tarjeta, 2=foto, 3=listo
+  int _idVehiculo = 0;
+
   final _placaController = TextEditingController();
-  final _municipioController = TextEditingController();
   final _modeloController = TextEditingController();
   final _colorController = TextEditingController();
   final _anioController = TextEditingController();
+  Municipio? _municipio;
+
+  Uint8List? _docBytes; // foto del paso actual (tarjeta o vehículo)
+  String _docExt = 'jpg';
+  String? _error;
 
   @override
   void dispose() {
     _placaController.dispose();
-    _municipioController.dispose();
     _modeloController.dispose();
     _colorController.dispose();
     _anioController.dispose();
     super.dispose();
   }
 
+  // ───────── Pasos ─────────
+
+  Future<void> _guardarDatos() async {
+    setState(() => _error = null);
+    if (_placaController.text.trim().length < 3) {
+      setState(() => _error = 'Escribe la placa del vehículo.');
+      return;
+    }
+    if (_municipio == null) {
+      setState(() => _error = 'Selecciona tu municipio.');
+      return;
+    }
+    final vm = ref.read(vehicleViewModelProvider);
+    final id = await vm.registrar(Vehiculo(
+      placa: _placaController.text.trim().toUpperCase(),
+      modelo: _modeloController.text.trim(),
+      color: _colorController.text.trim(),
+      anio: int.tryParse(_anioController.text.trim()) ?? 0,
+      idMunicipio: _municipio!.idMunicipio,
+      municipio: _municipio!.nombre,
+      status: VehicleStatus.incomplete,
+    ));
+    if (!mounted) return;
+    if (id == 0) {
+      setState(() => _error = vm.errorMessage ?? 'No se pudo registrar.');
+      return;
+    }
+    setState(() {
+      _idVehiculo = id;
+      _docBytes = null;
+      _step = 1;
+    });
+  }
+
+  Future<void> _subirDocPaso(String tipo, int siguiente) async {
+    if (_docBytes == null) {
+      setState(() => _error = 'Toma o elige una foto primero.');
+      return;
+    }
+    setState(() => _error = null);
+    final vm = ref.read(vehicleViewModelProvider);
+    final ok = await vm.subirDocumento(
+      idVehiculo: _idVehiculo,
+      tipo: tipo,
+      bytes: _docBytes!,
+      fileName: '$tipo.$_docExt',
+    );
+    if (!mounted) return;
+    if (!ok) {
+      setState(() => _error = vm.errorMessage ?? 'No se pudo subir.');
+      return;
+    }
+    setState(() {
+      _docBytes = null;
+      _step = siguiente;
+    });
+  }
+
+  // ───────── Imagen ─────────
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, imageQuality: 85);
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    setState(() {
+      _error = null;
+      if (decoded != null) {
+        _docBytes = img.encodeJpg(decoded, quality: 85);
+        _docExt = 'jpg';
+      } else {
+        _docBytes = bytes;
+        _docExt = 'jpg';
+        debugPrint('[VehicleReg] decodeImage falló — se envía tal cual');
+      }
+    });
+  }
+
+  // ───────── UI ─────────
+
   @override
   Widget build(BuildContext context) {
+    final vm = ref.watch(vehicleViewModelProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Registrar vehículo')),
+      appBar: AppBar(
+        title: Text(_step >= 3 ? 'Vehículo registrado' : 'Registrar vehículo'),
+      ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: _placaController,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Placa *',
-                  hintText: 'ABC-123',
-                ),
+        child: Column(
+          children: [
+            if (_step < 3) _StepperHeader(current: _step),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                child: _buildStep(vm),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _municipioController,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Municipio *',
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _modeloController,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Modelo',
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _colorController,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Color',
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _anioController,
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'Año',
-                ),
-              ),
-              const SizedBox(height: 32),
-              GradientButton(
-                label: 'Registrar vehículo',
-                onPressed: () => Navigator.of(context)
-                    .pushNamed(AppRoutes.vehicleOwner),
-              ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStep(VehicleViewModel vm) {
+    switch (_step) {
+      case 0:
+        return _datosStep(vm);
+      case 1:
+        return _fotoStep(
+          titulo: 'Tarjeta de circulación',
+          ayuda: 'Toma una foto clara de la tarjeta de circulación del vehículo.',
+          botonLabel: 'Subir y continuar',
+          vm: vm,
+          onSubir: () => _subirDocPaso('tarjeta-circulacion', 2),
+        );
+      case 2:
+        return _fotoStep(
+          titulo: 'Foto del vehículo',
+          ayuda: 'Toma una foto del frente del mototaxi donde se vea la placa.',
+          botonLabel: 'Subir y finalizar',
+          vm: vm,
+          onSubir: () => _subirDocPaso('foto-vehiculo', 3),
+        );
+      default:
+        return _listoStep();
+    }
+  }
+
+  Widget _datosStep(VehicleViewModel vm) {
+    final municipios = ref.watch(municipiosProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _PasoTitulo('Datos del vehículo', 'Llena los datos de tu mototaxi.'),
+        const SizedBox(height: 20),
+        TextField(
+          controller: _placaController,
+          textCapitalization: TextCapitalization.characters,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(
+            labelText: 'Placa *',
+            hintText: 'ABC-123',
           ),
         ),
+        const SizedBox(height: 16),
+        municipios.when(
+          data: (lista) => DropdownButtonFormField<Municipio>(
+            initialValue: _municipio,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Municipio *'),
+            items: lista
+                .map((m) => DropdownMenuItem<Municipio>(
+                      value: m,
+                      child: Text('${m.nombre}, ${m.estado}'),
+                    ))
+                .toList(),
+            onChanged: (v) => setState(() => _municipio = v),
+          ),
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: LinearProgressIndicator(),
+          ),
+          error: (e, _) => Text('No se pudieron cargar los municipios',
+              style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _modeloController,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(
+            labelText: 'Modelo',
+            hintText: 'Italika, Bajaj…',
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _colorController,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(labelText: 'Color'),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _anioController,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(labelText: 'Año'),
+        ),
+        if (_error != null) ...[const SizedBox(height: 16), _ErrorBox(_error!)],
+        const SizedBox(height: 28),
+        GradientButton(
+          label: vm.isSaving ? 'Guardando…' : 'Continuar',
+          onPressed: vm.isSaving ? null : _guardarDatos,
+        ),
+      ],
+    );
+  }
+
+  Widget _fotoStep({
+    required String titulo,
+    required String ayuda,
+    required String botonLabel,
+    required VehicleViewModel vm,
+    required VoidCallback onSubir,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _PasoTitulo(titulo, ayuda),
+        const SizedBox(height: 20),
+        GestureDetector(
+          onTap: () => _pickImage(ImageSource.camera),
+          child: Container(
+            height: 260,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: scheme.outlineVariant, width: 2),
+              image: _docBytes != null
+                  ? DecorationImage(image: MemoryImage(_docBytes!), fit: BoxFit.cover)
+                  : null,
+            ),
+            child: _docBytes == null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.camera_alt_outlined,
+                            size: 60,
+                            color: scheme.onSurfaceVariant.withValues(alpha: 0.4)),
+                        const SizedBox(height: 12),
+                        const Text('Tocar para tomar foto',
+                            style: TextStyle(color: _kGrey)),
+                      ],
+                    ),
+                  )
+                : null,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: () => _pickImage(ImageSource.gallery),
+          icon: const Icon(Icons.photo_library_outlined),
+          label: const Text('Elegir de la galería'),
+        ),
+        if (_error != null) ...[const SizedBox(height: 8), _ErrorBox(_error!)],
+        const SizedBox(height: 12),
+        const _Tip('Buena iluminación, sin reflejos'),
+        const _Tip('El documento completo y enfocado'),
+        const _Tip('Todos los datos legibles'),
+        const SizedBox(height: 24),
+        GradientButton(
+          label: vm.isSaving ? 'Subiendo…' : botonLabel,
+          onPressed: vm.isSaving || _docBytes == null ? null : onSubir,
+        ),
+      ],
+    );
+  }
+
+  Widget _listoStep() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 40),
+      child: Column(
+        children: [
+          Container(
+            width: 88,
+            height: 88,
+            decoration: const BoxDecoration(
+              color: Color(0xFFE6F4EA),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check_circle, color: _kGreen, size: 56),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            '¡Vehículo registrado!',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: _kDark),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Tu mototaxi quedó en revisión. Te avisaremos cuando esté aprobado para que puedas recibir viajes.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: _kGrey, height: 1.4),
+          ),
+          const SizedBox(height: 36),
+          GradientButton(
+            label: 'Entendido',
+            onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
+              AppRoutes.vehicles,
+              (route) => false,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ───────── Widgets de apoyo ─────────
+
+class _StepperHeader extends StatelessWidget {
+  final int current;
+  const _StepperHeader({required this.current});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 4),
+      child: Column(
+        children: [
+          Row(
+            children: List.generate(_kPasos.length * 2 - 1, (i) {
+              if (i.isOdd) {
+                final done = current > i ~/ 2;
+                return Expanded(
+                  child: Container(
+                    height: 3,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    color: done ? _kGreen : const Color(0xFFE3E3E3),
+                  ),
+                );
+              }
+              final idx = i ~/ 2;
+              final done = idx < current;
+              final active = idx == current;
+              return _StepDot(
+                numero: idx + 1,
+                label: _kPasos[idx],
+                done: done,
+                active: active,
+              );
+            }),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Paso ${current + 1} de ${_kPasos.length}',
+            style: const TextStyle(fontSize: 12, color: _kGrey, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepDot extends StatelessWidget {
+  final int numero;
+  final String label;
+  final bool done;
+  final bool active;
+  const _StepDot({
+    required this.numero,
+    required this.label,
+    required this.done,
+    required this.active,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bg = done
+        ? _kGreen
+        : active
+            ? _kOrange
+            : const Color(0xFFE3E3E3);
+    final Color fg = (done || active) ? Colors.white : _kGrey;
+    return Column(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+          alignment: Alignment.center,
+          child: done
+              ? const Icon(Icons.check, size: 18, color: Colors.white)
+              : Text('$numero',
+                  style: TextStyle(color: fg, fontWeight: FontWeight.w700)),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: active ? _kDark : _kGrey,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PasoTitulo extends StatelessWidget {
+  final String titulo;
+  final String subtitulo;
+  const _PasoTitulo(this.titulo, this.subtitulo);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(titulo,
+            style: const TextStyle(
+                fontSize: 20, fontWeight: FontWeight.w700, color: _kDark)),
+        const SizedBox(height: 6),
+        Text(subtitulo, style: const TextStyle(fontSize: 14, color: _kGrey)),
+      ],
+    );
+  }
+}
+
+class _Tip extends StatelessWidget {
+  final String text;
+  const _Tip(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.check, size: 16, color: _kGreen),
+          const SizedBox(width: 8),
+          Text(text, style: const TextStyle(fontSize: 13, color: _kGrey)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorBox extends StatelessWidget {
+  final String message;
+  const _ErrorBox(this.message);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFCEAE6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, size: 20, color: Color(0xFFD84315)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(message,
+                style: const TextStyle(fontSize: 13, color: Color(0xFFD84315))),
+          ),
+        ],
       ),
     );
   }

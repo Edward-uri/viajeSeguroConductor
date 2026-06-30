@@ -19,10 +19,12 @@ class VehicleViewModel extends ChangeNotifier {
 
   List<Vehiculo> _vehiculos = [];
   bool _isLoading = false;
+  bool _isSaving = false;
   String? _errorMessage;
 
   List<Vehiculo> get vehiculos => _vehiculos;
   bool get isLoading => _isLoading;
+  bool get isSaving => _isSaving;
   String? get errorMessage => _errorMessage;
 
   Future<void> loadVehiculos() async {
@@ -39,9 +41,49 @@ class VehicleViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> registrar(Vehiculo v) async {
-    await _repository.registrarVehiculo(v);
-    await loadVehiculos();
+  /// Registra el vehículo y devuelve su idVehiculo (0 si falló).
+  Future<int> registrar(Vehiculo v) async {
+    _isSaving = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final id = await _repository.registrarVehiculo(v);
+      await loadVehiculos();
+      return id;
+    } catch (e) {
+      _errorMessage = 'No se pudo registrar el vehículo. Verifica los datos.';
+      return 0;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> subirDocumento({
+    required int idVehiculo,
+    required String tipo,
+    required Uint8List bytes,
+    required String fileName,
+  }) async {
+    _isSaving = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.subirDocumento(
+        idVehiculo: idVehiculo,
+        tipo: tipo,
+        bytes: bytes,
+        fileName: fileName,
+      );
+      await loadVehiculos();
+      return true;
+    } catch (e) {
+      _errorMessage = 'No se pudo subir el documento. Intenta de nuevo.';
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
   }
 
   Future<void> actualizar(Vehiculo v) async {

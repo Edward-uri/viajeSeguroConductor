@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../domain/entities/vehiculo.dart';
 import '../domain/repositories/vehicle_repository.dart';
 import 'mappers/vehiculo_mapper.dart';
@@ -20,8 +22,16 @@ class VehicleRepositoryImpl implements VehicleRepository {
   }
 
   @override
-  Future<void> registrarVehiculo(Vehiculo vehiculo) async {
-    await _api.registrarVehiculo(VehiculoMapper.toJson(vehiculo));
+  Future<Vehiculo?> getMiVehiculo() async {
+    final vehiculos = await getVehiculos();
+    // ponytail: el conductor-dueño tiene un vehículo; el backend lista los propios primero.
+    return vehiculos.isEmpty ? null : vehiculos.first;
+  }
+
+  @override
+  Future<int> registrarVehiculo(Vehiculo vehiculo) async {
+    final res = await _api.registrarVehiculo(VehiculoMapper.toJson(vehiculo));
+    return (res['idVehiculo'] as num?)?.toInt() ?? 0;
   }
 
   @override
@@ -32,5 +42,20 @@ class VehicleRepositoryImpl implements VehicleRepository {
   @override
   Future<void> eliminarVehiculo(String placa) async {
     await _api.eliminarVehiculo(placa);
+  }
+
+  @override
+  Future<void> subirDocumento({
+    required int idVehiculo,
+    required String tipo,
+    required Uint8List bytes,
+    required String fileName,
+  }) async {
+    await _api.subirDocumentoVehiculo(
+      idVehiculo: idVehiculo,
+      tipo: tipo,
+      bytes: bytes,
+      fileName: fileName,
+    );
   }
 }

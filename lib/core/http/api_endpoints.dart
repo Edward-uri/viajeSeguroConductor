@@ -54,12 +54,17 @@ class ApiEndpoints {
       '/api/flotillas/vehiculos/$placa';
   static String flotillasVehiculoDocumentos(String placa) =>
       '/api/flotillas/vehiculos/$placa/documentos';
+  // El backend sube docs del vehículo por idVehiculo y tipo en la ruta:
+  // POST /api/flotillas/vehiculos/:id/documentos/{tarjeta-circulacion,foto-vehiculo}
+  static String flotillasVehiculoDocumento(int idVehiculo, String tipo) =>
+      '/api/flotillas/vehiculos/$idVehiculo/documentos/$tipo';
   static const String flotillasFacturacion = '/api/flotillas/facturacion';
 
   // ───── User / Profile ─────
   static const String usersMe = '/api/users/me';
-  static const String usersMePhotoPresign = '/api/users/me/photo/presign';
-  static const String usersMePhotoConfirm = '/api/users/me/photo/confirm';
+  // Subida directa al volumen montado (PUT multipart, campo "foto").
+  static const String usersMePhoto = '/api/users/me/photo';
+  static String userPhoto(int idUsuario) => '/api/users/$idUsuario/photo';
 
   // ───── Tarifas ─────
   static String municipioTarifas(int idMunicipio) =>

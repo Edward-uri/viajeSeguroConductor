@@ -10,6 +10,7 @@ import 'features/auth/presentation/screens/registration/register_municipio_scree
 import 'features/auth/presentation/screens/registration/register_names_screen.dart';
 import 'features/auth/presentation/screens/registration/register_otp_screen.dart';
 import 'features/auth/presentation/screens/registration/register_personal_data_screen.dart';
+import 'features/auth/presentation/screens/registration/register_photo_screen.dart';
 import 'features/documents/presentation/screens/document_upload_screen.dart';
 import 'features/documents/presentation/screens/document_view_screen.dart';
 import 'features/documents/presentation/screens/documents_approved_screen.dart';
@@ -68,6 +69,7 @@ class JalaApp extends StatelessWidget {
             const RegisterPersonalDataScreen(),
         AppRoutes.registerMunicipio: (_) => const RegisterMunicipioScreen(),
         AppRoutes.license: (_) => const RegisterLicenseScreen(),
+        AppRoutes.registerPhoto: (_) => const RegisterPhotoScreen(),
         AppRoutes.documents: (_) => const DocumentsListScreen(),
         AppRoutes.documentUpload: (_) => const DocumentUploadScreen(),
         AppRoutes.documentView: (_) => const DocumentViewScreen(),

@@ -1,5 +1,6 @@
+import 'dart:typed_data';
+
 import '../../../shared/domain/entities/user.dart';
-import '../domain/entities/profile_photo_upload_ticket.dart';
 import '../domain/repositories/profile_repository.dart';
 
 
@@ -34,21 +35,11 @@ class MockProfileRepository implements ProfileRepository {
   }
 
   @override
-  Future<ProfilePhotoUploadTicket> requestPhotoUpload({
-    required String contentType,
+  Future<User> uploadPhoto({
+    required Uint8List bytes,
+    required String fileName,
   }) async {
-    const key = 'mock-s3-key';
-    return const ProfilePhotoUploadTicket(
-      uploadUrl: 'https://mock-s3.example.com/$key',
-      s3Key: key,
-      publicUrl: 'https://mock-s3.example.com/$key',
-      expiresIn: 3600,
-      maxBytes: 5 * 1024 * 1024,
-    );
-  }
-
-  @override
-  Future<User> confirmPhotoUpload({required String s3Key}) async {
+    await Future.delayed(const Duration(milliseconds: 300));
     _currentUser = User(
       idUsuario: _currentUser.idUsuario,
       rol: _currentUser.rol,
@@ -57,18 +48,11 @@ class MockProfileRepository implements ProfileRepository {
       correoElectronico: _currentUser.correoElectronico,
       telefonoVerificado: _currentUser.telefonoVerificado,
       idMunicipio: _currentUser.idMunicipio,
-      fotoPerfilUrl: 'https://mock-s3.example.com/mock-s3-key',
+      fotoPerfilUrl: 'https://mock.example.com/foto.jpg',
       fechaRegistro: _currentUser.fechaRegistro,
     );
     return _currentUser;
   }
-
-  @override
-  Future<void> uploadBytesToS3({
-    required String uploadUrl,
-    required List<int> bytes,
-    required String contentType,
-  }) async {}
 
   @override
   Future<void> deleteAccount() async {}

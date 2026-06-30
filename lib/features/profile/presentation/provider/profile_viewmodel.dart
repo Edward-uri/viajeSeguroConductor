@@ -88,27 +88,14 @@ class ProfileViewModel extends ChangeNotifier {
 
 
   Future<bool> uploadNewPhoto({
-    required List<int> bytes,
-    required String contentType,
+    required Uint8List bytes,
+    String fileName = 'perfil.jpg',
   }) async {
-    if (_user == null) return false;
     _isUploadingPhoto = true;
     _errorMessage = null;
     notifyListeners();
     try {
-      final ticket =
-          await _profileRepo.requestPhotoUpload(contentType: contentType);
-      if (bytes.length > ticket.maxBytes) {
-        throw ApiException(
-          'La imagen excede el tamano maximo permitido (${ticket.maxBytes ~/ (1024 * 1024)} MB).',
-        );
-      }
-      await _profileRepo.uploadBytesToS3(
-        uploadUrl: ticket.uploadUrl,
-        bytes: bytes,
-        contentType: contentType,
-      );
-      _user = await _profileRepo.confirmPhotoUpload(s3Key: ticket.s3Key);
+      _user = await _profileRepo.uploadPhoto(bytes: bytes, fileName: fileName);
       return true;
     } on ApiException catch (e) {
       _errorMessage = e.message;

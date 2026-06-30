@@ -1,22 +1,14 @@
+import 'dart:typed_data';
+
 import '../../../../shared/domain/entities/user.dart';
-import '../entities/profile_photo_upload_ticket.dart';
 
 abstract class ProfileRepository {
   Future<User> getMe();
 
   Future<User> updateMe(Map<String, dynamic> data);
 
-  Future<ProfilePhotoUploadTicket> requestPhotoUpload({
-    required String contentType,
-  });
-
-  Future<User> confirmPhotoUpload({required String s3Key});
-
-  Future<void> uploadBytesToS3({
-    required String uploadUrl,
-    required List<int> bytes,
-    required String contentType,
-  });
+  /// Sube la foto de perfil al volumen del backend y devuelve el usuario actualizado.
+  Future<User> uploadPhoto({required Uint8List bytes, required String fileName});
 
   Future<void> deleteAccount();
 }

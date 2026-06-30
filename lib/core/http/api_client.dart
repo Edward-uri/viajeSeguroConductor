@@ -47,6 +47,7 @@ class ApiClient {
     required String fileName,
     MediaType? contentType,
     bool auth = true,
+    String method = 'POST',
   }) async {
     final url = _uri(path);
     final timeout = ApiConfig.uploadTimeout;
@@ -60,7 +61,7 @@ class ApiClient {
     }
 
     http.MultipartRequest buildRequest() {
-      final req = http.MultipartRequest('POST', url);
+      final req = http.MultipartRequest(method, url);
       req.headers['Accept'] = 'application/json';
       if (token != null) {
         req.headers['Authorization'] = 'Bearer $token';
