@@ -239,8 +239,16 @@ class HomeViewModel extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    final pos = await _locationService.getCurrentPosition();
-    _currentPosition = pos;
+    if (!await _locationService.isServiceEnabled()) {
+      _errorMessage = 'Activa la ubicación (GPS) de tu teléfono para mostrar tu posición.';
+      notifyListeners();
+      return;
+    }
+    try {
+      _currentPosition = await _locationService.getCurrentPosition();
+    } catch (_) {
+      _errorMessage = 'No pudimos obtener tu ubicación. Revisa que el GPS esté activo.';
+    }
     notifyListeners();
   }
 
@@ -286,6 +294,11 @@ class HomeViewModel extends ChangeNotifier {
         final granted = await _locationService.requestPermission();
         if (!granted) {
           _errorMessage = 'Necesitamos tu ubicación para enviarte viajes cerca de ti. Actívala en los ajustes.';
+          notifyListeners();
+          return;
+        }
+        if (!await _locationService.isServiceEnabled()) {
+          _errorMessage = 'Activa la ubicación (GPS) de tu teléfono para ponerte disponible.';
           notifyListeners();
           return;
         }

@@ -14,16 +14,36 @@ class LocationService {
   Stream<LatLng> get positionStream => _controller.stream;
 
   Future<LatLng> getCurrentPosition() async {
-    final position = await Geolocator.getCurrentPosition();
-    _lastKnown = LatLng(position.latitude, position.longitude);
-    return _lastKnown!;
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        // ponytail: GPS frío en hardware real tarda; sin límite se cuelga.
+        timeLimit: const Duration(seconds: 15),
+      );
+      _lastKnown = LatLng(position.latitude, position.longitude);
+      return _lastKnown!;
+    } catch (e) {
+      // Si el fix tarda/falla, usa la última posición del SO (mejor que colgarse).
+      final last = await Geolocator.getLastKnownPosition();
+      if (last != null) {
+        _lastKnown = LatLng(last.latitude, last.longitude);
+        return _lastKnown!;
+      }
+      rethrow;
+    }
   }
 
   Future<bool> requestPermission() async {
-    final permission = await Geolocator.requestPermission();
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
     return permission == LocationPermission.whileInUse ||
         permission == LocationPermission.always;
   }
+
+  /// ¿El GPS del teléfono está encendido? (distinto del permiso de la app).
+  Future<bool> isServiceEnabled() => Geolocator.isLocationServiceEnabled();
 
   void startTracking({Duration interval = const Duration(seconds: 10)}) {
     stopTracking();
