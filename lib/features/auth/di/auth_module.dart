@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/core_module.dart';
+import '../../../core/messaging/messaging_globals.dart';
 import '../../../core/socket/socket_module.dart';
+import '../../rides/di/rides_module.dart';
 import '../data/auth_repository_impl.dart';
 import '../data/auth_session_service.dart';
 import '../data/device_registration_service.dart';
@@ -29,8 +31,16 @@ final authSessionServiceProvider = Provider<AuthSessionService>((ref) => AuthSes
 
 final deviceRegistrationServiceProvider =
     Provider<DeviceRegistrationService>((ref) {
-  throw UnimplementedError(
-    'DeviceRegistrationService debe ser overriden desde main.dart',
+  final messaging = MessagingGlobals.messaging;
+  if (messaging == null) {
+    throw UnimplementedError(
+      'DeviceRegistrationService necesita Firebase. '
+      'Asegúrate de que MessagingGlobals.init() se llamó en main.dart.',
+    );
+  }
+  return DeviceRegistrationService(
+    messaging,
+    ref.watch(ridesRepositoryProvider),
   );
 });
 

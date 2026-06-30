@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
-import '../../../../routes/app_routes.dart';
+import '../provider/vehicle_viewmodel.dart';
 
 class VehicleOwnerScreen extends ConsumerStatefulWidget {
   const VehicleOwnerScreen({super.key});
@@ -18,14 +18,36 @@ class _VehicleOwnerScreenState extends ConsumerState<VehicleOwnerScreen> {
   final _razonController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final vm = ref.read(vehicleViewModelProvider);
+      _rfcController.text = vm.rfc ?? '';
+      _razonController.text = vm.razonSocial ?? '';
+    });
+  }
+
+  @override
   void dispose() {
     _rfcController.dispose();
     _razonController.dispose();
     super.dispose();
   }
 
+  Future<void> _guardar() async {
+    final vm = ref.read(vehicleViewModelProvider);
+    await vm.guardarDatosFacturacion(
+      rfc: _rfcController.text.trim(),
+      razonSocial: _razonController.text.trim(),
+    );
+    if (vm.errorMessage == null && context.mounted) {
+      context.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final vm = ref.watch(vehicleViewModelProvider);
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
@@ -74,10 +96,15 @@ class _VehicleOwnerScreenState extends ConsumerState<VehicleOwnerScreen> {
                   color: scheme.onSurfaceVariant,
                 ),
               ),
+              if (vm.errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(vm.errorMessage!,
+                    style: text.bodySmall?.copyWith(color: scheme.error)),
+              ],
               const SizedBox(height: 32),
               GradientButton(
-                label: 'Guardar',
-                onPressed: () => context.go(AppRoutes.vehicles),
+                label: vm.isSaving ? 'Guardando...' : 'Guardar',
+                onPressed: vm.isSaving ? null : _guardar,
               ),
             ],
           ),

@@ -64,4 +64,15 @@ class MockVehicleRepository implements VehicleRepository {
   }) async {
     await Future.delayed(const Duration(milliseconds: 500));
   }
+
+  @override
+  Future<Map<String, dynamic>> getDatosFacturacion() async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return {'rfc': 'MEND920101AB1', 'razonSocial': 'Carlos Méndez'};
+  }
+
+  @override
+  Future<void> guardarDatosFacturacion(Map<String, dynamic> data) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
 }

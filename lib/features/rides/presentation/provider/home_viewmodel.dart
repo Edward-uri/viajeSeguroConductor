@@ -86,6 +86,7 @@ class HomeViewModel extends ChangeNotifier {
   LatLng? _currentPosition;
   SocketStatus _socketStatus = SocketStatus.disconnected;
   StreamSubscription? _rideRequestedSub;
+  StreamSubscription? _rideAcceptedSub;
   StreamSubscription? _rideNotAvailableSub;
   StreamSubscription? _rideStateChangedSub;
   StreamSubscription? _socketStatusSub;
@@ -127,6 +128,19 @@ class HomeViewModel extends ChangeNotifier {
         _pendientes = [viaje, ..._pendientes];
         notifyListeners();
       }
+    });
+
+    _rideAcceptedSub?.cancel();
+    _rideAcceptedSub = _socketService.onRideAccepted.listen((data) {
+      final idViaje = data['idViaje']?.toString();
+      if (idViaje == null) return;
+      if (_aceptadosPorMi.contains(idViaje)) return;
+      _pendientes = _pendientes.where((t) => t.id != idViaje).toList();
+      if (_currentRequest?.id == idViaje) {
+        _currentRequest = null;
+        _errorMessage = 'Este viaje fue tomado por otro conductor';
+      }
+      notifyListeners();
     });
 
     _rideNotAvailableSub?.cancel();
@@ -481,6 +495,7 @@ class HomeViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _rideRequestedSub?.cancel();
+    _rideAcceptedSub?.cancel();
     _rideNotAvailableSub?.cancel();
     _rideStateChangedSub?.cancel();
     _socketStatusSub?.cancel();

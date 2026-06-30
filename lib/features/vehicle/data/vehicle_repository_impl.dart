@@ -59,4 +59,19 @@ class VehicleRepositoryImpl implements VehicleRepository {
       fileName: fileName,
     );
   }
+
+  @override
+  Future<Map<String, dynamic>> getDatosFacturacion() async {
+    try {
+      final res = await _api.getDatosFacturacion();
+      return (res['data'] as Map<String, dynamic>?) ?? res;
+    } catch (_) {
+      return <String, dynamic>{};
+    }
+  }
+
+  @override
+  Future<void> guardarDatosFacturacion(Map<String, dynamic> data) async {
+    await _api.guardarDatosFacturacion(data);
+  }
 }

@@ -4,7 +4,11 @@ import '../entities/solicitud_viaje.dart';
 abstract class RidesRepository {
   Future<DriverStats> getStats();
   Future<List<RideHistoryItem>> getAssignedRides();
+
+  @Deprecated('Usa getPendingTrips() + selección local. Este método devuelve '
+      'el primer viaje pendiente, lo cual no representa una "solicitud actual".')
   Future<SolicitudViaje?> getCurrentRequest();
+
   Future<List<SolicitudViaje>> getPendingTrips();
   Future<SolicitudViaje?> getViajeActivoConductor();
   Future<SolicitudViaje> getRideById(String rideId);

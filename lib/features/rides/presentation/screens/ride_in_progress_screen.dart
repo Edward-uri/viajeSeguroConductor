@@ -153,8 +153,11 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       final destino = vm.hasStarted ? 'al destino' : 'para llegar';
       return '${vm.etaMin} min · $km km $destino';
     }
-    if (!vm.hasStarted && vm.ride!.origenDistancia.isNotEmpty) {
-      return '${vm.ride!.origenDistancia} para llegar';
+    if (!vm.hasStarted) {
+      final r = vm.ride;
+      if (r != null && r.origenDistancia.isNotEmpty) {
+        return '${r.origenDistancia} para llegar';
+      }
     }
     return null;
   }

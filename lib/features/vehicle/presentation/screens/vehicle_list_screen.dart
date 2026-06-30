@@ -39,6 +39,8 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _RfcCard(
+                      rfc: vm.rfc,
+                      razonSocial: vm.razonSocial,
                       onTap: () => context.push(AppRoutes.vehicleOwner),
                     ),
                     const SizedBox(height: 24),
@@ -87,9 +89,15 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
 }
 
 class _RfcCard extends StatelessWidget {
+  final String? rfc;
+  final String? razonSocial;
   final VoidCallback onTap;
 
-  const _RfcCard({required this.onTap});
+  const _RfcCard({
+    required this.rfc,
+    required this.razonSocial,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -131,11 +139,13 @@ class _RfcCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  const Text(
-                    'RFC: MEND920101AB1',
+                  Text(
+                    rfc != null ? 'RFC: $rfc' : 'Toca para configurar',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF6B6661),
+                      color: rfc != null
+                          ? const Color(0xFF6B6661)
+                          : const Color(0xFFFF8F00),
                     ),
                   ),
                 ],

@@ -20,6 +20,10 @@ class VehicleDetailScreen extends ConsumerWidget {
       );
     }
 
+    final statusColor = _statusColor(v.status);
+    final statusLabel = _statusLabel(v.status);
+    final progressValue = _progressValue(v.status);
+
     return Scaffold(
       appBar: AppBar(title: Text(v.placa)),
       body: SafeArea(
@@ -52,26 +56,32 @@ class VehicleDetailScreen extends ConsumerWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8A317).withValues(alpha: 0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.hourglass_top,
-                        color: Color(0xFFE8A317)),
+                    Icon(
+                      v.status == VehicleStatus.active
+                          ? Icons.check_circle
+                          : Icons.hourglass_top,
+                      color: statusColor,
+                    ),
                     const SizedBox(width: 8),
-                    const Text('En revisión'),
+                    Text(statusLabel,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600, color: statusColor)),
                     const Spacer(),
                     SizedBox(
                       width: 100,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: 0.66,
+                          value: progressValue,
                           minHeight: 6,
                           backgroundColor: scheme.surfaceContainerHigh,
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                              Color(0xFFE8A317)),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(statusColor),
                         ),
                       ),
                     ),
@@ -87,14 +97,33 @@ class VehicleDetailScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              _docItem('Tarjeta de circulación', 'En revisión',
-                  const Color(0xFFE8A317), text),
+              _docItem(
+                'Tarjeta de circulación',
+                v.status == VehicleStatus.active ? 'Aprobado' : 'En revisión',
+                v.status == VehicleStatus.active
+                    ? const Color(0xFF1E8E5A)
+                    : const Color(0xFFE8A317),
+                text,
+              ),
               const Divider(),
-              _docItem('Foto del vehículo', 'Aprobado',
-                  const Color(0xFF1E8E5A), text),
+              _docItem(
+                'Foto del vehículo',
+                v.status == VehicleStatus.active ||
+                        v.status == VehicleStatus.reviewing
+                    ? 'Aprobado'
+                    : 'Pendiente',
+                v.status == VehicleStatus.active
+                    ? const Color(0xFF1E8E5A)
+                    : const Color(0xFFE8A317),
+                text,
+              ),
               const Divider(),
-              _docItem('Permiso/concesión municipal', 'Opcional — Toca para subir',
-                  Colors.grey, text),
+              _docItem(
+                'Permiso/concesión municipal',
+                'Opcional — Toca para subir',
+                Colors.grey,
+                text,
+              ),
               const SizedBox(height: 16),
               Text(
                 'El permiso municipal es opcional y no bloquea la activación.',
@@ -107,6 +136,39 @@ class VehicleDetailScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Color _statusColor(VehicleStatus status) {
+    switch (status) {
+      case VehicleStatus.active:
+        return const Color(0xFF1E8E5A);
+      case VehicleStatus.reviewing:
+        return const Color(0xFFE8A317);
+      case VehicleStatus.incomplete:
+        return const Color(0xFF9A9A9A);
+    }
+  }
+
+  String _statusLabel(VehicleStatus status) {
+    switch (status) {
+      case VehicleStatus.active:
+        return 'Aprobado';
+      case VehicleStatus.reviewing:
+        return 'En revisión';
+      case VehicleStatus.incomplete:
+        return 'Incompleto';
+    }
+  }
+
+  double _progressValue(VehicleStatus status) {
+    switch (status) {
+      case VehicleStatus.active:
+        return 1.0;
+      case VehicleStatus.reviewing:
+        return 0.66;
+      case VehicleStatus.incomplete:
+        return 0.33;
+    }
   }
 
   Widget _docItem(

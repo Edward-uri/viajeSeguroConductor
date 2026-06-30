@@ -21,4 +21,7 @@ abstract class VehicleRepository {
     required Uint8List bytes,
     required String fileName,
   });
+
+  Future<Map<String, dynamic>> getDatosFacturacion();
+  Future<void> guardarDatosFacturacion(Map<String, dynamic> data);
 }

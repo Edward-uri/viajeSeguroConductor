@@ -1,81 +1,181 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class EarningsScreen extends StatelessWidget {
+import '../../di/rides_module.dart';
+import '../../domain/entities/ride_history_item.dart';
+import '../../domain/entities/solicitud_viaje.dart';
+import '../../domain/repositories/rides_repository.dart';
+
+final _earningsProvider =
+    ChangeNotifierProvider.autoDispose<_EarningsViewModel>((ref) {
+  return _EarningsViewModel(ref.watch(ridesRepositoryProvider));
+});
+
+class _EarningsViewModel extends ChangeNotifier {
+  _EarningsViewModel(this._repository);
+
+  final RidesRepository _repository;
+
+  DriverStats? _stats;
+  List<RideHistoryItem> _recentRides = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  DriverStats? get stats => _stats;
+  List<RideHistoryItem> get recentRides => _recentRides;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+
+  Future<void> load() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final results = await Future.wait([
+        _repository.getStats(),
+        _repository.getAssignedRides(),
+      ]);
+      _stats = results[0] as DriverStats;
+      _recentRides = results[1] as List<RideHistoryItem>;
+    } catch (e) {
+      _errorMessage = 'Error al cargar tus ganancias';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+}
+
+class EarningsScreen extends ConsumerStatefulWidget {
   const EarningsScreen({super.key});
 
   @override
+  ConsumerState<EarningsScreen> createState() => _EarningsScreenState();
+}
+
+class _EarningsScreenState extends ConsumerState<EarningsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => ref.read(_earningsProvider).load(),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final vm = ref.watch(_earningsProvider);
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ganancias')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF8F00),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Ganancias de hoy',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white70,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      '\$340.00',
-                      style: TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
+        child: vm.isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : vm.errorMessage != null
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        _Chip('8 viajes'),
-                        const SizedBox(width: 8),
-                        _Chip('5.2 h en línea'),
+                        Text(vm.errorMessage!,
+                            style: text.bodyMedium?.copyWith(
+                                color: const Color(0xFF6B6661))),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () => ref.read(_earningsProvider).load(),
+                          child: const Text('Reintentar'),
+                        ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Últimos viajes',
-                style: text.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1410),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: 5,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, i) {
-                    return _EarningRow(
-                      hora: '${9 + i}:30',
-                      monto: 48.0 - i * 3,
-                    );
-                  },
-                ),
-              ),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _EarningsHeader(stats: vm.stats),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Últimos viajes',
+                          style: text.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF1A1410),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: vm.recentRides.isEmpty
+                              ? Center(
+                                  child: Text('Aún no tienes viajes hoy',
+                                      style: text.bodyMedium?.copyWith(
+                                          color: const Color(0xFF6B6661))),
+                                )
+                              : ListView.separated(
+                                  itemCount: vm.recentRides.length,
+                                  separatorBuilder: (_, _) =>
+                                      const SizedBox(height: 8),
+                                  itemBuilder: (context, i) {
+                                    final r = vm.recentRides[i];
+                                    return _EarningRow(
+                                      hora: r.estado,
+                                      monto: r.monto,
+                                      origen: r.origen,
+                                      destino: r.destino,
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+      ),
+    );
+  }
+}
+
+class _EarningsHeader extends StatelessWidget {
+  final DriverStats? stats;
+
+  const _EarningsHeader({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    final ganancias = stats?.gananciasHoy ?? 0;
+    final viajes = stats?.viajesHoy ?? 0;
+    final horas = stats?.horasEnLinea ?? 0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF8F00),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ganancias de hoy',
+            style: TextStyle(fontSize: 14, color: Colors.white70),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '\$${ganancias.toStringAsFixed(2)}',
+            style: const TextStyle(
+              fontSize: 36,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _Chip('$viajes viajes'),
+              const SizedBox(width: 8),
+              _Chip('${horas.toStringAsFixed(1)} h en línea'),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
@@ -108,8 +208,15 @@ class _Chip extends StatelessWidget {
 class _EarningRow extends StatelessWidget {
   final String hora;
   final double monto;
+  final String origen;
+  final String destino;
 
-  const _EarningRow({required this.hora, required this.monto});
+  const _EarningRow({
+    required this.hora,
+    required this.monto,
+    required this.origen,
+    required this.destino,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -122,16 +229,40 @@ class _EarningRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.circle_outlined, size: 20, color: Color(0xFFC4C4C4)),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF1E0),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.directions_car_outlined,
+                size: 18, color: Color(0xFFFF8F00)),
+          ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              'Viaje · $hora',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1410),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$origen → $destino',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1410),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  hora,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF6B6661),
+                  ),
+                ),
+              ],
             ),
           ),
           Text(

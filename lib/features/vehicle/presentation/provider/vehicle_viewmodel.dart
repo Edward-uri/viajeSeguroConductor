@@ -18,11 +18,15 @@ class VehicleViewModel extends ChangeNotifier {
   final VehicleRepository _repository;
 
   List<Vehiculo> _vehiculos = [];
+  String? _rfc;
+  String? _razonSocial;
   bool _isLoading = false;
   bool _isSaving = false;
   String? _errorMessage;
 
   List<Vehiculo> get vehiculos => _vehiculos;
+  String? get rfc => _rfc;
+  String? get razonSocial => _razonSocial;
   bool get isLoading => _isLoading;
   bool get isSaving => _isSaving;
   String? get errorMessage => _errorMessage;
@@ -32,11 +36,41 @@ class VehicleViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      _vehiculos = await _repository.getVehiculos();
+      final results = await Future.wait([
+        _repository.getVehiculos(),
+        _repository.getDatosFacturacion(),
+      ]);
+      _vehiculos = results[0] as List<Vehiculo>;
+      final facturacion = results[1] as Map<String, dynamic>;
+      _rfc = facturacion['rfc']?.toString();
+      _razonSocial = facturacion['razonSocial']?.toString();
     } catch (e) {
       _errorMessage = 'Error al cargar vehículos';
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> guardarDatosFacturacion({
+    required String rfc,
+    String? razonSocial,
+  }) async {
+    _isSaving = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.guardarDatosFacturacion({
+        'rfc': rfc,
+        if (razonSocial != null && razonSocial.isNotEmpty)
+          'razonSocial': razonSocial,
+      });
+      _rfc = rfc;
+      _razonSocial = razonSocial;
+    } catch (e) {
+      _errorMessage = 'No se pudieron guardar los datos de facturación';
+    } finally {
+      _isSaving = false;
       notifyListeners();
     }
   }
