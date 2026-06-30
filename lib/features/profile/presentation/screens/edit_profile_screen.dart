@@ -18,7 +18,7 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
+  final _nameController = TextEditingController();
   int? _selectedMunicipioId;
 
   @override
@@ -28,7 +28,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       final user = ref.read(driverProfileViewModelProvider).user;
       if (user != null) {
         _emailController.text = user.correoElectronico ?? '';
-        _phoneController.text = user.telefono ?? '';
+        _nameController.text = user.nombreCompleto;
         _selectedMunicipioId = user.idMunicipio;
       }
       setState(() {});
@@ -38,7 +38,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   void dispose() {
     _emailController.dispose();
-    _phoneController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -75,6 +75,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: _inputDecoration('correo@ejemplo.com'),
+                  style: const TextStyle(color: Colors.black87),
                   validator: (v) {
                     if (v != null && v.isNotEmpty && !v.contains('@')) {
                       return 'Correo inválido';
@@ -83,17 +84,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   },
                 ),
                 const SizedBox(height: 20),
-                Text('Teléfono',
+                Text('Nombre',
                     style: text.labelMedium?.copyWith(
                         fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
                 TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: _inputDecoration('Número de teléfono'),
+                  controller: _nameController,
+                  decoration: _inputDecoration('Nombre completo'),
+                  style: const TextStyle(color: Colors.black87),
                   validator: (v) {
-                    if (v != null && v.isNotEmpty && v.length < 10) {
-                      return 'Teléfono inválido (mín 10 dígitos)';
+                    if (v == null || v.trim().isEmpty) {
+                      return 'El nombre es obligatorio';
                     }
                     return null;
                   },
@@ -212,8 +213,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (_emailController.text.isNotEmpty) {
       data['correoElectronico'] = _emailController.text;
     }
-    if (_phoneController.text.isNotEmpty) {
-      data['telefono'] = _phoneController.text;
+    if (_nameController.text.trim().isNotEmpty) {
+      data['nombre'] = _nameController.text.trim();
     }
     if (_selectedMunicipioId != null) {
       data['idMunicipio'] = _selectedMunicipioId;
