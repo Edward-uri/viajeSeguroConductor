@@ -81,8 +81,10 @@ class ApiClient {
 
     try {
       var request = buildRequest();
+      // El timeout cubre envío Y lectura de la respuesta: si el server/proxy no
+      // completa la respuesta, no se queda "subiendo" para siempre.
       var streamed = await request.send().timeout(timeout);
-      var response = await http.Response.fromStream(streamed);
+      var response = await http.Response.fromStream(streamed).timeout(timeout);
 
       debugPrint('[ApiClient] multipart response ${response.statusCode}');
 
@@ -94,7 +96,7 @@ class ApiClient {
           token = await _authStorage.readAccessToken();
           request = buildRequest();
           streamed = await request.send().timeout(timeout);
-          response = await http.Response.fromStream(streamed);
+          response = await http.Response.fromStream(streamed).timeout(timeout);
           debugPrint('[ApiClient] multipart retry response ${response.statusCode}');
         }
       }

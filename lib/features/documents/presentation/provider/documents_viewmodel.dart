@@ -47,6 +47,15 @@ class DocumentsViewModel extends ChangeNotifier {
       _documentos.where((d) => d.status == DocumentStatus.approved).length;
   int get totalCount => _documentos.length;
 
+  /// Todos los documentos aprobados: habilita continuar al registro de vehículo.
+  bool get allApproved =>
+      _documentos.isNotEmpty &&
+      _documentos.every((d) => d.status == DocumentStatus.approved);
+
+  /// Algún documento rechazado: hay que avisar al conductor que lo corrija.
+  bool get hasRejected =>
+      _documentos.any((d) => d.status == DocumentStatus.rejected);
+
   Future<void> loadDocumentos() async {
     _isLoading = true;
     _errorMessage = null;

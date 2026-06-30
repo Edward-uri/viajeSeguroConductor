@@ -94,35 +94,34 @@ class _DocumentsListScreenState extends ConsumerState<DocumentsListScreen> {
                 approvedCount: vm.approvedCount,
                 totalCount: vm.totalCount,
               ),
+              if (vm.allApproved || vm.hasRejected) ...[
+                const SizedBox(height: 12),
+                _StatusBanner(approved: vm.allApproved),
+              ],
               const SizedBox(height: 16),
               Expanded(
-                child: ListView.separated(
-                  itemCount: vm.documentos.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, i) {
-                    final doc = vm.documentos[i];
-                    return _DocumentCard(
-                      doc: doc,
-                      statusColor: _statusColor(doc.status),
-                      iconBgColor: _iconBgColor(doc.status),
-                      statusLabel: _statusLabel(doc.status),
-                      onTap: doc.status == DocumentStatus.pending
-                      ? () {
-                          context.push(
-                            AppRoutes.documentUpload,
-                            extra: doc,
-                          );
-                        }
-                      : doc.status == DocumentStatus.rejected
-                      ? () {
-                          context.push(
-                            AppRoutes.documentView,
-                            extra: doc,
-                          );
-                        }
-                      : null,
-                    );
-                  },
+                child: RefreshIndicator(
+                  onRefresh: () =>
+                      ref.read(documentsViewModelProvider).loadDocumentos(),
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: vm.documentos.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, i) {
+                      final doc = vm.documentos[i];
+                      return _DocumentCard(
+                        doc: doc,
+                        statusColor: _statusColor(doc.status),
+                        iconBgColor: _iconBgColor(doc.status),
+                        statusLabel: _statusLabel(doc.status),
+                        onTap: doc.status == DocumentStatus.pending
+                            ? () => context.push(AppRoutes.documentUpload, extra: doc)
+                            : doc.status == DocumentStatus.rejected
+                                ? () => context.push(AppRoutes.documentView, extra: doc)
+                                : null,
+                      );
+                    },
+                  ),
                 ),
               ),
               if (vm.isLoading)
@@ -130,9 +129,65 @@ class _DocumentsListScreenState extends ConsumerState<DocumentsListScreen> {
                   padding: EdgeInsets.only(bottom: 16),
                   child: LinearProgressIndicator(),
                 ),
+              Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: vm.allApproved
+                        ? () => context.push(AppRoutes.documentsApproved)
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Continuar',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _StatusBanner extends StatelessWidget {
+  final bool approved;
+  const _StatusBanner({required this.approved});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = approved ? const Color(0xFF1E8E5A) : const Color(0xFFD84315);
+    final icon = approved ? Icons.check_circle_rounded : Icons.error_rounded;
+    final msg = approved
+        ? '¡Documentos aprobados! Toca Continuar para seguir.'
+        : 'Un documento fue rechazado. Tócalo para corregirlo.';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              msg,
+              style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+          ),
+        ],
       ),
     );
   }
