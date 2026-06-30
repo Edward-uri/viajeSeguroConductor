@@ -21,6 +21,9 @@ import '../../../../features/heatmap/di/heatmap_module.dart';
 import '../../../../features/vehicle/domain/entities/vehiculo.dart';
 import '../../../../features/vehicle/domain/repositories/vehicle_repository.dart';
 import '../../../../features/vehicle/di/vehicle_module.dart';
+import '../../../../features/profile/domain/repositories/profile_repository.dart';
+import '../../../../features/profile/di/profile_module.dart';
+import '../../../../shared/domain/entities/user.dart';
 import '../../../documents/di/documents_module.dart';
 import '../../data/mappers/solicitud_viaje_mapper.dart';
 import '../../data/services/location_service.dart';
@@ -38,6 +41,7 @@ final homeViewModelProvider =
     ref.watch(heatmapRepositoryProvider),
     ref.watch(authStorageProvider),
     ref.watch(vehicleRepositoryProvider),
+    ref.watch(profileRepositoryProvider),
   );
   ref.onDispose(() => vm.dispose());
   return vm;
@@ -52,6 +56,7 @@ class HomeViewModel extends ChangeNotifier {
     this._heatmapRepository,
     this._authStorage,
     this._vehicleRepository,
+    this._profileRepository,
   );
 
   final RidesRepository _repository;
@@ -61,12 +66,14 @@ class HomeViewModel extends ChangeNotifier {
   final HeatmapRepository _heatmapRepository;
   final AuthStorage _authStorage;
   final VehicleRepository _vehicleRepository;
+  final ProfileRepository _profileRepository;
 
   Vehiculo? _miVehiculo;
   Vehiculo? get miVehiculo => _miVehiculo;
 
   DriverStats? _stats;
   SolicitudViaje? _currentRequest;
+  List<SolicitudViaje> _pendientes = [];
   bool _isLoading = false;
   bool _isOnline = false;
   String? _errorMessage;
@@ -83,6 +90,7 @@ class HomeViewModel extends ChangeNotifier {
 
   DriverStats? get stats => _stats;
   SolicitudViaje? get currentRequest => _currentRequest;
+  List<SolicitudViaje> get pendientes => _pendientes;
   bool get isLoading => _isLoading;
   bool get isOnline => _isOnline;
   String? get errorMessage => _errorMessage;
@@ -106,18 +114,23 @@ class HomeViewModel extends ChangeNotifier {
     _rideRequestedSub?.cancel();
     _rideRequestedSub = _socketService.onRideRequested.listen((data) {
       if (!_isOnline) return;
-      _currentRequest = SolicitudViajeMapper.fromJson(data);
-      notifyListeners();
+      final viaje = SolicitudViajeMapper.fromJson(data);
+      if (!_pendientes.any((t) => t.id == viaje.id)) {
+        _pendientes = [viaje, ..._pendientes];
+        notifyListeners();
+      }
     });
 
     _rideNotAvailableSub?.cancel();
     _rideNotAvailableSub = _socketService.onRideNotAvailable.listen((data) {
       final idViaje = data['idViaje']?.toString();
-      if (idViaje != null && _currentRequest?.id == idViaje) {
+      if (idViaje == null) return;
+      _pendientes = _pendientes.where((t) => t.id != idViaje).toList();
+      if (_currentRequest?.id == idViaje) {
         _currentRequest = null;
         _errorMessage = 'Este viaje ya no está disponible';
-        notifyListeners();
       }
+      notifyListeners();
     });
 
     _rideStateChangedSub?.cancel();
@@ -183,21 +196,22 @@ class HomeViewModel extends ChangeNotifier {
     try {
       final results = await Future.wait([
         _repository.getStats(),
-        _repository.getCurrentRequest(),
+        _repository.getPendingTrips(),
         _vehicleRepository.getMiVehiculo(),
+        _profileRepository.getMe(),
       ]);
       _stats = results[0] as DriverStats;
-      final pending = results[1] as SolicitudViaje?;
+      _pendientes = results[1] as List<SolicitudViaje>;
       _miVehiculo = results[2] as Vehiculo?;
-      if (_isOnline && pending != null) {
-        _currentRequest = pending;
-      }
+      final user = results[3] as User;
+      if (user.idMunicipio != null) idMunicipio = user.idMunicipio!;
     } catch (e) {
       _errorMessage = 'Error al cargar datos';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+    _fetchZonasCalientes();
   }
 
   Future<void> initLocation() async {
@@ -301,6 +315,12 @@ class HomeViewModel extends ChangeNotifier {
     }
   }
 
+  /// Selecciona un viaje de la lista para abrir su detalle (pantalla de solicitud).
+  void seleccionarViaje(SolicitudViaje viaje) {
+    _currentRequest = viaje;
+    notifyListeners();
+  }
+
   Future<void> acceptRide() async {
     if (_currentRequest == null) return;
     final vehiculo = _miVehiculo;
@@ -309,11 +329,13 @@ class HomeViewModel extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    final aceptadoId = _currentRequest!.id;
     try {
       await _repository.acceptRide(
-        _currentRequest!.id,
+        aceptadoId,
         idVehiculo: vehiculo.idVehiculo,
       );
+      _pendientes = _pendientes.where((t) => t.id != aceptadoId).toList();
       _currentRequest = null;
       _errorMessage = null;
     } catch (e) {

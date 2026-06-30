@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../routes/app_routes.dart';
 import '../../../../shared/domain/entities/user.dart';
+import '../../../../shared/widgets/authed_image.dart';
 import '../provider/profile_viewmodel.dart';
 
 
@@ -39,10 +41,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (vm.user == null && vm.errorMessage != null && !vm.isLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRoutes.login,
-          (route) => false,
-        );
+        context.go(AppRoutes.login);
       });
     }
 
@@ -193,10 +192,7 @@ class _ProfileContent extends ConsumerWidget {
               : () async {
                   await vm.logout();
                   if (!context.mounted) return;
-                  Navigator.of(context).pushNamedAndRemoveUntil(
-                    AppRoutes.login,
-                    (route) => false,
-                  );
+                  context.go(AppRoutes.login);
                 },
           icon: const Icon(Icons.logout),
           label: const Text('Cerrar sesión'),
@@ -333,10 +329,7 @@ class _ProfileContent extends ConsumerWidget {
     final vm = ref.read(profileViewModelProvider);
     final ok = await vm.deleteAccount();
     if (ok && context.mounted) {
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.login,
-        (route) => false,
-      );
+      context.go(AppRoutes.login);
     }
   }
 }
@@ -357,53 +350,21 @@ class _Avatar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
+    final initialsWidget = Text(
+      initials,
+      style: text.headlineMedium?.copyWith(
+        color: scheme.onSecondaryContainer,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+
     final base = ClipOval(
       child: Container(
         width: 96,
         height: 96,
         color: scheme.secondaryContainer,
         alignment: Alignment.center,
-        child: url == null
-            ? Text(
-                initials,
-                style: text.headlineMedium?.copyWith(
-                  color: scheme.onSecondaryContainer,
-                  fontWeight: FontWeight.w700,
-                ),
-              )
-            : Image.network(
-                url!,
-                width: 96,
-                height: 96,
-                fit: BoxFit.cover,
-                errorBuilder: (_, error, _) {
-                  debugPrint('[ProfileAvatar] No se pudo cargar la imagen: $error');
-                  return Text(
-                    initials,
-                    style: text.headlineMedium?.copyWith(
-                      color: scheme.onSecondaryContainer,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  );
-                },
-                loadingBuilder: (ctx, child, progress) {
-                  if (progress == null) return child;
-                  return Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        value: progress.expectedTotalBytes != null
-                            ? progress.cumulativeBytesLoaded /
-                                progress.expectedTotalBytes!
-                            : null,
-                        color: scheme.onSecondaryContainer,
-                      ),
-                    ),
-                  );
-                },
-              ),
+        child: AuthedImage(path: url, size: 96, fallback: initialsWidget),
       ),
     );
 

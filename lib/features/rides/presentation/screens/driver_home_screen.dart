@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../../core/di/core_module.dart';
@@ -34,10 +35,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       final route = await resolveDocumentsRoute(repo);
       if (route != AppRoutes.driverHome) {
         if (!context.mounted) return;
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          route,
-          (route) => false,
-        );
+        context.go(route);
         return;
       }
       final vm = ref.read(homeViewModelProvider);
@@ -174,7 +172,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       homeViewModelProvider.select((v) => v.currentRequest),
       (_, request) {
         if (request != null && context.mounted) {
-          Navigator.of(context).pushNamed(AppRoutes.rideRequest);
+          context.push(AppRoutes.rideRequest);
         }
       },
     );
@@ -310,14 +308,11 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             ),
             _BottomSheet(
               stats: vm.stats,
+              pendientes: vm.pendientes,
+              onSelect: vm.seleccionarViaje,
               text: text,
               scheme: scheme,
-              onGanancias: () => Navigator.of(context)
-                  .pushNamed(AppRoutes.earnings),
-              onPerfil: () =>
-                  Navigator.of(context).pushNamed(AppRoutes.driverProfile),
-              onFlotilla: () =>
-                  Navigator.of(context).pushNamed(AppRoutes.vehicles),
+              onGanancias: () => context.push(AppRoutes.earnings),
             ),
           ],
         ),
@@ -455,26 +450,26 @@ class _OnlineStatusBar extends StatelessWidget {
 
 class _BottomSheet extends StatelessWidget {
   final DriverStats? stats;
+  final List<SolicitudViaje> pendientes;
+  final ValueChanged<SolicitudViaje> onSelect;
   final TextTheme text;
   final ColorScheme scheme;
   final VoidCallback onGanancias;
-  final VoidCallback onPerfil;
-  final VoidCallback onFlotilla;
 
   const _BottomSheet({
     required this.stats,
+    required this.pendientes,
+    required this.onSelect,
     required this.text,
     required this.scheme,
     required this.onGanancias,
-    required this.onPerfil,
-    required this.onFlotilla,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -482,29 +477,16 @@ class _BottomSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (stats != null) ..._buildStatsContent(),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _NavButton(
-                  icon: Icons.person_outline,
-                  label: 'Perfil',
-                  onTap: onPerfil,
-                  scheme: scheme,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _NavButton(
-                  icon: Icons.directions_car_outlined,
-                  label: 'Flotilla',
-                  onTap: onFlotilla,
-                  scheme: scheme,
-                ),
-              ),
-            ],
+          _PendingTrips(
+            pendientes: pendientes,
+            onSelect: onSelect,
+            text: text,
+            scheme: scheme,
           ),
+          if (stats != null) ...[
+            const Divider(height: 24),
+            ..._buildStatsContent(),
+          ],
         ],
       ),
     );
@@ -599,33 +581,142 @@ class _StatItem extends StatelessWidget {
   }
 }
 
-class _NavButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
+class _PendingTrips extends StatelessWidget {
+  final List<SolicitudViaje> pendientes;
+  final ValueChanged<SolicitudViaje> onSelect;
+  final TextTheme text;
   final ColorScheme scheme;
 
-  const _NavButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
+  const _PendingTrips({
+    required this.pendientes,
+    required this.onSelect,
+    required this.text,
     required this.scheme,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: OutlinedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 20),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(color: scheme.outlineVariant),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('Viajes disponibles',
+                style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(width: 6),
+            if (pendientes.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: scheme.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text('${pendientes.length}',
+                    style: TextStyle(
+                        color: scheme.onPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (pendientes.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text('Aún no hay viajes cerca. Mantente en línea.',
+                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+          )
+        else
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 240),
+            child: ListView.separated(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: pendientes.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (_, i) => _TripCard(
+                viaje: pendientes[i],
+                onTap: () => onSelect(pendientes[i]),
+                text: text,
+                scheme: scheme,
+              ),
+            ),
           ),
-          foregroundColor: scheme.onSurface,
+      ],
+    );
+  }
+}
+
+class _TripCard extends StatelessWidget {
+  final SolicitudViaje viaje;
+  final VoidCallback onTap;
+  final TextTheme text;
+  final ColorScheme scheme;
+
+  const _TripCard({
+    required this.viaje,
+    required this.onTap,
+    required this.text,
+    required this.scheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: scheme.primary,
+              child: Text(viaje.pasajeroIniciales,
+                  style: TextStyle(
+                      color: scheme.onPrimary, fontWeight: FontWeight.w700)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(viaje.nombreCompleto,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700)),
+                      ),
+                      Text('\$${viaje.monto.toStringAsFixed(2)}',
+                          style: text.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: scheme.primary)),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text('${viaje.origen} → ${viaje.destino}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant)),
+                  const SizedBox(height: 2),
+                  Text(
+                      '${viaje.distanciaKm.toStringAsFixed(1)} km · ${viaje.duracionMin} min · ${viaje.metodoPago}',
+                      style: text.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

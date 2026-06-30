@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../../core/widgets/gradient_button.dart';
 import '../../../../../routes/app_routes.dart';
@@ -47,10 +48,7 @@ class _RegisterLicenseScreenState extends ConsumerState<RegisterLicenseScreen> {
     final ok = await vm.completeRegistration();
     if (ok && context.mounted) {
       // Ya autenticado: paso opcional de foto de perfil antes de los documentos.
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.registerPhoto,
-        (route) => false,
-      );
+      context.go(AppRoutes.registerPhoto);
     }
   }
 
@@ -68,7 +66,7 @@ class _RegisterLicenseScreenState extends ConsumerState<RegisterLicenseScreen> {
             children: [
               const SizedBox(height: 8),
               GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
+                onTap: () => context.pop(),
                 child: const Icon(
                   Icons.arrow_back,
                   color: Color(0xFF1A1410),

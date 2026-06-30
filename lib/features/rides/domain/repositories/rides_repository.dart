@@ -5,6 +5,7 @@ abstract class RidesRepository {
   Future<DriverStats> getStats();
   Future<List<RideHistoryItem>> getAssignedRides();
   Future<SolicitudViaje?> getCurrentRequest();
+  Future<List<SolicitudViaje>> getPendingTrips();
   Future<SolicitudViaje> getRideById(String rideId);
   Future<void> acceptRide(String rideId, {required int idVehiculo});
   Future<void> rejectRide(String rideId);

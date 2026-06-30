@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
@@ -28,7 +29,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final doc = ModalRoute.of(context)?.settings.arguments as Documento?;
+      final doc = GoRouterState.of(context).extra as Documento?;
       if (doc != null && doc.status == DocumentStatus.approved) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -36,7 +37,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                 Text('Este documento ya está aprobado y no puede modificarse'),
           ),
         );
-        Navigator.of(context).pop();
+        context.pop();
       }
     });
   }
@@ -122,7 +123,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
 
   Future<void> _upload() async {
     if (_selectedFile == null || _fileBytes == null) return;
-    final doc = ModalRoute.of(context)?.settings.arguments as Documento?;
+    final doc = GoRouterState.of(context).extra as Documento?;
     if (doc == null) return;
 
     final format = _formatLabel(_fileBytes!);
@@ -135,7 +136,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
             _fileBytes!,
             '${doc.id}.$_detectedExt',
           );
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) context.pop();
     } catch (e) {
       if (mounted) {
         final msg = e is ApiException
@@ -158,7 +159,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final doc = ModalRoute.of(context)?.settings.arguments as Documento?;
+    final doc = GoRouterState.of(context).extra as Documento?;
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 

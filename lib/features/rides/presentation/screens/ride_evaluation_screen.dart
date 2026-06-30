@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../routes/app_routes.dart';
 import '../provider/ride_evaluation_viewmodel.dart';
 
 class RideEvaluationScreen extends ConsumerStatefulWidget {
@@ -19,7 +21,7 @@ class _RideEvaluationScreenState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args = ModalRoute.of(context)?.settings.arguments;
+      final args = GoRouterState.of(context).extra;
       if (args is String) {
         _rideId = args;
       }
@@ -73,8 +75,7 @@ class _RideEvaluationScreenState
                     width: double.infinity,
                     height: 54,
                     child: ElevatedButton(
-                      onPressed: () =>
-                          Navigator.of(context).popUntil((route) => route.isFirst),
+                      onPressed: () => context.go(AppRoutes.driverHome),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF8F00),
                         foregroundColor: Colors.white,

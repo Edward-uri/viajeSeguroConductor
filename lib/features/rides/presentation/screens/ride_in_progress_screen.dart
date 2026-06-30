@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../../core/env/api_config.dart';
@@ -66,7 +67,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
+            onTap: () => context.pop(),
             child: Icon(
               Icons.arrow_back,
               color: vm.hasStarted ? Colors.white : scheme.onSurface,
@@ -267,21 +268,20 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
               child: ElevatedButton(
                 onPressed: vm.isLoading
                     ? null
-                    : () {
-                        final navigator = Navigator.of(context);
+                    : () async {
                         final rideId = vm.ride?.id;
-                        vm.completeRide().then((_) {
-                          if (vm.errorMessage == null) {
-                            if (rideId != null) {
-                              navigator.pushReplacementNamed(
-                                AppRoutes.rideEvaluation,
-                                arguments: rideId,
-                              );
-                            } else {
-                              navigator.pop();
-                            }
+                        await vm.completeRide();
+                        if (!mounted) return;
+                        if (vm.errorMessage == null) {
+                          if (rideId != null) {
+                            context.pushReplacement(
+                              AppRoutes.rideEvaluation,
+                              extra: rideId,
+                            );
+                          } else {
+                            context.pop();
                           }
-                        });
+                        }
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1E8E5A),

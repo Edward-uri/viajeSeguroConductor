@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../../core/widgets/gradient_button.dart';
 import '../../../../../core/widgets/logo_badge.dart';
@@ -39,13 +40,11 @@ class GetstartedScreen extends ConsumerWidget {
               const Spacer(flex: 2),
               GradientButton(
                 label: 'Iniciar sesión',
-                onPressed: () => Navigator.of(context)
-                    .pushNamed(AppRoutes.login),
+                onPressed: () => context.push(AppRoutes.login),
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () => Navigator.of(context)
-                    .pushNamed(AppRoutes.registerEmail),
+                onPressed: () => context.push(AppRoutes.registerEmail),
                 child: const Text('¿No tenés cuenta? Registrarse'),
               ),
               const SizedBox(height: 24),

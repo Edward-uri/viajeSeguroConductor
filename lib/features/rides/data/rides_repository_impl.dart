@@ -54,6 +54,20 @@ class RidesRepositoryImpl implements RidesRepository {
   }
 
   @override
+  Future<List<SolicitudViaje>> getPendingTrips() async {
+    try {
+      final res = await _api.getPendingRides();
+      final data = res['data'];
+      if (data is! List) return [];
+      return data
+          .map((e) => SolicitudViajeMapper.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  @override
   Future<SolicitudViaje> getRideById(String rideId) async {
     final res = await _api.getRideById(rideId);
     final data = res['data'] as Map<String, dynamic>? ?? res;

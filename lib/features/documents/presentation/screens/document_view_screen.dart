@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../routes/app_routes.dart';
 import '../../domain/entities/documento.dart';
@@ -9,7 +10,7 @@ class DocumentViewScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final doc = ModalRoute.of(context)?.settings.arguments as Documento?;
+    final doc = GoRouterState.of(context).extra as Documento?;
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
@@ -80,9 +81,9 @@ class DocumentViewScreen extends ConsumerWidget {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: () => Navigator.of(context).pushReplacementNamed(
+                    onPressed: () => context.pushReplacement(
                       AppRoutes.documentUpload,
-                      arguments: doc,
+                      extra: doc,
                     ),
                     icon: const Icon(Icons.refresh),
                     label: const Text('Volver a subir'),

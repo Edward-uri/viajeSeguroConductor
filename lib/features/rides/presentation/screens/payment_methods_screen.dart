@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../provider/metodo_cobro_viewmodel.dart';
 import '../../domain/entities/metodo_cobro.dart';
@@ -233,7 +234,7 @@ class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
     final success =
         await ref.read(metodoCobroViewModelProvider.notifier).save(mc);
     if (success && mounted) {
-      Navigator.of(context).pop();
+      context.pop();
     }
   }
 

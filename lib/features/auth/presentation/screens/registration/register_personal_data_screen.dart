@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../../core/widgets/gradient_button.dart';
 import '../../../../../routes/app_routes.dart';
@@ -47,7 +48,7 @@ class _RegisterPersonalDataScreenState
   void _onContinue() {
     if (_selectedSexo == null) return;
     ref.read(registerViewModelProvider).setIdSexo(_selectedSexo);
-    Navigator.of(context).pushNamed(AppRoutes.registerMunicipio);
+    context.push(AppRoutes.registerMunicipio);
   }
 
   @override

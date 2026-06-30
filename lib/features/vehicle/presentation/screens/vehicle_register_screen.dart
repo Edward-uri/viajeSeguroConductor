@@ -1,13 +1,15 @@
-import 'package:flutter/foundation.dart';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image/image.dart' as img;
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../routes/app_routes.dart';
 import '../../../../shared/data/providers/municipio_provider.dart';
 import '../../../../shared/domain/entities/municipio.dart';
+import '../../../../shared/utils/image_utils.dart';
 import '../../domain/entities/vehiculo.dart';
 import '../provider/vehicle_viewmodel.dart';
 
@@ -113,21 +115,14 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
   // ───────── Imagen ─────────
 
   Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: source, imageQuality: 85);
+    final picked = await ImagePicker().pickImage(source: source, imageQuality: 85);
     if (picked == null) return;
-    final bytes = await picked.readAsBytes();
-    final decoded = img.decodeImage(bytes);
+    final jpeg = await compressToJpeg(await picked.readAsBytes());
+    if (!mounted) return;
     setState(() {
       _error = null;
-      if (decoded != null) {
-        _docBytes = img.encodeJpg(decoded, quality: 85);
-        _docExt = 'jpg';
-      } else {
-        _docBytes = bytes;
-        _docExt = 'jpg';
-        debugPrint('[VehicleReg] decodeImage falló — se envía tal cual');
-      }
+      _docBytes = jpeg;
+      _docExt = 'jpg';
     });
   }
 
@@ -341,10 +336,7 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
           const SizedBox(height: 36),
           GradientButton(
             label: 'Entendido',
-            onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
-              AppRoutes.vehicles,
-              (route) => false,
-            ),
+            onPressed: () => context.go(AppRoutes.vehicles),
           ),
         ],
       ),

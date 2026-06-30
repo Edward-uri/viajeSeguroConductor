@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/di/core_module.dart';
 import '../../../core/widgets/logo_badge.dart';
@@ -32,13 +33,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final hasSession = results[0] as bool;
     if (!mounted) return;
     if (!hasSession) {
-      Navigator.of(context).pushReplacementNamed(AppRoutes.getstarted);
+      context.go(AppRoutes.getstarted);
       return;
     }
     final repo = ref.read(documentoRepositoryProvider);
     final route = await resolveDocumentsRoute(repo);
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed(route);
+    context.go(route);
   }
 
   @override

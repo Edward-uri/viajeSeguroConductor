@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
 import '../../domain/entities/vehiculo.dart';
@@ -20,7 +21,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
   @override
   void initState() {
     super.initState();
-    final v = ModalRoute.of(context)?.settings.arguments as Vehiculo?;
+    final v = GoRouterState.of(context).extra as Vehiculo?;
     _colorController = TextEditingController(text: v?.color ?? '');
     _anioController =
         TextEditingController(text: v?.anio.toString() ?? '');
@@ -38,7 +39,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final v = ModalRoute.of(context)?.settings.arguments as Vehiculo?;
+    final v = GoRouterState.of(context).extra as Vehiculo?;
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
@@ -79,7 +80,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
               const SizedBox(height: 32),
               GradientButton(
                 label: 'Guardar cambios',
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => context.pop(),
               ),
             ],
           ),

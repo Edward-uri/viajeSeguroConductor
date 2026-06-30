@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../core/widgets/logo_badge.dart';
@@ -38,10 +39,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final repo = ref.read(documentoRepositoryProvider);
       final route = await resolveDocumentsRoute(repo);
       if (!context.mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        route,
-        (route) => false,
-      );
+      context.go(route);
     }
   }
 
@@ -142,8 +140,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextButton(
                     onPressed: vm.isLoading
                         ? null
-                        : () => Navigator.of(context)
-                            .pushNamed(AppRoutes.registerEmail),
+                        : () => context.push(AppRoutes.registerEmail),
                     child: const Text('¿No tenés cuenta? Crear una'),
                   ),
                 ],

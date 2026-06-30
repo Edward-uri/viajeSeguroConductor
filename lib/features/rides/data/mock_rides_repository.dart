@@ -66,6 +66,12 @@ class MockRidesRepository implements RidesRepository {
   }
 
   @override
+  Future<List<SolicitudViaje>> getPendingTrips() async {
+    final actual = await getCurrentRequest();
+    return actual == null ? [] : [actual];
+  }
+
+  @override
   Future<SolicitudViaje> getRideById(String rideId) async {
     await Future.delayed(const Duration(milliseconds: 200));
     return SolicitudViaje(

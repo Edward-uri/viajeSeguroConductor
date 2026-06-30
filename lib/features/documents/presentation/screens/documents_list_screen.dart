@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../routes/app_routes.dart';
 import '../../domain/entities/documento.dart';
@@ -107,16 +108,16 @@ class _DocumentsListScreenState extends ConsumerState<DocumentsListScreen> {
                       statusLabel: _statusLabel(doc.status),
                       onTap: doc.status == DocumentStatus.pending
                       ? () {
-                          Navigator.of(context).pushNamed(
+                          context.push(
                             AppRoutes.documentUpload,
-                            arguments: doc,
+                            extra: doc,
                           );
                         }
                       : doc.status == DocumentStatus.rejected
                       ? () {
-                          Navigator.of(context).pushNamed(
+                          context.push(
                             AppRoutes.documentView,
-                            arguments: doc,
+                            extra: doc,
                           );
                         }
                       : null,

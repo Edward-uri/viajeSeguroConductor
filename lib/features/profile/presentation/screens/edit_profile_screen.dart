@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../shared/data/providers/municipio_provider.dart';
 import '../provider/driver_profile_viewmodel.dart';
@@ -169,7 +170,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     await ref.read(driverProfileViewModelProvider.notifier).updateProfile(data);
     if (mounted && ref.read(driverProfileViewModelProvider).errorMessage == null) {
-      Navigator.of(context).pop();
+      context.pop();
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../routes/app_routes.dart';
@@ -128,11 +129,7 @@ class _DocumentsApprovedScreenState
               const SizedBox(height: 16),
               GradientButton(
                 label: 'Empezar a conducir',
-                onPressed: () =>
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                  AppRoutes.driverHome,
-                  (route) => false,
-                ),
+                onPressed: () => context.go(AppRoutes.driverHome),
               ),
               const SizedBox(height: 24),
             ],

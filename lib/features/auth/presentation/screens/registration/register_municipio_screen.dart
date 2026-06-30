@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../../core/widgets/gradient_button.dart';
 import '../../../../../routes/app_routes.dart';
@@ -21,7 +22,7 @@ class _RegisterMunicipioScreenState extends ConsumerState<RegisterMunicipioScree
   void _onContinue() {
     if (_selected == null) return;
     ref.read(registerViewModelProvider).setIdMunicipio(_selected!.idMunicipio);
-    Navigator.of(context).pushNamed(AppRoutes.license);
+    context.push(AppRoutes.license);
   }
 
   @override

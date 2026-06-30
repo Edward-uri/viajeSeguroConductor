@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../routes/app_routes.dart';
@@ -76,10 +77,7 @@ class _VehicleOwnerScreenState extends ConsumerState<VehicleOwnerScreen> {
               const SizedBox(height: 32),
               GradientButton(
                 label: 'Guardar',
-                onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
-                  AppRoutes.vehicles,
-                  (route) => false,
-                ),
+                onPressed: () => context.go(AppRoutes.vehicles),
               ),
             ],
           ),

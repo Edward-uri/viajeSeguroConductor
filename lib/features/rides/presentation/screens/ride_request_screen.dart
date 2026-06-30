@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
 import '../provider/home_viewmodel.dart';
@@ -211,7 +212,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                       onPressed: () async {
                         await vm.rejectRide();
                         if (!context.mounted) return;
-                        Navigator.of(context).pop();
+                        context.pop();
                       },
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(54),
@@ -233,7 +234,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                         label: 'Aceptar viaje',
                         onPressed: () {
                           vm.acceptRide();
-                          Navigator.of(context).pop();
+                          context.pop();
                         },
                       ),
                     ),

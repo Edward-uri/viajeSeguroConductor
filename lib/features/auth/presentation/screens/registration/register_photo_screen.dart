@@ -1,11 +1,13 @@
-import 'package:flutter/foundation.dart';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image/image.dart' as img;
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../../core/widgets/gradient_button.dart';
 import '../../../../../routes/app_routes.dart';
+import '../../../../../shared/utils/image_utils.dart';
 import '../../../../profile/presentation/provider/profile_viewmodel.dart';
 
 /// Último paso del registro: foto de perfil (opcional). El usuario ya está
@@ -29,16 +31,13 @@ class _RegisterPhotoScreenState extends ConsumerState<RegisterPhotoScreen> {
   Future<void> _pick(ImageSource source) async {
     final picked = await ImagePicker().pickImage(source: source, imageQuality: 88);
     if (picked == null) return;
-    final raw = await picked.readAsBytes();
-    final decoded = img.decodeImage(raw);
-    setState(() => _bytes = decoded != null ? img.encodeJpg(decoded, quality: 88) : raw);
+    final jpeg = await compressToJpeg(await picked.readAsBytes());
+    if (!mounted) return;
+    setState(() => _bytes = jpeg);
   }
 
   void _irADocumentos() {
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      AppRoutes.documents,
-      (route) => false,
-    );
+    context.go(AppRoutes.documents);
   }
 
   Future<void> _subir() async {

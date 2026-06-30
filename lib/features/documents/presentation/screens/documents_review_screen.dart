@@ -66,6 +66,7 @@ class _DocumentsReviewScreenState extends ConsumerState<DocumentsReviewScreen> {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
+      appBar: AppBar(title: const Text('Documentos')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),

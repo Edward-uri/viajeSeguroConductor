@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../features/documents/di/documents_module.dart';
 import '../../../../features/documents/domain/entities/documento.dart';
@@ -206,8 +207,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                     leading: const Icon(Icons.person_outline),
                     title: const Text('Editar perfil'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.of(context)
-                        .pushNamed(AppRoutes.editProfile),
+                    onTap: () => context.push(AppRoutes.editProfile),
                   ),
                   if (!_docsApproved) ...[
                     const Divider(height: 1, indent: 16, endIndent: 16),
@@ -215,8 +215,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                       leading: const Icon(Icons.description_outlined),
                       title: const Text('Mis documentos'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.of(context)
-                          .pushNamed(AppRoutes.documents),
+                      onTap: () => context.push(AppRoutes.documents),
                     ),
                     const Divider(height: 1, indent: 16, endIndent: 16),
                   ],
@@ -224,8 +223,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                     leading: const Icon(Icons.credit_card_outlined),
                     title: const Text('Métodos de cobro'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.of(context)
-                        .pushNamed(AppRoutes.paymentMethods),
+                    onTap: () => context.push(AppRoutes.paymentMethods),
                   ),
                 ],
               ),
@@ -244,16 +242,14 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                     leading: const Icon(Icons.attach_money_outlined),
                     title: const Text('Ganancias'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.of(context)
-                        .pushNamed(AppRoutes.earnings),
+                    onTap: () => context.push(AppRoutes.earnings),
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
                     leading: const Icon(Icons.history_outlined),
                     title: const Text('Historial de viajes'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.of(context)
-                        .pushNamed(AppRoutes.rideHistory),
+                    onTap: () => context.push(AppRoutes.rideHistory),
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
@@ -297,10 +293,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
               onPressed: () async {
                 await vm.logout();
                 if (!context.mounted) return;
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                  AppRoutes.getstarted,
-                  (route) => false,
-                );
+                context.go(AppRoutes.getstarted);
               },
               icon: Icon(Icons.logout, color: scheme.error),
               label: Text('Cerrar sesión',

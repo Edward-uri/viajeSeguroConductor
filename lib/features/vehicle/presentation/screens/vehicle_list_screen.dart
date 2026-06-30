@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../routes/app_routes.dart';
@@ -38,8 +39,7 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _RfcCard(
-                      onTap: () => Navigator.of(context)
-                          .pushNamed(AppRoutes.vehicleOwner),
+                      onTap: () => context.push(AppRoutes.vehicleOwner),
                     ),
                     const SizedBox(height: 24),
                     Text(
@@ -62,12 +62,11 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
                             descripcion:
                                 '${v.marca} · ${v.color} · ${v.anio}',
                             status: v.status,
-                            onTap: () =>
-                                Navigator.of(context).pushNamed(
+                            onTap: () => context.push(
                               v.status == VehicleStatus.incomplete
                                   ? AppRoutes.vehicleEdit
                                   : AppRoutes.vehicleDetail,
-                              arguments: v,
+                              extra: v,
                             ),
                           );
                         },
@@ -76,8 +75,8 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
                     const SizedBox(height: 16),
                     GradientButton(
                       label: 'Registrar vehículo',
-                      onPressed: () => Navigator.of(context)
-                          .pushNamed(AppRoutes.vehicleRegister),
+                      onPressed: () =>
+                          context.push(AppRoutes.vehicleRegister),
                     ),
                   ],
                 ),

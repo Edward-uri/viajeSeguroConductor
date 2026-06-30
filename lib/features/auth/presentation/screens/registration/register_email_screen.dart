@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../../core/widgets/gradient_button.dart';
 import '../../../../../routes/app_routes.dart';
@@ -52,7 +53,7 @@ class _RegisterEmailScreenState extends ConsumerState<RegisterEmailScreen> {
     vm.setPassword(_passwordController.text);
     final ok = await vm.sendOtp();
     if (ok && context.mounted) {
-      Navigator.of(context).pushNamed(AppRoutes.registerOtp);
+      context.push(AppRoutes.registerOtp);
     }
   }
 
