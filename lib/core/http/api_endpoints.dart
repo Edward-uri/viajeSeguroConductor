@@ -70,6 +70,10 @@ class ApiEndpoints {
   static String municipioTarifas(int idMunicipio) =>
       '/api/municipios/$idMunicipio/tarifas';
 
+  // ───── Zonas calientes (proxy del modelo, evita CORS) ─────
+  static String zonasCalientes(int diaSemana, int hora) =>
+      '/api/zonas/calientes?dia_semana=$diaSemana&hora=$hora&top=6';
+
   // ───── Dispositivos / FCM ─────
   static const String dispositivos = '/api/dispositivos';
 

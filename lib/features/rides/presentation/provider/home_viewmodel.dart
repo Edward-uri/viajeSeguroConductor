@@ -74,6 +74,8 @@ class HomeViewModel extends ChangeNotifier {
   DriverStats? _stats;
   SolicitudViaje? _currentRequest;
   List<SolicitudViaje> _pendientes = [];
+  // Viajes que ESTE conductor aceptó: el evento "no disponible" para ellos no es un error.
+  final Set<String> _aceptadosPorMi = {};
   bool _isLoading = false;
   bool _isOnline = false;
   String? _errorMessage;
@@ -126,7 +128,8 @@ class HomeViewModel extends ChangeNotifier {
       final idViaje = data['idViaje']?.toString();
       if (idViaje == null) return;
       _pendientes = _pendientes.where((t) => t.id != idViaje).toList();
-      if (_currentRequest?.id == idViaje) {
+      // Si lo acepté yo, el aviso es normal (no un error): solo quítalo de la lista.
+      if (!_aceptadosPorMi.contains(idViaje) && _currentRequest?.id == idViaje) {
         _currentRequest = null;
         _errorMessage = 'Este viaje ya no está disponible';
       }
@@ -345,6 +348,7 @@ class HomeViewModel extends ChangeNotifier {
       return;
     }
     final aceptadoId = _currentRequest!.id;
+    _aceptadosPorMi.add(aceptadoId); // antes del await: el socket puede avisar antes de la respuesta HTTP
     try {
       await _repository.acceptRide(
         aceptadoId,
@@ -354,6 +358,7 @@ class HomeViewModel extends ChangeNotifier {
       _currentRequest = null;
       _errorMessage = null;
     } catch (e) {
+      _aceptadosPorMi.remove(aceptadoId); // no se aceptó: ya no es mío
       if (e is ApiException && e.statusCode == 409) {
         _currentRequest = null;
         _errorMessage = e.message.isNotEmpty
