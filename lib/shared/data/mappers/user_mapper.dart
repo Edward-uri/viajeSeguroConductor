@@ -21,6 +21,7 @@ class UserMapper {
       apellidoPaterno: persona?['apellidoPaterno'] as String?,
       apellidoMaterno: persona?['apellidoMaterno'] as String?,
       fechaNacimiento: persona?['fechaNacimiento'] as String?,
+      nombreUsuario: json['nombreUsuario'] as String?,
     );
   }
 }
