@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,6 +28,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   final _heatHitNotifier = LayerHitNotifier<HeatZone>(null);
   bool _socketInitialized = false;
   bool _heatListenerSet = false;
+  DateTime? _onlineSince;
+  Timer? _onlineTimer;
 
   @override
   void initState() {
@@ -68,13 +72,36 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         _heatListenerSet = true;
         _heatHitNotifier.addListener(_onHeatZoneTap);
       }
+
+      if (vm.isOnline) {
+        _onlineSince = DateTime.now();
+        _onlineTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+          if (mounted) setState(() {});
+        });
+      }
     });
   }
 
   @override
   void dispose() {
+    _onlineTimer?.cancel();
     _heatHitNotifier.removeListener(_onHeatZoneTap);
     super.dispose();
+  }
+
+  void _onOnlineChanged(bool isOnline) {
+    if (isOnline) {
+      _onlineSince = DateTime.now();
+      _onlineTimer?.cancel();
+      _onlineTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      _onlineSince = null;
+      _onlineTimer?.cancel();
+      _onlineTimer = null;
+    }
+    if (mounted) setState(() {});
   }
 
   void _centerOnDriver() {
@@ -165,6 +192,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   Widget build(BuildContext context) {
     final vm = ref.watch(homeViewModelProvider);
     final scheme = Theme.of(context).colorScheme;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     ref.listen<String?>(homeViewModelProvider.select((v) => v.errorMessage), (_, msg) {
       if (msg != null) {
@@ -187,20 +215,28 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       },
     );
 
+    ref.listen<bool>(
+      homeViewModelProvider.select((v) => v.isOnline),
+      (_, isOnline) => _onOnlineChanged(isOnline),
+    );
+
     final text = Theme.of(context).textTheme;
+
+    final onlineElapsed = _onlineSince != null
+        ? DateTime.now().difference(_onlineSince!)
+        : null;
 
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             if (vm.stats != null)
-              _EarningsCard(stats: vm.stats!, text: text, scheme: scheme),
-            _OnlineStatusBar(
-              isOnline: vm.isOnline,
-              onToggle: (_) => vm.toggleOnline(),
-              text: text,
-              scheme: scheme,
-            ),
+              _StatsRow(
+                stats: vm.stats!,
+                onlineElapsed: onlineElapsed,
+                text: text,
+                scheme: scheme,
+              ),
             Expanded(
               child: Stack(
                 children: [
@@ -325,17 +361,29 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                       ),
                     ),
                   ),
+                  if (isLandscape)
+                    _LandscapeBottomBar(
+                      stats: vm.stats,
+                      pendientes: vm.pendientes,
+                      onSelect: vm.seleccionarViaje,
+                      isOnline: vm.isOnline,
+                      onToggle: (_) => vm.toggleOnline(),
+                      onlineElapsed: onlineElapsed,
+                      text: text,
+                      scheme: scheme,
+                    ),
                 ],
               ),
             ),
-            _BottomSheet(
-              stats: vm.stats,
-              pendientes: vm.pendientes,
-              onSelect: vm.seleccionarViaje,
-              text: text,
-              scheme: scheme,
-              onGanancias: () => context.push(AppRoutes.earnings),
-            ),
+            if (!isLandscape)
+              _BottomSheet(
+                pendientes: vm.pendientes,
+                onSelect: vm.seleccionarViaje,
+                isOnline: vm.isOnline,
+                onToggle: (_) => vm.toggleOnline(),
+                text: text,
+                scheme: scheme,
+              ),
           ],
         ),
       ),
@@ -343,57 +391,64 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   }
 }
 
-class _EarningsCard extends StatelessWidget {
+class _StatsRow extends StatelessWidget {
   final DriverStats stats;
+  final Duration? onlineElapsed;
   final TextTheme text;
   final ColorScheme scheme;
 
-  const _EarningsCard({
+  const _StatsRow({
     required this.stats,
+    required this.onlineElapsed,
     required this.text,
     required this.scheme,
   });
+
+  String _onlineLabel() {
+    if (onlineElapsed == null) return '${stats.horasEnLinea} h';
+    final h = onlineElapsed!.inHours;
+    final m = onlineElapsed!.inMinutes.remainder(60);
+    return h > 0 ? '${h}h ${m.toString().padLeft(2, '0')}m' : '${m}m';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       color: scheme.surfaceContainerLow,
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.trending_up_rounded,
-              color: scheme.primary,
-              size: 22,
+          Expanded(
+            child: _StatItem(
+              value: '\$${stats.gananciasHoy.toStringAsFixed(0)}',
+              label: 'Ganancias hoy',
+              scheme: scheme,
             ),
           ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '\$${stats.gananciasHoy.toStringAsFixed(2)} hoy',
-                style: text.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Ganancias del día',
-                style: text.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+          Container(
+            width: 1,
+            height: 32,
+            color: scheme.outlineVariant,
+          ),
+          Expanded(
+            child: _StatItem(
+              value: '${stats.viajesHoy}',
+              label: 'Viajes',
+              scheme: scheme,
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 32,
+            color: scheme.outlineVariant,
+          ),
+          Expanded(
+            child: _StatItem(
+              value: _onlineLabel(),
+              label: 'En línea',
+              scheme: scheme,
+            ),
           ),
         ],
       ),
@@ -401,13 +456,121 @@ class _EarningsCard extends StatelessWidget {
   }
 }
 
-class _OnlineStatusBar extends StatelessWidget {
+class _LandscapeBottomBar extends StatelessWidget {
+  final DriverStats? stats;
+  final List<SolicitudViaje> pendientes;
+  final ValueChanged<SolicitudViaje> onSelect;
+  final bool isOnline;
+  final ValueChanged<bool> onToggle;
+  final Duration? onlineElapsed;
+  final TextTheme text;
+  final ColorScheme scheme;
+
+  const _LandscapeBottomBar({
+    required this.stats,
+    required this.pendientes,
+    required this.onSelect,
+    required this.isOnline,
+    required this.onToggle,
+    required this.onlineElapsed,
+    required this.text,
+    required this.scheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hayPendientes = pendientes.isNotEmpty;
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isOnline ? const Color(0xFF1E8E5A) : Colors.grey,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              isOnline ? 'En línea' : 'Offline',
+              style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+            const SizedBox(width: 4),
+            SizedBox(
+              height: 28,
+              child: Switch(
+                value: isOnline,
+                onChanged: onToggle,
+                activeTrackColor: const Color(0xFF1E8E5A).withValues(alpha: 0.4),
+                activeThumbColor: const Color(0xFF1E8E5A),
+              ),
+            ),
+            if (hayPendientes) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: scheme.primary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${pendientes.length}',
+                  style: TextStyle(
+                    color: scheme.onPrimary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Expanded(
+              child: GestureDetector(
+                onTap: hayPendientes ? () => onSelect(pendientes.first) : null,
+                child: Text(
+                  hayPendientes ? 'Viaje solicitado' : 'Esperando viajes…',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+            if (stats != null) ...[
+              Text(
+                '\$${stats!.gananciasHoy.toStringAsFixed(0)}',
+                style: text.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(width: 4),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomSheet extends StatelessWidget {
+  final List<SolicitudViaje> pendientes;
+  final ValueChanged<SolicitudViaje> onSelect;
   final bool isOnline;
   final ValueChanged<bool> onToggle;
   final TextTheme text;
   final ColorScheme scheme;
 
-  const _OnlineStatusBar({
+  const _BottomSheet({
+    required this.pendientes,
+    required this.onSelect,
     required this.isOnline,
     required this.onToggle,
     required this.text,
@@ -418,80 +581,7 @@ class _OnlineStatusBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      color: scheme.surfaceContainerLow,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isOnline
-                            ? const Color(0xFF1E8E5A)
-                            : Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      isOnline ? 'Estás en línea' : 'Estás offline',
-                      style: text.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-                if (isOnline)
-                  Text(
-                    'Buscando viajes cerca de ti…',
-                    style: text.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Switch(
-            value: isOnline,
-            onChanged: onToggle,
-            activeTrackColor: const Color(0xFF1E8E5A).withValues(alpha: 0.4),
-            activeThumbColor: const Color(0xFF1E8E5A),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomSheet extends StatelessWidget {
-  final DriverStats? stats;
-  final List<SolicitudViaje> pendientes;
-  final ValueChanged<SolicitudViaje> onSelect;
-  final TextTheme text;
-  final ColorScheme scheme;
-  final VoidCallback onGanancias;
-
-  const _BottomSheet({
-    required this.stats,
-    required this.pendientes,
-    required this.onSelect,
-    required this.text,
-    required this.scheme,
-    required this.onGanancias,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -499,71 +589,43 @@ class _BottomSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isOnline ? const Color(0xFF1E8E5A) : Colors.grey,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isOnline ? 'Estás en línea' : 'Estás offline',
+                style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const Spacer(),
+              SizedBox(
+                height: 32,
+                child: Switch(
+                  value: isOnline,
+                  onChanged: onToggle,
+                  activeTrackColor: const Color(0xFF1E8E5A).withValues(alpha: 0.4),
+                  activeThumbColor: const Color(0xFF1E8E5A),
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 16),
           _PendingTrips(
             pendientes: pendientes,
             onSelect: onSelect,
             text: text,
             scheme: scheme,
           ),
-          if (stats != null) ...[
-            const Divider(height: 24),
-            ..._buildStatsContent(),
-          ],
         ],
       ),
     );
-  }
-
-  List<Widget> _buildStatsContent() {
-    final s = stats!;
-    return [
-      Row(
-        children: [
-          Expanded(
-            child: _StatItem(
-              value: '\$${s.gananciasHoy.toStringAsFixed(2)}',
-              label: 'Ganancias hoy',
-              scheme: scheme,
-            ),
-          ),
-          Container(
-            width: 1,
-            height: 40,
-            color: scheme.outlineVariant,
-          ),
-          Expanded(
-            child: _StatItem(
-              value: '${s.viajesHoy}',
-              label: 'Viajes',
-              scheme: scheme,
-            ),
-          ),
-          Container(
-            width: 1,
-            height: 40,
-            color: scheme.outlineVariant,
-          ),
-          Expanded(
-            child: _StatItem(
-              value: '${s.horasEnLinea} h',
-              label: 'En línea',
-              scheme: scheme,
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 8),
-      GestureDetector(
-        onTap: onGanancias,
-        child: Text(
-          'Ver mis ganancias',
-          style: text.bodyMedium?.copyWith(
-            color: scheme.primary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    ];
   }
 }
 
@@ -631,9 +693,13 @@ class _PendingTrips extends StatelessWidget {
               color: hay ? scheme.primary : scheme.onSurfaceVariant,
             ),
             const SizedBox(width: 8),
-            Text(hay ? 'Viajes para ti' : 'Viajes disponibles',
-                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                hay ? 'Viajes para ti' : 'Viajes disponibles',
+                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             if (hay)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
