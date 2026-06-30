@@ -26,6 +26,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _decideRoute() async {
+    // Mantiene la sesión: si hay token válido entra directo según el estado de
+    // documentos (no aprobado → siempre ve el estado de sus documentos). Si la
+    // sesión venció (refresh también falló) → login. Sin sesión → bienvenida.
     final session = ref.read(sessionServiceProvider);
     final results = await Future.wait<dynamic>([
       session.hasSession(),
@@ -42,7 +45,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     try {
       route = await resolveDocumentsRoute(repo);
     } on UnauthorizedException {
-      // Token y refresh vencidos: limpia la sesión y manda al login.
       await session.logout();
       route = AppRoutes.login;
     }

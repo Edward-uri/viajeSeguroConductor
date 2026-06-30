@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/http/api_exception.dart';
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../core/widgets/logo_badge.dart';
 import '../../../../features/documents/di/documents_module.dart';
@@ -37,7 +38,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final ok = await vm.login();
     if (ok && context.mounted) {
       final repo = ref.read(documentoRepositoryProvider);
-      final route = await resolveDocumentsRoute(repo);
+      String route;
+      try {
+        route = await resolveDocumentsRoute(repo);
+      } on UnauthorizedException {
+        route = AppRoutes.documents;
+      }
       if (!context.mounted) return;
       context.go(route);
     }
