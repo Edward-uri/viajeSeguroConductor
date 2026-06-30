@@ -108,6 +108,7 @@ class RideProgressViewModel extends ChangeNotifier {
       final lat = (data['lat'] as num?)?.toDouble();
       final lng = (data['lng'] as num?)?.toDouble();
       if (lat == null || lng == null) return;
+      debugPrint('[Tracking] ubicación del pasajero: $lat,$lng');
       _pasajeroPosition = LatLng(lat, lng);
       notifyListeners();
     });
@@ -128,6 +129,7 @@ class RideProgressViewModel extends ChangeNotifier {
 
       // Comparte la posición desde que va por el pasajero (aceptado) hasta el destino.
       if (_ride != null) {
+        debugPrint('[Tracking] comparto mi ubicación: ${latLng.latitude},${latLng.longitude}');
         _socketService.emitLocation(
           idViaje: _ride!.idViaje,
           lat: latLng.latitude,
