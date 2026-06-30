@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/core_module.dart';
 import '../data/heatmap_repository_impl.dart';
 import '../data/remote/heatmap_api.dart';
 import '../domain/repositories/heatmap_repository.dart';
 
-final heatmapApiProvider = Provider<HeatmapApi>((ref) => HeatmapApi());
+final heatmapApiProvider =
+    Provider<HeatmapApi>((ref) => HeatmapApi(ref.watch(apiClientProvider)));
 
 final heatmapRepositoryProvider = Provider<HeatmapRepository>((ref) {
   return HeatmapRepositoryImpl(ref.watch(heatmapApiProvider));

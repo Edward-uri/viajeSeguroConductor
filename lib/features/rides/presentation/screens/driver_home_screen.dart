@@ -78,6 +78,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     }
   }
 
+  // Naranja (baja) → rojo (alta intensidad).
+  Color _zonaColor(double intensidad) =>
+      Color.lerp(const Color(0xFFFFA000), const Color(0xFFD32F2F), intensidad)!;
+
   void _onHeatZoneTap() {
     final hit = _heatHitNotifier.value;
     if (hit != null && hit.hitValues.isNotEmpty && context.mounted) {
@@ -239,26 +243,38 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                             ),
                           ],
                         ),
-                      if (vm.zonasCalientes.isNotEmpty)
+                      if (vm.zonasCalientes.isNotEmpty) ...[
                         CircleLayer(
                           circles: vm.zonasCalientes.map((z) {
-                            final opacity = 0.3 + (z.intensidad * 0.5);
+                            final base = _zonaColor(z.intensidad);
                             return CircleMarker(
                               point: LatLng(z.lat, z.lng),
                               radius: z.radioM,
                               useRadiusInMeter: true,
-                              color: Color.lerp(
-                                Colors.orange.withValues(alpha: opacity),
-                                Colors.red.withValues(alpha: opacity),
-                                z.intensidad,
-                              )!,
-                              borderColor: Colors.red.shade900,
-                              borderStrokeWidth: 1,
+                              color: base.withValues(
+                                  alpha: 0.18 + z.intensidad * 0.17),
+                              borderColor: base,
+                              borderStrokeWidth: 2.5,
                               hitValue: z,
                             );
                           }).toList(),
                           hitNotifier: _heatHitNotifier,
                         ),
+                        MarkerLayer(
+                          markers: vm.zonasCalientes
+                              .map((z) => Marker(
+                                    point: LatLng(z.lat, z.lng),
+                                    width: 56,
+                                    height: 56,
+                                    child: _ZonaBadge(
+                                      intensidad: z.intensidad,
+                                      color: _zonaColor(z.intensidad),
+                                      onTap: () => _showZoneDetails(z),
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
+                      ],
                     ],
                   ),
                   if (vm.isLoadingZonas)
@@ -718,6 +734,66 @@ class _TripCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ZonaBadge extends StatelessWidget {
+  final double intensidad;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ZonaBadge({
+    required this.intensidad,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.local_fire_department,
+                color: Colors.white, size: 18),
+          ),
+          const SizedBox(height: 2),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 3,
+                ),
+              ],
+            ),
+            child: Text(
+              '${(intensidad * 100).round()}%',
+              style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w700, color: color),
+            ),
+          ),
+        ],
       ),
     );
   }

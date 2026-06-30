@@ -15,10 +15,6 @@ class HeatmapRepositoryImpl implements HeatmapRepository {
     final diaSemana = now.weekday - 1;
     final hora = now.hour;
 
-    return _api.fetchZonas(
-      municipio: municipio,
-      diaSemana: diaSemana,
-      hora: hora,
-    );
+    return _api.fetchZonas(diaSemana: diaSemana, hora: hora);
   }
 }
