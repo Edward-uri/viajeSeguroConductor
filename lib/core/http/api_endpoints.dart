@@ -48,6 +48,13 @@ class ApiEndpoints {
   static String viajeEvaluacion(String rideId) =>
       '/api/viajes/$rideId/evaluacion';
   static String viajeDetalle(String rideId) => '/api/viajes/$rideId';
+  static String viajeRuta({
+    required double fromLat,
+    required double fromLng,
+    required double toLat,
+    required double toLng,
+  }) =>
+      '/api/viajes/ruta?fromLat=$fromLat&fromLng=$fromLng&toLat=$toLat&toLng=$toLng';
 
   // ───── Flotillas / Vehículos ─────
   static const String flotillasVehiculos = '/api/flotillas/vehiculos';

@@ -25,6 +25,7 @@ class SolicitudViaje {
   final String pasajeroNombre;
   final String pasajeroApellido;
   final double pasajeroCalificacion;
+  final String? pasajeroTelefono;
   final String metodoPago;
   final int duracionMin;
   final String origenDistancia;
@@ -77,6 +78,7 @@ class SolicitudViaje {
     this.pasajeroNombre = '',
     this.pasajeroApellido = '',
     this.pasajeroCalificacion = 0,
+    this.pasajeroTelefono,
     this.metodoPago = 'Efectivo',
     this.duracionMin = 0,
     this.origenDistancia = '',

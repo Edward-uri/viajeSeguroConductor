@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/env/api_config.dart';
 import '../../../../routes/app_routes.dart';
@@ -42,6 +43,14 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       rideProgressViewModelProvider.select((v) => v.canceladoPorPasajero),
       (_, cancelado) {
         if (cancelado && context.mounted) _avisarCancelado();
+      },
+    );
+
+    // La cámara sigue al conductor conforme avanza.
+    ref.listen<LatLng?>(
+      rideProgressViewModelProvider.select((v) => v.currentPosition),
+      (_, pos) {
+        if (pos != null) _mapController.move(pos, _mapController.camera.zoom);
       },
     );
 
@@ -137,6 +146,19 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
     if (mounted) context.pop();
   }
 
+  /// "8 min · 2.1 km" con datos de la ruta; cae a la distancia base si aún no llega la ruta.
+  String? _avanceTexto(RideProgressViewModel vm) {
+    if (vm.etaMin != null && vm.remainingKm != null) {
+      final km = vm.remainingKm!.toStringAsFixed(1);
+      final destino = vm.hasStarted ? 'al destino' : 'para llegar';
+      return '${vm.etaMin} min · $km km $destino';
+    }
+    if (!vm.hasStarted && vm.ride!.origenDistancia.isNotEmpty) {
+      return '${vm.ride!.origenDistancia} para llegar';
+    }
+    return null;
+  }
+
   Widget _buildHeader(RideProgressViewModel vm, SolicitudViaje ride, ColorScheme scheme) {
     return Container(
       width: double.infinity,
@@ -163,12 +185,12 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
                       vm.hasStarted ? Colors.white : scheme.onSurface,
                 ),
               ),
-              if (!vm.hasStarted)
+              if (_avanceTexto(vm) != null)
                 Text(
-                  '${ride.origenDistancia.isNotEmpty ? ride.origenDistancia : '—'} para llegar',
+                  _avanceTexto(vm)!,
                   style: TextStyle(
                     fontSize: 12,
-                    color: scheme.onSurfaceVariant,
+                    color: vm.hasStarted ? Colors.white70 : scheme.onSurfaceVariant,
                   ),
                 ),
             ],
@@ -263,9 +285,30 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
               Theme.of(context).brightness),
           userAgentPackageName: 'com.uriel.viajeseguroapp',
         ),
+        if (vm.routePoints.length >= 2)
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: vm.routePoints,
+                strokeWidth: 5,
+                color: const Color(0xFF1E8E5A),
+              ),
+            ],
+          ),
         if (markers.isNotEmpty) MarkerLayer(markers: markers),
       ],
     );
+  }
+
+  Future<void> _llamarPasajero(String telefono) async {
+    final uri = Uri(scheme: 'tel', path: telefono);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo abrir el teléfono')),
+      );
+    }
   }
 
   Widget _buildBottomSheet(RideProgressViewModel vm, SolicitudViaje ride, ColorScheme scheme) {
@@ -306,6 +349,15 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
               color: scheme.onSurface,
             ),
           ),
+          if (ride.pasajeroTelefono != null) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => _llamarPasajero(ride.pasajeroTelefono!),
+              icon: const Icon(Icons.phone, size: 18),
+              label: const Text('Llamar al pasajero'),
+              style: OutlinedButton.styleFrom(foregroundColor: scheme.primary),
+            ),
+          ],
           const SizedBox(height: 4),
           Text(
             '${ride.origen} → ${ride.destino}',

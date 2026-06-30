@@ -40,6 +40,7 @@ class SolicitudViajeMapper {
       pasajeroNombre: pasajeroRaw?['nombre']?.toString() ?? '',
       pasajeroApellido: pasajeroRaw?['apellidoPaterno']?.toString() ?? '',
       pasajeroCalificacion: (pasajeroRaw?['calificacion'] as num?)?.toDouble() ?? 0,
+      pasajeroTelefono: pasajeroRaw?['telefono']?.toString(),
       metodoPago: json['metodoPago']?.toString() ?? 'Efectivo',
       duracionMin: (json['duracionEstimada'] as num?)?.toInt() ?? 0,
       origenDistancia: json['origenDistancia']?.toString() ?? '',

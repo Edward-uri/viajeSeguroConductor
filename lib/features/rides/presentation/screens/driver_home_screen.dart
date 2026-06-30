@@ -618,45 +618,69 @@ class _PendingTrips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hay = pendientes.isNotEmpty;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Text('Viajes disponibles',
-                style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(width: 6),
-            if (pendientes.isNotEmpty)
+            Icon(
+              hay ? Icons.directions_car_filled : Icons.directions_car_outlined,
+              size: 20,
+              color: hay ? scheme.primary : scheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Text(hay ? 'Viajes para ti' : 'Viajes disponibles',
+                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(width: 8),
+            if (hay)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
                 decoration: BoxDecoration(
                   color: scheme.primary,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text('${pendientes.length}',
                     style: TextStyle(
                         color: scheme.onPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700)),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800)),
               ),
           ],
         ),
-        const SizedBox(height: 8),
-        if (pendientes.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Text('Aún no hay viajes cerca. Mantente en línea.',
-                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+        const SizedBox(height: 12),
+        if (!hay)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.radar, color: scheme.onSurfaceVariant, size: 28),
+                const SizedBox(height: 8),
+                Text('Buscando viajes cerca de ti',
+                    style: text.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text('Mantente en línea, te avisaremos al instante.',
+                    textAlign: TextAlign.center,
+                    style: text.bodySmall
+                        ?.copyWith(color: scheme.onSurfaceVariant)),
+              ],
+            ),
           )
         else
           ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 240),
+            constraints: const BoxConstraints(maxHeight: 320),
             child: ListView.separated(
               shrinkWrap: true,
               padding: EdgeInsets.zero,
               itemCount: pendientes.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (_, i) => _TripCard(
                 viaje: pendientes[i],
                 onTap: () => onSelect(pendientes[i]),
@@ -685,61 +709,225 @@ class _TripCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: scheme.outlineVariant),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: scheme.primary,
-              child: Text(viaje.pasajeroIniciales,
-                  style: TextStyle(
-                      color: scheme.onPrimary, fontWeight: FontWeight.w700)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(viaje.nombreCompleto,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: text.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.w700)),
-                      ),
-                      Text('\$${viaje.monto.toStringAsFixed(2)}',
-                          style: text.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: scheme.primary)),
-                    ],
+    final nombre = viaje.nombreCompleto.isNotEmpty ? viaje.nombreCompleto : 'Pasajero';
+    return Material(
+      color: scheme.surface,
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.18),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(width: 5, color: scheme.primary),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundColor: scheme.primaryContainer,
+                              child: Text(
+                                viaje.pasajeroIniciales.isNotEmpty
+                                    ? viaje.pasajeroIniciales
+                                    : '?',
+                                style: TextStyle(
+                                    color: scheme.onPrimaryContainer,
+                                    fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(nombre,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: text.titleSmall?.copyWith(
+                                          fontWeight: FontWeight.w700)),
+                                  if (viaje.pasajeroCalificacion > 0)
+                                    Row(
+                                      children: [
+                                        Icon(Icons.star_rounded,
+                                            size: 14, color: scheme.tertiary),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                            viaje.pasajeroCalificacion
+                                                .toStringAsFixed(1),
+                                            style: text.bodySmall?.copyWith(
+                                                color:
+                                                    scheme.onSurfaceVariant)),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: scheme.primary,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text('\$${viaje.monto.toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                      color: scheme.onPrimary,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 17)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _RouteLine(
+                          origen: viaje.origen,
+                          destino: viaje.destino,
+                          scheme: scheme,
+                          text: text,
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  _MetaChip(
+                                      icon: Icons.straighten,
+                                      label:
+                                          '${viaje.distanciaKm.toStringAsFixed(1)} km',
+                                      scheme: scheme,
+                                      text: text),
+                                  _MetaChip(
+                                      icon: Icons.schedule,
+                                      label: '${viaje.duracionMin} min',
+                                      scheme: scheme,
+                                      text: text),
+                                  _MetaChip(
+                                      icon: Icons.payments_outlined,
+                                      label: viaje.metodoPago,
+                                      scheme: scheme,
+                                      text: text),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text('Aceptar',
+                                style: text.bodyMedium?.copyWith(
+                                    color: scheme.primary,
+                                    fontWeight: FontWeight.w800)),
+                            Icon(Icons.chevron_right,
+                                color: scheme.primary, size: 20),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 2),
-                  Text('${viaje.origen} → ${viaje.destino}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant)),
-                  const SizedBox(height: 2),
-                  Text(
-                      '${viaje.distanciaKm.toStringAsFixed(1)} km · ${viaje.duracionMin} min · ${viaje.metodoPago}',
-                      style: text.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant)),
-                ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Origen → destino con puntos y conector vertical, estilo apps de viaje.
+class _RouteLine extends StatelessWidget {
+  final String origen;
+  final String destino;
+  final ColorScheme scheme;
+  final TextTheme text;
+
+  const _RouteLine({
+    required this.origen,
+    required this.destino,
+    required this.scheme,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Column(
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: scheme.primary,
+                shape: BoxShape.circle,
               ),
             ),
+            Container(width: 2, height: 18, color: scheme.outlineVariant),
+            Icon(Icons.location_on, size: 12, color: scheme.error),
           ],
         ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(origen.isNotEmpty ? origen : 'Punto de encuentro',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 10),
+              Text(destino.isNotEmpty ? destino : 'Destino',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final ColorScheme scheme;
+  final TextTheme text;
+
+  const _MetaChip({
+    required this.icon,
+    required this.label,
+    required this.scheme,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 4),
+          Text(label,
+              style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
+        ],
       ),
     );
   }

@@ -6,6 +6,7 @@ import '../data/remote/metodo_cobro_api.dart';
 import '../data/remote/rides_api.dart';
 import '../data/rides_repository_impl.dart';
 import '../data/services/location_service.dart';
+import '../data/services/route_service.dart';
 import '../domain/repositories/metodo_cobro_repository.dart';
 import '../domain/repositories/rides_repository.dart';
 
@@ -23,6 +24,10 @@ final metodoCobroApiProvider = Provider<MetodoCobroApi>((ref) {
 
 final metodoCobroRepositoryProvider = Provider<MetodoCobroRepository>((ref) {
   return MetodoCobroRepositoryImpl(ref.watch(metodoCobroApiProvider));
+});
+
+final routeServiceProvider = Provider<RouteService>((ref) {
+  return RouteService(ref.watch(apiClientProvider));
 });
 
 final locationServiceProvider = Provider<LocationService>((ref) {
