@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
+import '../../../../routes/app_routes.dart';
 import '../provider/home_viewmodel.dart';
 
 class RideRequestScreen extends ConsumerStatefulWidget {
@@ -15,6 +16,7 @@ class RideRequestScreen extends ConsumerStatefulWidget {
 
 class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
   int _countdown = 15;
+  bool _aceptando = false;
 
   @override
   void initState() {
@@ -28,6 +30,11 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
       if (!mounted) return false;
       if (_countdown > 0) {
         setState(() => _countdown--);
+      }
+      if (_countdown <= 0 && !_aceptando) {
+        await ref.read(homeViewModelProvider).rejectRide();
+        if (mounted) context.pop();
+        return false;
       }
       return _countdown > 0;
     });
@@ -209,7 +216,9 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () async {
+                      onPressed: _aceptando
+                          ? null
+                          : () async {
                         await vm.rejectRide();
                         if (!context.mounted) return;
                         context.pop();
@@ -231,11 +240,22 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                     child: SizedBox(
                       height: 54,
                       child: GradientButton(
-                        label: 'Aceptar viaje',
-                        onPressed: () {
-                          vm.acceptRide();
-                          context.pop();
-                        },
+                        label: _aceptando ? 'Aceptando…' : 'Aceptar viaje',
+                        onPressed: _aceptando
+                            ? null
+                            : () async {
+                                setState(() => _aceptando = true);
+                                final viaje = await vm.acceptRide();
+                                if (!context.mounted) return;
+                                if (viaje != null) {
+                                  context.pushReplacement(
+                                    AppRoutes.rideInProgress,
+                                    extra: viaje,
+                                  );
+                                } else {
+                                  context.pop();
+                                }
+                              },
                       ),
                     ),
                   ),

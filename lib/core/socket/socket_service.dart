@@ -16,6 +16,7 @@ class SocketService {
   Timer? _reconnectTimer;
   String? _token;
   bool _shouldReconnect = true;
+  int? _municipioOnline;
 
   final _statusController = StreamController<SocketStatus>.broadcast();
   final _rideRequestedController = StreamController<Map<String, dynamic>>.broadcast();
@@ -54,6 +55,8 @@ class SocketService {
 
     _socket!.onConnect((_) {
       _setStatus(SocketStatus.connected);
+      // Tras reconectar, el server perdió el room: hay que volver a anunciarse.
+      if (_municipioOnline != null) emitOnline(_municipioOnline!);
     });
 
     _socket!.onDisconnect((_) {
@@ -112,6 +115,7 @@ class SocketService {
       debugPrint('[Socket] emitOnline sin socket conectado');
       return Future.value(false);
     }
+    _municipioOnline = idMunicipio;
     final completer = Completer<bool>();
     socket.emitWithAck('conductor:online', {'idMunicipio': idMunicipio}, ack: (data) {
       debugPrint('[Socket] conductor:online ack=$data');
@@ -123,6 +127,7 @@ class SocketService {
   }
 
   void emitOffline() {
+    _municipioOnline = null;
     _socket?.emit('conductor:offline');
   }
 

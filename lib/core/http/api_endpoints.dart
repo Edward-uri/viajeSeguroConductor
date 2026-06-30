@@ -39,6 +39,7 @@ class ApiEndpoints {
   static const String viajesMios = '/api/viajes/mios';
   static String viajeAceptar(String rideId) => '/api/viajes/$rideId/aceptar';
   static String viajeRechazar(String rideId) => '/api/viajes/$rideId/rechazar';
+  static String viajeSoltar(String rideId) => '/api/viajes/$rideId/soltar';
   static String viajeIniciar(String rideId) => '/api/viajes/$rideId/iniciar';
   static String viajeCompletar(String rideId) =>
       '/api/viajes/$rideId/completar';

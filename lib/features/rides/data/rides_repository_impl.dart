@@ -68,6 +68,24 @@ class RidesRepositoryImpl implements RidesRepository {
   }
 
   @override
+  Future<SolicitudViaje?> getViajeActivoConductor() async {
+    try {
+      final res = await _api.getAssignedRides();
+      final data = res['data'];
+      if (data is! List) return null;
+      for (final e in data) {
+        final viaje = SolicitudViajeMapper.fromJson(e as Map<String, dynamic>);
+        if (viaje.estado == 'aceptado' || viaje.estado == 'en_curso') {
+          return viaje;
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
   Future<SolicitudViaje> getRideById(String rideId) async {
     final res = await _api.getRideById(rideId);
     final data = res['data'] as Map<String, dynamic>? ?? res;
@@ -82,6 +100,11 @@ class RidesRepositoryImpl implements RidesRepository {
   @override
   Future<void> rejectRide(String rideId) async {
     await _api.rejectRide(rideId);
+  }
+
+  @override
+  Future<void> soltarViaje(String rideId) async {
+    await _api.soltarViaje(rideId);
   }
 
   @override

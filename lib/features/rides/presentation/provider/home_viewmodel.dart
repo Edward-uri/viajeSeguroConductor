@@ -76,6 +76,10 @@ class HomeViewModel extends ChangeNotifier {
   List<SolicitudViaje> _pendientes = [];
   // Viajes que ESTE conductor aceptó: el evento "no disponible" para ellos no es un error.
   final Set<String> _aceptadosPorMi = {};
+  // Viajes rechazados: no se reinyectan por refresh ni por socket.
+  final Set<String> _rechazados = {};
+  SolicitudViaje? _viajeAceptado;
+  SolicitudViaje? get viajeAceptado => _viajeAceptado;
   bool _isLoading = false;
   bool _isOnline = false;
   String? _errorMessage;
@@ -85,6 +89,7 @@ class HomeViewModel extends ChangeNotifier {
   StreamSubscription? _rideNotAvailableSub;
   StreamSubscription? _rideStateChangedSub;
   StreamSubscription? _socketStatusSub;
+  StreamSubscription? _positionSub;
 
   List<HeatZone> _zonasCalientes = [];
   bool _isLoadingZonas = false;
@@ -117,6 +122,7 @@ class HomeViewModel extends ChangeNotifier {
     _rideRequestedSub = _socketService.onRideRequested.listen((data) {
       if (!_isOnline) return;
       final viaje = SolicitudViajeMapper.fromJson(data);
+      if (_rechazados.contains(viaje.id)) return;
       if (!_pendientes.any((t) => t.id == viaje.id)) {
         _pendientes = [viaje, ..._pendientes];
         notifyListeners();
@@ -186,8 +192,12 @@ class HomeViewModel extends ChangeNotifier {
 
   Future<bool> goOnline(int idMunicipio) => _socketService.emitOnline(idMunicipio);
 
+  Future<SolicitudViaje?> getViajeActivoConductor() =>
+      _repository.getViajeActivoConductor();
+
   Future<void> refrescarPendientes() async {
-    _pendientes = await _repository.getPendingTrips();
+    final lista = await _repository.getPendingTrips();
+    _pendientes = lista.where((t) => !_rechazados.contains(t.id)).toList();
     notifyListeners();
   }
 
@@ -300,7 +310,8 @@ class HomeViewModel extends ChangeNotifier {
         }
         await refrescarPendientes();
         _locationService.startTracking();
-        _locationService.positionStream.listen((latLng) {
+        _positionSub?.cancel();
+        _positionSub = _locationService.positionStream.listen((latLng) {
           _currentPosition = latLng;
           notifyListeners();
         });
@@ -308,6 +319,8 @@ class HomeViewModel extends ChangeNotifier {
       } else {
         _socketService.emitOffline();
         _locationService.stopTracking();
+        _positionSub?.cancel();
+        _aceptadosPorMi.clear();
         _zonasCalientes = [];
         _currentRequest = null;
       }
@@ -339,15 +352,17 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> acceptRide() async {
-    if (_currentRequest == null) return;
+  /// Devuelve el viaje aceptado (para navegar a "viaje en curso") o null si falló.
+  Future<SolicitudViaje?> acceptRide() async {
+    final viaje = _currentRequest;
+    if (viaje == null) return null;
     final vehiculo = _miVehiculo;
     if (vehiculo == null || !vehiculo.aprobado) {
       _errorMessage = 'Necesitas un vehículo aprobado para aceptar viajes.';
       notifyListeners();
-      return;
+      return null;
     }
-    final aceptadoId = _currentRequest!.id;
+    final aceptadoId = viaje.id;
     _aceptadosPorMi.add(aceptadoId); // antes del await: el socket puede avisar antes de la respuesta HTTP
     try {
       await _repository.acceptRide(
@@ -355,8 +370,11 @@ class HomeViewModel extends ChangeNotifier {
         idVehiculo: vehiculo.idVehiculo,
       );
       _pendientes = _pendientes.where((t) => t.id != aceptadoId).toList();
+      _viajeAceptado = viaje;
       _currentRequest = null;
       _errorMessage = null;
+      notifyListeners();
+      return viaje;
     } catch (e) {
       _aceptadosPorMi.remove(aceptadoId); // no se aceptó: ya no es mío
       if (e is ApiException && e.statusCode == 409) {
@@ -367,13 +385,34 @@ class HomeViewModel extends ChangeNotifier {
       } else {
         _errorMessage = 'No pudimos aceptar el viaje. Intenta de nuevo.';
       }
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<void> rejectRide() async {
+    final viaje = _currentRequest;
+    _currentRequest = null;
+    _errorMessage = null;
+    if (viaje != null) {
+      _rechazados.add(viaje.id);
+      _pendientes = _pendientes.where((t) => t.id != viaje.id).toList();
+      try {
+        await _repository.rejectRide(viaje.id);
+      } catch (_) {
+        // El rechazo local ya surtió efecto; si el backend falla no molestamos al usuario.
+      }
     }
     notifyListeners();
   }
 
-  Future<void> rejectRide() async {
-    _currentRequest = null;
-    _errorMessage = null;
+  /// Marca un viaje como ignorado localmente (p. ej. tras soltarlo): el backend
+  /// lo devuelve al pool y re-emite `viaje:solicitado`; esto evita que reaparezca
+  /// en la lista de ESTE conductor. La baja real ya la hizo el endpoint /soltar.
+  void ignorarViaje(String rideId) {
+    _rechazados.add(rideId);
+    _pendientes = _pendientes.where((t) => t.id != rideId).toList();
+    if (_viajeAceptado?.id == rideId) _viajeAceptado = null;
     notifyListeners();
   }
 
@@ -389,6 +428,8 @@ class HomeViewModel extends ChangeNotifier {
   Future<void> completeRide(String rideId) async {
     try {
       await _repository.completeRide(rideId);
+      _aceptadosPorMi.remove(rideId);
+      _viajeAceptado = null;
     } catch (e) {
       _errorMessage = 'No pudimos terminar el viaje. Intenta de nuevo.';
       notifyListeners();
@@ -410,6 +451,7 @@ class HomeViewModel extends ChangeNotifier {
     _rideNotAvailableSub?.cancel();
     _rideStateChangedSub?.cancel();
     _socketStatusSub?.cancel();
+    _positionSub?.cancel();
     _socketService.disconnect();
     _locationService.dispose();
     super.dispose();

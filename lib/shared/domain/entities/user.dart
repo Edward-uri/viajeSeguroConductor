@@ -9,6 +9,10 @@ class User {
     this.idMunicipio,
     this.fotoPerfilUrl,
     this.fechaRegistro,
+    this.nombre,
+    this.apellidoPaterno,
+    this.apellidoMaterno,
+    this.fechaNacimiento,
   });
 
   final int idUsuario;
@@ -20,6 +24,15 @@ class User {
   final int? idMunicipio;
   final String? fotoPerfilUrl;
   final DateTime? fechaRegistro;
+  final String? nombre;
+  final String? apellidoPaterno;
+  final String? apellidoMaterno;
+  final String? fechaNacimiento;
+
+  String get nombreCompleto => [nombre, apellidoPaterno, apellidoMaterno]
+      .whereType<String>()
+      .where((p) => p.trim().isNotEmpty)
+      .join(' ');
 
   User copyWith({
     String? fotoPerfilUrl,
@@ -38,6 +51,10 @@ class User {
       idMunicipio: idMunicipio ?? this.idMunicipio,
       fotoPerfilUrl: fotoPerfilUrl ?? this.fotoPerfilUrl,
       fechaRegistro: fechaRegistro,
+      nombre: nombre,
+      apellidoPaterno: apellidoPaterno,
+      apellidoMaterno: apellidoMaterno,
+      fechaNacimiento: fechaNacimiento,
     );
   }
 }

@@ -18,14 +18,12 @@ class _RideEvaluationScreenState
   String? _rideId;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args = GoRouterState.of(context).extra;
-      if (args is String) {
-        _rideId = args;
-      }
-    });
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = GoRouterState.of(context).extra;
+    if (args is String) {
+      _rideId = args;
+    }
   }
 
   @override

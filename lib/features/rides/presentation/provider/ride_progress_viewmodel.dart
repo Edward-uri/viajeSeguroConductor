@@ -35,17 +35,41 @@ class RideProgressViewModel extends ChangeNotifier {
   String? _errorMessage;
   LatLng? _currentPosition;
   StreamSubscription? _positionSub;
+  StreamSubscription? _stateChangedSub;
+  StreamSubscription? _notAvailableSub;
+  bool _canceladoPorPasajero = false;
 
   SolicitudViaje? get ride => _ride;
   bool get hasStarted => _hasStarted;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   LatLng? get currentPosition => _currentPosition;
+  bool get canceladoPorPasajero => _canceladoPorPasajero;
 
   void setRide(SolicitudViaje ride) {
     _ride = ride;
     notifyListeners();
     _startTracking();
+    _listenSocket();
+  }
+
+  void _listenSocket() {
+    _stateChangedSub?.cancel();
+    _stateChangedSub = _socketService.onRideStateChanged.listen((data) {
+      if (data['estado']?.toString() == 'cancelado') {
+        _marcarCancelado(data['idViaje']?.toString());
+      }
+    });
+    _notAvailableSub?.cancel();
+    _notAvailableSub = _socketService.onRideNotAvailable.listen((data) {
+      _marcarCancelado(data['idViaje']?.toString());
+    });
+  }
+
+  void _marcarCancelado(String? idViaje) {
+    if (_ride == null || idViaje != _ride!.id) return;
+    _canceladoPorPasajero = true;
+    notifyListeners();
   }
 
   void _startTracking() {
@@ -63,6 +87,24 @@ class RideProgressViewModel extends ChangeNotifier {
         );
       }
     });
+  }
+
+  /// Suelta el viaje aceptado (antes de iniciar): vuelve al pool en el backend.
+  Future<bool> soltarViaje() async {
+    if (_ride == null) return false;
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _repository.soltarViaje(_ride!.id);
+      _errorMessage = null;
+      return true;
+    } catch (e) {
+      _errorMessage = 'No pudimos soltar el viaje. Intenta de nuevo.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> startRide() async {
@@ -99,6 +141,8 @@ class RideProgressViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _positionSub?.cancel();
+    _stateChangedSub?.cancel();
+    _notAvailableSub?.cancel();
     _locationService.stopTracking();
     super.dispose();
   }

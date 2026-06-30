@@ -40,6 +40,13 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       }
       final vm = ref.read(homeViewModelProvider);
       vm.loadData();
+
+      final activo = await vm.getViajeActivoConductor();
+      if (activo != null) {
+        if (!mounted) return;
+        context.push(AppRoutes.rideInProgress, extra: activo);
+      }
+
       await vm.initLocation();
       _centerOnDriver();
 

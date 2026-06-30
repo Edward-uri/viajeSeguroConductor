@@ -25,11 +25,9 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final homeVm = ref.read(homeViewModelProvider);
-      final rideVm = ref.read(rideProgressViewModelProvider);
-      final ride = homeVm.currentRequest;
+      final ride = GoRouterState.of(context).extra as SolicitudViaje?;
       if (ride != null) {
-        rideVm.setRide(ride);
+        ref.read(rideProgressViewModelProvider).setRide(ride);
       }
     });
   }
@@ -39,6 +37,13 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
     final vm = ref.watch(rideProgressViewModelProvider);
     final ride = vm.ride;
     final scheme = Theme.of(context).colorScheme;
+
+    ref.listen<bool>(
+      rideProgressViewModelProvider.select((v) => v.canceladoPorPasajero),
+      (_, cancelado) {
+        if (cancelado && context.mounted) _avisarCancelado();
+      },
+    );
 
     if (ride == null) {
       return const Scaffold(
@@ -59,6 +64,77 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
     );
   }
 
+  Future<void> _avisarCancelado() async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Viaje cancelado'),
+        content: const Text('El pasajero canceló el viaje.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
+    if (mounted) context.pop();
+  }
+
+  Future<void> _onSoltar(RideProgressViewModel vm, SolicitudViaje ride) async {
+    final soltar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Soltar este viaje?'),
+        content: const Text(
+            'El viaje volverá a estar disponible para otros conductores. Esto solo se puede antes de iniciar.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Soltar'),
+          ),
+        ],
+      ),
+    );
+    if (soltar != true) return;
+    final ok = await vm.soltarViaje();
+    if (!mounted) return;
+    if (ok) {
+      ref.read(homeViewModelProvider).ignorarViaje(ride.id);
+      context.go(AppRoutes.driverHome);
+    }
+  }
+
+  Future<void> _onBackTap(RideProgressViewModel vm) async {
+    // Tras iniciar, confirmar antes de abandonar el viaje en curso.
+    if (vm.hasStarted) {
+      final salir = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('¿Salir del viaje?'),
+          content: const Text('El viaje sigue en curso. ¿Seguro que quieres salir?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Seguir'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Salir'),
+            ),
+          ],
+        ),
+      );
+      if (salir != true) return;
+    }
+    if (mounted) context.pop();
+  }
+
   Widget _buildHeader(RideProgressViewModel vm, SolicitudViaje ride, ColorScheme scheme) {
     return Container(
       width: double.infinity,
@@ -67,7 +143,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => context.pop(),
+            onTap: () => _onBackTap(vm),
             child: Icon(
               Icons.arrow_back,
               color: vm.hasStarted ? Colors.white : scheme.onSurface,
@@ -238,7 +314,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
-          if (!vm.hasStarted)
+          if (!vm.hasStarted) ...[
             SizedBox(
               width: double.infinity,
               height: 56,
@@ -260,7 +336,16 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
                   ),
                 ),
               ),
-            )
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: vm.isLoading ? null : () => _onSoltar(vm, ride),
+              child: Text(
+                'Soltar viaje',
+                style: TextStyle(color: scheme.error, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ]
           else
             SizedBox(
               width: double.infinity,

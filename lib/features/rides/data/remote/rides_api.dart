@@ -33,6 +33,11 @@ class RidesApi {
         auth: true,
       );
 
+  Future<Map<String, dynamic>> soltarViaje(String rideId) => _api.post(
+        ApiEndpoints.viajeSoltar(rideId),
+        auth: true,
+      );
+
   Future<Map<String, dynamic>> startRide(String rideId) =>
       _api.post(ApiEndpoints.viajeIniciar(rideId), auth: true);
 

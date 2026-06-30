@@ -72,6 +72,9 @@ class MockRidesRepository implements RidesRepository {
   }
 
   @override
+  Future<SolicitudViaje?> getViajeActivoConductor() async => null;
+
+  @override
   Future<SolicitudViaje> getRideById(String rideId) async {
     await Future.delayed(const Duration(milliseconds: 200));
     return SolicitudViaje(
@@ -98,6 +101,11 @@ class MockRidesRepository implements RidesRepository {
 
   @override
   Future<void> rejectRide(String rideId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
+  Future<void> soltarViaje(String rideId) async {
     await Future.delayed(const Duration(milliseconds: 300));
   }
 
