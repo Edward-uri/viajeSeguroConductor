@@ -205,6 +205,28 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
     );
   }
 
+  /// Pin de origen/destino con el mismo look que la app del pasajero:
+  /// teardrop relleno del color del brand + punto central crema.
+  Widget _tripPin(Color color) {
+    return Stack(
+      alignment: Alignment.topCenter,
+      children: [
+        Icon(Icons.location_pin, color: color, size: 44),
+        Positioned(
+          top: 9,
+          child: Container(
+            width: 13,
+            height: 13,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFBF7F2),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildMap(RideProgressViewModel vm, SolicitudViaje ride, ColorScheme scheme) {
     final markers = <Marker>[];
 
@@ -267,16 +289,9 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       markers.add(
         Marker(
           point: LatLng(ride.origenLat!, ride.origenLng!),
-          width: 32,
-          height: 32,
-          child: Container(
-            decoration: BoxDecoration(
-              color: scheme.primary,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
-            ),
-            child: const Icon(Icons.location_on, color: Colors.white, size: 18),
-          ),
+          width: 44,
+          height: 44,
+          child: _tripPin(const Color(0xFF1E8E5A)),
         ),
       );
     }
@@ -285,16 +300,9 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       markers.add(
         Marker(
           point: LatLng(ride.destinoLat!, ride.destinoLng!),
-          width: 32,
-          height: 32,
-          child: Container(
-            decoration: BoxDecoration(
-              color: scheme.error,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
-            ),
-            child: const Icon(Icons.flag, color: Colors.white, size: 18),
-          ),
+          width: 44,
+          height: 44,
+          child: _tripPin(const Color(0xFFFF8F00)),
         ),
       );
     }

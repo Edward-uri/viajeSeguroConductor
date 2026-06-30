@@ -19,6 +19,9 @@ class ApiClient {
   final AuthStorage _authStorage;
   final String baseUrl;
 
+ 
+  Future<bool>? _refreshing;
+
   Future<Map<String, dynamic>> get(String path, {bool auth = true}) async {
     return _send(auth: auth, send: (headers) => _client.get(_uri(path), headers: headers));
   }
@@ -199,7 +202,12 @@ class ApiClient {
     }
   }
 
-  Future<bool> _tryRefresh() async {
+  Future<bool> _tryRefresh() {
+    // Si ya hay un refresh en curso, comparte ese mismo Future (single-flight).
+    return _refreshing ??= _doRefresh().whenComplete(() => _refreshing = null);
+  }
+
+  Future<bool> _doRefresh() async {
     try {
       final refreshToken = await _authStorage.readRefreshToken();
       if (refreshToken == null) return false;
