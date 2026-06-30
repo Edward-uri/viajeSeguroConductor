@@ -14,26 +14,38 @@ class RegisterNamesScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterNamesScreenState extends ConsumerState<RegisterNamesScreen> {
-  final _firstNameController = TextEditingController();
-  final _secondNameController = TextEditingController();
+  final _nombreController = TextEditingController();
+  final _apellidosController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _firstNameController.addListener(() => setState(() {}));
+    _nombreController.addListener(() => setState(() {}));
+    _apellidosController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
-    _firstNameController.dispose();
-    _secondNameController.dispose();
+    _nombreController.dispose();
+    _apellidosController.dispose();
     super.dispose();
   }
 
   void _onContinue() {
     final vm = ref.read(registerViewModelProvider);
-    vm.setNombre(_firstNameController.text.trim());
-    Navigator.of(context).pushNamed(AppRoutes.registerLastnames);
+    vm.setNombre(_nombreController.text.trim());
+
+    final apellidos = _apellidosController.text.trim().split(' ');
+    if (apellidos.isNotEmpty) {
+      vm.setApellidoPaterno(apellidos.first);
+      if (apellidos.length > 1) {
+        vm.setApellidoMaterno(apellidos.skip(1).join(' '));
+      } else {
+        vm.setApellidoMaterno('');
+      }
+    }
+
+    Navigator.of(context).pushNamed(AppRoutes.registerPersonalData);
   }
 
   @override
@@ -59,31 +71,34 @@ class _RegisterNamesScreenState extends ConsumerState<RegisterNamesScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Ingresa tus nombres.',
+                'Ingresa tu nombre completo.',
                 style: text.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 32),
               TextField(
-                controller: _firstNameController,
+                controller: _nombreController,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
-                  labelText: 'Primer nombre',
+                  labelText: 'Nombre(s)',
+                  hintText: 'Jose Antonio',
                 ),
               ),
               const SizedBox(height: 16),
               TextField(
-                controller: _secondNameController,
+                controller: _apellidosController,
                 textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(
-                  labelText: 'Segundo nombre (opcional)',
+                  labelText: 'Apellidos',
+                  hintText: 'Rodriguez Flores',
                 ),
               ),
               const SizedBox(height: 32),
               GradientButton(
                 label: 'Continuar',
-                onPressed: _firstNameController.text.trim().isEmpty
+                onPressed: _nombreController.text.trim().isEmpty ||
+                        _apellidosController.text.trim().isEmpty
                     ? null
                     : _onContinue,
               ),

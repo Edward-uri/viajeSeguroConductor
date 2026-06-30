@@ -21,6 +21,7 @@ class RegisterViewModel extends ChangeNotifier {
   String _email = '';
   String _registrationToken = '';
 
+  String _password = '';
   String _nombre = '';
   String _apellidoPaterno = '';
   String _apellidoMaterno = '';
@@ -46,12 +47,19 @@ class RegisterViewModel extends ChangeNotifier {
   String get fechaNacimiento => _fechaNacimiento;
   int? get idMunicipio => _idMunicipio;
 
+  String get password => _password;
+
   String get licencia => _licencia;
   String get licenciaFechaExpedicion => _licenciaFechaExpedicion;
   String get licenciaFechaVencimiento => _licenciaFechaVencimiento;
 
   void setEmail(String v) {
     _email = v;
+    notifyListeners();
+  }
+
+  void setPassword(String v) {
+    _password = v;
     notifyListeners();
   }
 
@@ -132,7 +140,7 @@ class RegisterViewModel extends ChangeNotifier {
   }
 
   Future<bool> verifyOtp(String codigo) async {
-    if (_email.trim().isEmpty || codigo.length != 4) return false;
+    if (_email.trim().isEmpty || codigo.length != 6) return false;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -164,6 +172,7 @@ class RegisterViewModel extends ChangeNotifier {
       await _repository.registerComplete(
         registrationToken: _registrationToken,
         params: RegisterParams(
+          password: _password.isEmpty ? null : _password,
           nombre: _nombre.trim(),
           apellidoPaterno: _apellidoPaterno.trim(),
           apellidoMaterno:
@@ -176,12 +185,16 @@ class RegisterViewModel extends ChangeNotifier {
         ),
       );
       if (_licencia.isNotEmpty && _licenciaFechaVencimiento.isNotEmpty) {
-        await _repository.guardarLicencia(
-          idMunicipio: _idMunicipio ?? 1,
-          licencia: _licencia.trim(),
-          licenciaFechaExpedicion: _normalizeDate(_licenciaFechaExpedicion),
-          licenciaFechaVencimiento: _normalizeDate(_licenciaFechaVencimiento),
-        );
+        try {
+          await _repository.guardarLicencia(
+            idMunicipio: _idMunicipio ?? 1,
+            licencia: _licencia.trim(),
+            licenciaFechaExpedicion: _normalizeDate(_licenciaFechaExpedicion),
+            licenciaFechaVencimiento: _normalizeDate(_licenciaFechaVencimiento),
+          );
+        } on ApiException catch (e) {
+          debugPrint('[RegisterVM] guardarLicencia falló (${e.statusCode}): ${e.message} — continuando');
+        }
       }
       return true;
     } on ApiException catch (e) {

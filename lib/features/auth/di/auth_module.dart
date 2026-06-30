@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/core_module.dart';
+import '../../../core/socket/socket_module.dart';
 import '../data/auth_repository_impl.dart';
 import '../data/auth_session_service.dart';
 import '../data/device_registration_service.dart';
@@ -23,6 +24,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepositoryI
 final authSessionServiceProvider = Provider<AuthSessionService>((ref) => AuthSessionService(
       ref.watch(authApiProvider),
       ref.watch(authStorageProvider),
+      ref.watch(socketServiceProvider),
     ));
 
 final deviceRegistrationServiceProvider =

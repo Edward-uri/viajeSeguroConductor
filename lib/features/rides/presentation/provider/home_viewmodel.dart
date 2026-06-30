@@ -1,11 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
+import '../../../../core/di/core_module.dart';
+import '../../../../core/env/api_config.dart';
+import '../../../../core/http/api_endpoints.dart';
+import '../../../../core/http/api_exception.dart';
 import '../../../../core/socket/socket_module.dart';
 import '../../../../core/socket/socket_service.dart';
+import '../../../../core/storage/auth_storage.dart';
 import '../../../../features/documents/domain/entities/documento.dart';
 import '../../../../features/documents/domain/repositories/documento_repository.dart';
 import '../../../../features/heatmap/data/models/heat_zone.dart';
@@ -26,6 +33,7 @@ final homeViewModelProvider =
     ref.watch(socketServiceProvider),
     ref.watch(documentoRepositoryProvider),
     ref.watch(heatmapRepositoryProvider),
+    ref.watch(authStorageProvider),
   );
   ref.onDispose(() => vm.dispose());
   return vm;
@@ -38,6 +46,7 @@ class HomeViewModel extends ChangeNotifier {
     this._socketService,
     this._documentoRepository,
     this._heatmapRepository,
+    this._authStorage,
   );
 
   final RidesRepository _repository;
@@ -45,6 +54,7 @@ class HomeViewModel extends ChangeNotifier {
   final SocketService _socketService;
   final DocumentoRepository _documentoRepository;
   final HeatmapRepository _heatmapRepository;
+  final AuthStorage _authStorage;
 
   DriverStats? _stats;
   SolicitudViaje? _currentRequest;
@@ -54,6 +64,7 @@ class HomeViewModel extends ChangeNotifier {
   LatLng? _currentPosition;
   SocketStatus _socketStatus = SocketStatus.disconnected;
   StreamSubscription? _rideRequestedSub;
+  StreamSubscription? _rideNotAvailableSub;
   StreamSubscription? _rideStateChangedSub;
   StreamSubscription? _socketStatusSub;
 
@@ -77,13 +88,27 @@ class HomeViewModel extends ChangeNotifier {
     _socketStatusSub?.cancel();
     _socketStatusSub = _socketService.statusStream.listen((status) {
       _socketStatus = status;
+      if (status == SocketStatus.unauthorized) {
+        _refreshSocketToken();
+      }
       notifyListeners();
     });
 
     _rideRequestedSub?.cancel();
     _rideRequestedSub = _socketService.onRideRequested.listen((data) {
+      if (!_isOnline) return;
       _currentRequest = SolicitudViajeMapper.fromJson(data);
       notifyListeners();
+    });
+
+    _rideNotAvailableSub?.cancel();
+    _rideNotAvailableSub = _socketService.onRideNotAvailable.listen((data) {
+      final idViaje = data['idViaje']?.toString();
+      if (idViaje != null && _currentRequest?.id == idViaje) {
+        _currentRequest = null;
+        _errorMessage = 'Este viaje ya no está disponible';
+        notifyListeners();
+      }
     });
 
     _rideStateChangedSub?.cancel();
@@ -91,12 +116,47 @@ class HomeViewModel extends ChangeNotifier {
       final idViaje = data['idViaje']?.toString();
       final estado = data['estado']?.toString();
       if (idViaje != null && _currentRequest?.id == idViaje) {
-        if (estado == 'cancelado') {
-          _currentRequest = null;
+        switch (estado) {
+          case 'cancelado':
+            _currentRequest = null;
+            break;
+          case 'en_curso':
+          case 'completado':
+            _currentRequest = null;
+            break;
         }
         notifyListeners();
       }
     });
+  }
+
+  Future<void> _refreshSocketToken() async {
+    try {
+      final refreshToken = await _authStorage.readRefreshToken();
+      if (refreshToken == null) return;
+      final client = http.Client();
+      try {
+        final response = await client
+            .post(
+              Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.refresh}'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'refreshToken': refreshToken}),
+            )
+            .timeout(ApiConfig.requestTimeout);
+        if (response.statusCode != 200) return;
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final accessToken = decoded['accessToken'] as String?;
+        final newRefreshToken = decoded['refreshToken'] as String?;
+        if (accessToken == null || newRefreshToken == null) return;
+        await _authStorage.writeTokens(
+          accessToken: accessToken,
+          refreshToken: newRefreshToken,
+        );
+        _socketService.refreshToken(accessToken);
+      } finally {
+        client.close();
+      }
+    } catch (_) {}
   }
 
   void goOnline(int idMunicipio) {
@@ -117,7 +177,10 @@ class HomeViewModel extends ChangeNotifier {
         _repository.getCurrentRequest(),
       ]);
       _stats = results[0] as DriverStats;
-      _currentRequest = results[1] as SolicitudViaje?;
+      final pending = results[1] as SolicitudViaje?;
+      if (_isOnline && pending != null) {
+        _currentRequest = pending;
+      }
     } catch (e) {
       _errorMessage = 'Error al cargar datos';
     } finally {
@@ -193,6 +256,7 @@ class HomeViewModel extends ChangeNotifier {
         _socketService.emitOffline();
         _locationService.stopTracking();
         _zonasCalientes = [];
+        _currentRequest = null;
       }
     } catch (e) {
       _errorMessage = 'Error al cambiar disponibilidad';
@@ -223,7 +287,12 @@ class HomeViewModel extends ChangeNotifier {
       _currentRequest = null;
       _errorMessage = null;
     } catch (e) {
-      _errorMessage = 'Error al aceptar viaje';
+      if (e is ApiException && e.statusCode == 409) {
+        _currentRequest = null;
+        _errorMessage = 'Este viaje ya fue tomado por otro conductor';
+      } else {
+        _errorMessage = 'Error al aceptar viaje';
+      }
     }
     notifyListeners();
   }
@@ -264,6 +333,7 @@ class HomeViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _rideRequestedSub?.cancel();
+    _rideNotAvailableSub?.cancel();
     _rideStateChangedSub?.cancel();
     _socketStatusSub?.cancel();
     _socketService.disconnect();

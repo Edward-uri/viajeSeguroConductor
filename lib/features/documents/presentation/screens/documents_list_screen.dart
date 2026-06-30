@@ -105,21 +105,21 @@ class _DocumentsListScreenState extends ConsumerState<DocumentsListScreen> {
                       statusColor: _statusColor(doc.status),
                       iconBgColor: _iconBgColor(doc.status),
                       statusLabel: _statusLabel(doc.status),
-                      onTap: doc.status == DocumentStatus.approved
-                      ? null
-                      : () {
-                          if (doc.status == DocumentStatus.pending) {
-                            Navigator.of(context).pushNamed(
-                              AppRoutes.documentUpload,
-                              arguments: doc,
-                            );
-                          } else {
-                            Navigator.of(context).pushNamed(
-                              AppRoutes.documentView,
-                              arguments: doc,
-                            );
-                          }
-                        },
+                      onTap: doc.status == DocumentStatus.pending
+                      ? () {
+                          Navigator.of(context).pushNamed(
+                            AppRoutes.documentUpload,
+                            arguments: doc,
+                          );
+                        }
+                      : doc.status == DocumentStatus.rejected
+                      ? () {
+                          Navigator.of(context).pushNamed(
+                            AppRoutes.documentView,
+                            arguments: doc,
+                          );
+                        }
+                      : null,
                     );
                   },
                 ),

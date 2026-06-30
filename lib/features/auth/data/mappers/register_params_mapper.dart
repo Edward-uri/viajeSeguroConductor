@@ -7,6 +7,7 @@ class RegisterParamsMapper {
     return {
       'nombre': params.nombre,
       'apellidoPaterno': params.apellidoPaterno,
+      if (params.password != null) 'password': params.password,
       if (params.apellidoMaterno != null)
         'apellidoMaterno': params.apellidoMaterno,
       if (params.telefono != null) 'telefono': params.telefono,

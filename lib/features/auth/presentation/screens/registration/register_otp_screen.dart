@@ -13,8 +13,8 @@ class RegisterOtpScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterOtpScreenState extends ConsumerState<RegisterOtpScreen> {
-  final _controllers = List.generate(4, (_) => TextEditingController());
-  final _focusNodes = List.generate(4, (_) => FocusNode());
+  final _controllers = List.generate(6, (_) => TextEditingController());
+  final _focusNodes = List.generate(6, (_) => FocusNode());
   int _secondsLeft = 60;
 
   @override
@@ -46,7 +46,7 @@ class _RegisterOtpScreenState extends ConsumerState<RegisterOtpScreen> {
   }
 
   void _onDigitChange(int index, String value) {
-    if (value.length == 1 && index < 3) {
+    if (value.length == 1 && index < 5) {
       _focusNodes[index + 1].requestFocus();
     }
   }
@@ -54,7 +54,7 @@ class _RegisterOtpScreenState extends ConsumerState<RegisterOtpScreen> {
   Future<void> _onContinue() async {
     final code =
         _controllers.map((c) => c.text).join();
-    if (code.length != 4) return;
+    if (code.length != 6) return;
 
     final vm = ref.read(registerViewModelProvider);
     final ok = await vm.verifyOtp(code);
@@ -87,43 +87,48 @@ class _RegisterOtpScreenState extends ConsumerState<RegisterOtpScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Ingresa el código de 4 dígitos que enviamos a tu correo.',
+                'Ingresa el código de 6 dígitos que enviamos a tu correo.',
                 style: text.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 32),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(4, (i) {
-                  return SizedBox(
-                    width: 64,
-                    height: 64,
-                    child: TextField(
-                      controller: _controllers[i],
-                      focusNode: _focusNodes[i],
-                      textAlign: TextAlign.center,
-                      keyboardType: TextInputType.number,
-                      maxLength: 1,
-                      style: text.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                children: List.generate(6, (i) {
+                  return Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: i == 0 ? 0 : 4,
+                        right: i == 5 ? 0 : 4,
                       ),
-                      decoration: InputDecoration(
-                        counterText: '',
-                        filled: true,
-                        fillColor: scheme.surfaceContainerLow,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide:
-                              BorderSide(color: scheme.outlineVariant),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                              color: Color(0xFFFF8F00), width: 2),
+                      child: SizedBox(
+                        height: 64,
+                        child: TextField(
+                          controller: _controllers[i],
+                          focusNode: _focusNodes[i],
+                          textAlign: TextAlign.center,
+                          keyboardType: TextInputType.number,
+                          maxLength: 1,
+                          style: text.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                          decoration: InputDecoration(
+                            counterText: '',
+                            filled: true,
+                            fillColor: scheme.surfaceContainerLow,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: scheme.outlineVariant),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(
+                                  color: Color(0xFFFF8F00), width: 2),
+                            ),
+                          ),
+                          onChanged: (v) => _onDigitChange(i, v),
                         ),
                       ),
-                      onChanged: (v) => _onDigitChange(i, v),
                     ),
                   );
                 }),

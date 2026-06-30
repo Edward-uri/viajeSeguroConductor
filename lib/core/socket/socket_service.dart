@@ -20,6 +20,7 @@ class SocketService {
   final _rideRequestedController = StreamController<Map<String, dynamic>>.broadcast();
   final _rideAcceptedController = StreamController<Map<String, dynamic>>.broadcast();
   final _rideStateChangedController = StreamController<Map<String, dynamic>>.broadcast();
+  final _rideNotAvailableController = StreamController<Map<String, dynamic>>.broadcast();
   final _driverLocationController = StreamController<Map<String, dynamic>>.broadcast();
 
   SocketStatus get status => _status;
@@ -27,6 +28,7 @@ class SocketService {
   Stream<Map<String, dynamic>> get onRideRequested => _rideRequestedController.stream;
   Stream<Map<String, dynamic>> get onRideAccepted => _rideAcceptedController.stream;
   Stream<Map<String, dynamic>> get onRideStateChanged => _rideStateChangedController.stream;
+  Stream<Map<String, dynamic>> get onRideNotAvailable => _rideNotAvailableController.stream;
   Stream<Map<String, dynamic>> get onDriverLocation => _driverLocationController.stream;
 
   bool get isConnected => _status == SocketStatus.connected;
@@ -83,6 +85,12 @@ class SocketService {
     _socket!.on('viaje:cambio_estado', (data) {
       if (data is Map<String, dynamic>) {
         _rideStateChangedController.add(data);
+      }
+    });
+
+    _socket!.on('viaje:no_disponible', (data) {
+      if (data is Map<String, dynamic>) {
+        _rideNotAvailableController.add(data);
       }
     });
 
@@ -154,6 +162,7 @@ class SocketService {
     _rideRequestedController.close();
     _rideAcceptedController.close();
     _rideStateChangedController.close();
+    _rideNotAvailableController.close();
     _driverLocationController.close();
   }
 }

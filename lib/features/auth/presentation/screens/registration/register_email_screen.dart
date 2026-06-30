@@ -14,17 +14,42 @@ class RegisterEmailScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterEmailScreenState extends ConsumerState<RegisterEmailScreen> {
-  final _controller = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(() => setState(() {}));
+    _passwordController.addListener(() => setState(() {}));
+    _confirmController.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmController.dispose();
     super.dispose();
   }
 
+  bool get _isPasswordValid {
+    final p = _passwordController.text;
+    if (p.length < 8) return false;
+    if (!p.contains(RegExp(r'[A-Z]'))) return false;
+    if (!p.contains(RegExp(r'[a-z]'))) return false;
+    if (!p.contains(RegExp(r'[0-9]'))) return false;
+    return p == _confirmController.text;
+  }
+
   Future<void> _onContinue() async {
+    if (_emailController.text.trim().isEmpty || !_isPasswordValid) return;
     final vm = ref.read(registerViewModelProvider);
-    vm.setEmail(_controller.text.trim());
+    vm.setEmail(_emailController.text.trim());
+    vm.setPassword(_passwordController.text);
     final ok = await vm.sendOtp();
     if (ok && context.mounted) {
       Navigator.of(context).pushNamed(AppRoutes.registerOtp);
@@ -40,14 +65,14 @@ class _RegisterEmailScreenState extends ConsumerState<RegisterEmailScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Registro')),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 32),
               Text(
-                'Tu correo electrónico',
+                'Crea tu cuenta',
                 style: text.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: scheme.onSurface,
@@ -55,16 +80,16 @@ class _RegisterEmailScreenState extends ConsumerState<RegisterEmailScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Te enviaremos un código de verificación.',
+                'Ingresa tu correo y crea una contraseña.',
                 style: text.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 32),
               TextField(
-                controller: _controller,
+                controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.done,
+                textInputAction: TextInputAction.next,
                 decoration: InputDecoration(
                   labelText: 'Correo electrónico',
                   prefixIcon: Padding(
@@ -73,6 +98,42 @@ class _RegisterEmailScreenState extends ConsumerState<RegisterEmailScreen> {
                         color: scheme.onSurfaceVariant),
                   ),
                   hintText: 'ejemplo@correo.com',
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _confirmController,
+                obscureText: _obscureConfirm,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: 'Confirmar contraseña',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirm
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscureConfirm = !_obscureConfirm),
+                  ),
                 ),
                 onSubmitted: (_) => _onContinue(),
               ),
@@ -86,7 +147,11 @@ class _RegisterEmailScreenState extends ConsumerState<RegisterEmailScreen> {
               const SizedBox(height: 32),
               GradientButton(
                 label: vm.isLoading ? 'Enviando...' : 'Continuar',
-                onPressed: vm.isLoading ? null : _onContinue,
+                onPressed: vm.isLoading
+                    ? null
+                    : (_emailController.text.trim().isNotEmpty && _isPasswordValid)
+                        ? _onContinue
+                        : null,
               ),
             ],
           ),

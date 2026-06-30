@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
+import '../../../../core/widgets/logo_badge.dart';
+import '../../../../features/documents/di/documents_module.dart';
+import '../../../../features/documents/presentation/utils/document_route_helper.dart';
 import '../../../../routes/app_routes.dart';
-import '../provider/login_viewmodel.dart';
+import '../provider/login_password_viewmodel.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -13,26 +16,38 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _controller = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _passwordFocus = FocusNode();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _controller.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
-  Future<void> _onContinue() async {
-    final vm = ref.read(loginViewModelProvider);
-    vm.setEmail(_controller.text.trim());
-    final ok = await vm.sendOtp();
+  Future<void> _onLogin() async {
+    final vm = ref.read(loginPasswordViewModelProvider);
+    vm.setEmail(_emailCtrl.text.trim());
+    vm.setPassword(_passwordCtrl.text);
+    final ok = await vm.login();
     if (ok && context.mounted) {
-      Navigator.of(context).pushNamed(AppRoutes.loginOtp);
+      final repo = ref.read(documentoRepositoryProvider);
+      final route = await resolveDocumentsRoute(repo);
+      if (!context.mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        route,
+        (route) => false,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final vm = ref.watch(loginViewModelProvider);
+    final vm = ref.watch(loginPasswordViewModelProvider);
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
@@ -47,10 +62,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 24),
-                  Icon(Icons.motorcycle_outlined,
-                      size: 80, color: const Color(0xFFFF8F00)),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+                  const LogoBadge(size: 100),
+                  const SizedBox(height: 20),
                   Text(
                     'Jala',
                     textAlign: TextAlign.center,
@@ -69,9 +83,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
                   TextField(
-                    controller: _controller,
+                    controller: _emailCtrl,
                     keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.done,
+                    textInputAction: TextInputAction.next,
+                    textCapitalization: TextCapitalization.none,
                     decoration: InputDecoration(
                       labelText: 'Correo electrónico',
                       prefixIcon: Padding(
@@ -80,10 +95,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             color: scheme.onSurfaceVariant),
                       ),
                     ),
-                    onSubmitted: (_) => _onContinue(),
                   ),
-                  if (vm.errorMessage != null) ...[
-                    const SizedBox(height: 16),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _passwordCtrl,
+                    focusNode: _passwordFocus,
+                    obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    textCapitalization: TextCapitalization.none,
+                    keyboardType: TextInputType.visiblePassword,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    decoration: InputDecoration(
+                      labelText: 'Contraseña',
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Icon(Icons.lock_outlined,
+                            color: scheme.onSurfaceVariant),
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscurePassword = !_obscurePassword),
+                      ),
+                    ),
+                    onSubmitted: (_) => _onLogin(),
+                    onChanged: (v) => vm.setPassword(v),
+                  ),
+                  if (vm.errorMessage != null && vm.passwordError == null) ...[
+                    const SizedBox(height: 8),
                     Text(
                       vm.errorMessage!,
                       style: text.bodySmall?.copyWith(color: scheme.error),
@@ -91,16 +135,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                   const SizedBox(height: 24),
                   GradientButton(
-                    label: vm.isLoading ? 'Enviando...' : 'Recibir código',
-                    onPressed: vm.isLoading ? null : _onContinue,
-                  ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: vm.isLoading
-                        ? null
-                        : () => Navigator.of(context)
-                            .pushNamed(AppRoutes.loginPassword),
-                    child: const Text('Iniciar sesión con contraseña'),
+                    label: vm.isLoading ? 'Iniciando sesión...' : 'Iniciar sesión',
+                    onPressed: vm.isLoading ? null : _onLogin,
                   ),
                   const SizedBox(height: 8),
                   TextButton(

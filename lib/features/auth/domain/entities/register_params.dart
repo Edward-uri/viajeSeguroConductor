@@ -2,6 +2,7 @@ class RegisterParams {
   const RegisterParams({
     required this.nombre,
     required this.apellidoPaterno,
+    this.password,
     this.apellidoMaterno,
     this.telefono,
     this.idSexo,
@@ -10,6 +11,7 @@ class RegisterParams {
     this.dispositivo,
   });
 
+  final String? password;
   final String nombre;
   final String apellidoPaterno;
   final String? apellidoMaterno;

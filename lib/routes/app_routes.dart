@@ -3,8 +3,6 @@ class AppRoutes {
 
   static const String splash = '/';
   static const String login = '/login';
-  static const String loginOtp = '/login-otp';
-  static const String loginPassword = '/login-password';
   static const String register = '/register';
   static const String profile = '/profile';
 
@@ -12,7 +10,6 @@ class AppRoutes {
   static const String registerEmail = '/register-email';
   static const String registerOtp = '/register-otp';
   static const String registerNames = '/register-names';
-  static const String registerLastnames = '/register-lastnames';
   static const String registerPersonalData = '/register-personal-data';
   static const String registerMunicipio = '/register-municipio';
 

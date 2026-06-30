@@ -1,0 +1,4 @@
+storePassword=2004Del_2005
+keyPassword=2004Del_2005
+keyAlias=mi-Jose Flores
+storeFile=../app/mi-clave-app.jks

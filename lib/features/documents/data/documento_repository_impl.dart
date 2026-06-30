@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 
 import '../../../core/http/api_exception.dart';
@@ -19,8 +17,15 @@ class DocumentoRepositoryImpl implements DocumentoRepository {
       return await _fetchDocumentos();
     } on ApiException catch (e) {
       if (e.statusCode == 404) {
-        await _api.crearConductor();
+        try {
+          await _api.crearConductor();
+        } catch (_) {
+          debugPrint('[DocumentoRepo] crearConductor falló, retornando defaults');
+        }
         return _fetchDocumentos();
+      }
+      if (e.statusCode == 403) {
+        debugPrint('[DocumentoRepo] 403 en conductor endpoints — el token no tiene permisos de conductor');
       }
       rethrow;
     }

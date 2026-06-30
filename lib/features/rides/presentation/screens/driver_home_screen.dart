@@ -186,11 +186,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         child: Column(
           children: [
             if (vm.stats != null)
-              _EarningsCard(stats: vm.stats!, text: text),
+              _EarningsCard(stats: vm.stats!, text: text, scheme: scheme),
             _OnlineStatusBar(
               isOnline: vm.isOnline,
               onToggle: (_) => vm.toggleOnline(),
               text: text,
+              scheme: scheme,
             ),
             Expanded(
               child: Stack(
@@ -204,7 +205,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                     ),
                     children: [
                       TileLayer(
-                        urlTemplate: ApiConfig.mapboxTilesUrl,
+                        urlTemplate: ApiConfig.mapboxTilesUrlFor(
+                            Theme.of(context).brightness),
                         userAgentPackageName: 'com.uriel.viajeseguroapp',
                       ),
                       if (vm.currentPosition != null)
@@ -296,10 +298,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                     bottom: 16,
                     child: FloatingActionButton.small(
                       onPressed: _centerOnDriver,
-                      backgroundColor: Colors.white,
-                      child: const Icon(
+                      backgroundColor: scheme.surfaceContainerHigh,
+                      child: Icon(
                         Icons.my_location,
-                        color: Color(0xFF1A1410),
+                        color: scheme.onSurface,
                       ),
                     ),
                   ),
@@ -327,27 +329,32 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
 class _EarningsCard extends StatelessWidget {
   final DriverStats stats;
   final TextTheme text;
+  final ColorScheme scheme;
 
-  const _EarningsCard({required this.stats, required this.text});
+  const _EarningsCard({
+    required this.stats,
+    required this.text,
+    required this.scheme,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      color: Colors.white,
+      color: scheme.surfaceContainerLow,
       child: Row(
         children: [
           Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: const Color(0xFFFF8F00).withValues(alpha: 0.12),
+              color: scheme.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.trending_up_rounded,
-              color: Color(0xFFFF8F00),
+              color: scheme.primary,
               size: 22,
             ),
           ),
@@ -359,14 +366,14 @@ class _EarningsCard extends StatelessWidget {
                 '\$${stats.gananciasHoy.toStringAsFixed(2)} hoy',
                 style: text.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1410),
+                  color: scheme.onSurface,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 'Ganancias del día',
                 style: text.bodySmall?.copyWith(
-                  color: const Color(0xFF6B6661),
+                  color: scheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -381,11 +388,13 @@ class _OnlineStatusBar extends StatelessWidget {
   final bool isOnline;
   final ValueChanged<bool> onToggle;
   final TextTheme text;
+  final ColorScheme scheme;
 
   const _OnlineStatusBar({
     required this.isOnline,
     required this.onToggle,
     required this.text,
+    required this.scheme,
   });
 
   @override
@@ -393,7 +402,7 @@ class _OnlineStatusBar extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      color: Colors.white,
+      color: scheme.surfaceContainerLow,
       child: Row(
         children: [
           Expanded(
@@ -417,7 +426,7 @@ class _OnlineStatusBar extends StatelessWidget {
                       isOnline ? 'Estás en línea' : 'Estás offline',
                       style: text.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1A1410),
+                        color: scheme.onSurface,
                       ),
                     ),
                   ],
@@ -426,7 +435,7 @@ class _OnlineStatusBar extends StatelessWidget {
                   Text(
                     'Buscando viajes cerca de ti…',
                     style: text.bodySmall?.copyWith(
-                      color: const Color(0xFF6B6661),
+                      color: scheme.onSurfaceVariant,
                     ),
                   ),
               ],
@@ -466,9 +475,9 @@ class _BottomSheet extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -482,6 +491,7 @@ class _BottomSheet extends StatelessWidget {
                   icon: Icons.person_outline,
                   label: 'Perfil',
                   onTap: onPerfil,
+                  scheme: scheme,
                 ),
               ),
               const SizedBox(width: 12),
@@ -490,6 +500,7 @@ class _BottomSheet extends StatelessWidget {
                   icon: Icons.directions_car_outlined,
                   label: 'Flotilla',
                   onTap: onFlotilla,
+                  scheme: scheme,
                 ),
               ),
             ],
@@ -508,28 +519,31 @@ class _BottomSheet extends StatelessWidget {
             child: _StatItem(
               value: '\$${s.gananciasHoy.toStringAsFixed(2)}',
               label: 'Ganancias hoy',
+              scheme: scheme,
             ),
           ),
           Container(
             width: 1,
             height: 40,
-            color: const Color(0xFFE2E2E2),
+            color: scheme.outlineVariant,
           ),
           Expanded(
             child: _StatItem(
               value: '${s.viajesHoy}',
               label: 'Viajes',
+              scheme: scheme,
             ),
           ),
           Container(
             width: 1,
             height: 40,
-            color: const Color(0xFFE2E2E2),
+            color: scheme.outlineVariant,
           ),
           Expanded(
             child: _StatItem(
               value: '${s.horasEnLinea} h',
               label: 'En línea',
+              scheme: scheme,
             ),
           ),
         ],
@@ -540,7 +554,7 @@ class _BottomSheet extends StatelessWidget {
         child: Text(
           'Ver mis ganancias',
           style: text.bodyMedium?.copyWith(
-            color: const Color(0xFFFF8F00),
+            color: scheme.primary,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -552,8 +566,13 @@ class _BottomSheet extends StatelessWidget {
 class _StatItem extends StatelessWidget {
   final String value;
   final String label;
+  final ColorScheme scheme;
 
-  const _StatItem({required this.value, required this.label});
+  const _StatItem({
+    required this.value,
+    required this.label,
+    required this.scheme,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -561,18 +580,18 @@ class _StatItem extends StatelessWidget {
       children: [
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
-            color: Color(0xFFFF8F00),
+            color: scheme.primary,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
-            color: Color(0xFF6B6661),
+            color: scheme.onSurfaceVariant,
           ),
         ),
       ],
@@ -584,11 +603,13 @@ class _NavButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final ColorScheme scheme;
 
   const _NavButton({
     required this.icon,
     required this.label,
     required this.onTap,
+    required this.scheme,
   });
 
   @override
@@ -600,11 +621,11 @@ class _NavButton extends StatelessWidget {
         icon: Icon(icon, size: 20),
         label: Text(label),
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: const Color(0xFFE2E2E2)),
+          side: BorderSide(color: scheme.outlineVariant),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          foregroundColor: const Color(0xFF1A1410),
+          foregroundColor: scheme.onSurface,
         ),
       ),
     );

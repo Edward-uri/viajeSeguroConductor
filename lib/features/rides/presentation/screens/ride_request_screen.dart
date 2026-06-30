@@ -54,7 +54,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                     'Nueva solicitud',
                     style: text.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFFFF8F00),
+                      color: scheme.primary,
                     ),
                   ),
                   if (request != null)
@@ -62,7 +62,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                       '\$${request.monto.toStringAsFixed(2)}',
                       style: text.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1A1410),
+                        color: scheme.onSurface,
                       ),
                     ),
                 ],
@@ -75,21 +75,22 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE6F4EA),
+                        color: scheme.primaryContainer.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.money,
-                              size: 14, color: Color(0xFF1E8E5A)),
+                          Icon(Icons.money,
+                              size: 14,
+                              color: scheme.primary),
                           const SizedBox(width: 4),
                           Text(
                             request.metodoPago,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF1E8E5A),
+                              color: scheme.primary,
                             ),
                           ),
                         ],
@@ -99,7 +100,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                     Text(
                       '${request.distanciaKm.toStringAsFixed(1)} km · ${request.duracionMin} min',
                       style: text.bodyMedium?.copyWith(
-                        color: const Color(0xFF6B6661),
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -117,8 +118,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                         value: _countdown / 15,
                         strokeWidth: 6,
                         backgroundColor: scheme.surfaceContainerHigh,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                            Color(0xFFFF8F00)),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            scheme.primary),
                       ),
                       Center(
                         child: Text(
@@ -126,8 +127,8 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                           style: text.headlineMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: _countdown <= 3
-                                ? const Color(0xFFD84315)
-                                : const Color(0xFFFF8F00),
+                                ? scheme.error
+                                : scheme.primary,
                           ),
                         ),
                       ),
@@ -137,52 +138,53 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
               ),
               const SizedBox(height: 24),
               if (request != null) ...[
-                Center(
-                  child: CircleAvatar(
-                    radius: 32,
-                    backgroundColor: const Color(0xFFFF8F00),
-                    child: Text(
-                      request.pasajeroIniciales,
-                      style: text.titleLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Center(
-                  child: Text(
-                    request.nombreCompleto,
-                    style: text.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1A1410),
-                    ),
-                  ),
-                ),
-                Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.star,
-                          size: 16, color: Color(0xFFFF8F00)),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${request.pasajeroCalificacion.toStringAsFixed(1)} · Pasajera',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF6B6661),
+                  Center(
+                    child: CircleAvatar(
+                      radius: 32,
+                      backgroundColor: scheme.primary,
+                      child: Text(
+                        request.pasajeroIniciales,
+                        style: text.titleLarge?.copyWith(
+                          color: scheme.onPrimary,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                const SizedBox(height: 12),
+                  Center(
+                    child: Text(
+                      request.nombreCompleto,
+                      style: text.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.star,
+                            size: 16, color: scheme.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${request.pasajeroCalificacion.toStringAsFixed(1)} · Pasajera',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 24),
                 _locationRow(
                   Icons.circle_outlined,
                   request.origen,
                   'Recoger · ${request.origenDistancia}',
-                  const Color(0xFFFF8F00),
+                  scheme.primary,
+                  scheme,
                 ),
                 const SizedBox(height: 4),
                 Padding(
@@ -190,14 +192,15 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                   child: Container(
                     width: 2,
                     height: 24,
-                    color: const Color(0xFFD0D0D0),
+                    color: scheme.outlineVariant,
                   ),
                 ),
                 _locationRow(
                   Icons.location_on_outlined,
                   request.destino,
                   'Destino del pasajero',
-                  const Color(0xFFFF8F00),
+                  scheme.primary,
+                  scheme,
                 ),
               ],
               const Spacer(),
@@ -212,11 +215,11 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                       },
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(54),
-                        side: const BorderSide(color: Color(0xFFECECEC)),
+                        side: BorderSide(color: scheme.outlineVariant),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        foregroundColor: const Color(0xFF6B6661),
+                        foregroundColor: scheme.onSurfaceVariant,
                       ),
                       child: const Text('Rechazar'),
                     ),
@@ -245,7 +248,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
   }
 
   Widget _locationRow(
-      IconData icon, String title, String subtitle, Color color) {
+      IconData icon, String title, String subtitle, Color color, ColorScheme scheme) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -256,16 +259,16 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1410),
+                    color: scheme.onSurface,
                   )),
               const SizedBox(height: 2),
               Text(subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: Color(0xFF6B6661),
+                    color: scheme.onSurfaceVariant,
                   )),
             ],
           ),

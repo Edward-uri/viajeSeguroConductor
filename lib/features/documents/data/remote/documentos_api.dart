@@ -1,10 +1,9 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
 
 import '../../../../core/http/api_client.dart';
 import '../../../../core/http/api_endpoints.dart';
+import '../../../../core/http/api_exception.dart';
 
 class DocumentosApi {
   DocumentosApi(this._api);
@@ -37,27 +36,36 @@ class DocumentosApi {
     required String tipo,
     required Uint8List bytes,
     required String fileName,
-  }) =>
-      _api.multipartPost(
-        _endpointForTipo(tipo),
-        bytes: bytes,
-        fieldName: 'archivo',
-        fileName: fileName,
-        contentType: MediaType('image', 'jpeg'),
-        auth: true,
-      );
+  }) async {
+    final endpoint = _endpointForTipo(tipo);
+    debugPrint('[DocumentosApi] subirDocumento endpoint=$endpoint file=$fileName size=${bytes.length}');
+    return _api.multipartPost(
+      endpoint,
+      bytes: bytes,
+      fieldName: 'archivo',
+      fileName: fileName,
+      contentType: MediaType('image', 'jpeg'),
+      auth: true,
+    );
+  }
 
   Future<void> crearConductor() async {
+    debugPrint('[DocumentosApi] crearConductor — intentando crear registro conductor');
     final now = DateTime.now();
     final exp =
         '${now.year - 5}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final ven =
         '${now.year + 5}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    await _api.post(ApiEndpoints.conductorOnboardingLicencia, body: {
-      'idMunicipio': 1,
-      'licencia': 'PENDIENTE',
-      'licenciaFechaExpedicion': exp,
-      'licenciaFechaVencimiento': ven,
-    }, auth: true);
+    try {
+      await _api.post(ApiEndpoints.conductorOnboardingLicencia, body: {
+        'idMunicipio': 1,
+        'licencia': 'PENDIENTE',
+        'licenciaFechaExpedicion': exp,
+        'licenciaFechaVencimiento': ven,
+      }, auth: true);
+    } on ApiException catch (e) {
+      debugPrint('[DocumentosApi] crearConductor falló: ${e.statusCode} — ${e.message}');
+      rethrow;
+    }
   }
 }

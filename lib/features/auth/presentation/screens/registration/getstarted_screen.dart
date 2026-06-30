@@ -36,33 +36,17 @@ class GetstartedScreen extends ConsumerWidget {
                   color: scheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 48),
-              Container(
-                height: 200,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE9ECEA),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.map_outlined,
-                    size: 80,
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.3),
-                  ),
-                ),
-              ),
               const Spacer(flex: 2),
               GradientButton(
-                label: 'Comenzar',
+                label: 'Iniciar sesión',
                 onPressed: () => Navigator.of(context)
-                    .pushNamed(AppRoutes.registerEmail),
+                    .pushNamed(AppRoutes.login),
               ),
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => Navigator.of(context)
-                    .pushNamed(AppRoutes.login),
-                child: const Text('Ya tengo cuenta, iniciar sesión'),
+                    .pushNamed(AppRoutes.registerEmail),
+                child: const Text('¿No tenés cuenta? Registrarse'),
               ),
               const SizedBox(height: 24),
             ],

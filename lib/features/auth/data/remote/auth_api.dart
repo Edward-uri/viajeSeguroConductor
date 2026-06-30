@@ -32,6 +32,7 @@ class AuthApi {
   }) =>
       _api.post(ApiEndpoints.registerComplete, body: {
         'registrationToken': registrationToken,
+        'rol': 'conductor',
         ...data,
       });
 

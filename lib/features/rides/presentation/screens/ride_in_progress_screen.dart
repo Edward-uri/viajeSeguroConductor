@@ -37,6 +37,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
   Widget build(BuildContext context) {
     final vm = ref.watch(rideProgressViewModelProvider);
     final ride = vm.ride;
+    final scheme = Theme.of(context).colorScheme;
 
     if (ride == null) {
       return const Scaffold(
@@ -48,27 +49,27 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(vm, ride),
-            Expanded(child: _buildMap(vm, ride)),
-            _buildBottomSheet(vm, ride),
+            _buildHeader(vm, ride, scheme),
+            Expanded(child: _buildMap(vm, ride, scheme)),
+            _buildBottomSheet(vm, ride, scheme),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(RideProgressViewModel vm, SolicitudViaje ride) {
+  Widget _buildHeader(RideProgressViewModel vm, SolicitudViaje ride, ColorScheme scheme) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      color: vm.hasStarted ? const Color(0xFF1E8E5A) : Colors.white,
+      color: vm.hasStarted ? const Color(0xFF1E8E5A) : scheme.surface,
       child: Row(
         children: [
           GestureDetector(
             onTap: () => Navigator.of(context).pop(),
             child: Icon(
               Icons.arrow_back,
-              color: vm.hasStarted ? Colors.white : const Color(0xFF1A1410),
+              color: vm.hasStarted ? Colors.white : scheme.onSurface,
             ),
           ),
           const Spacer(),
@@ -80,15 +81,15 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color:
-                      vm.hasStarted ? Colors.white : const Color(0xFF1A1410),
+                      vm.hasStarted ? Colors.white : scheme.onSurface,
                 ),
               ),
               if (!vm.hasStarted)
                 Text(
                   '${ride.origenDistancia.isNotEmpty ? ride.origenDistancia : '—'} para llegar',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF6B6661),
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
             ],
@@ -99,7 +100,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
     );
   }
 
-  Widget _buildMap(RideProgressViewModel vm, SolicitudViaje ride) {
+  Widget _buildMap(RideProgressViewModel vm, SolicitudViaje ride, ColorScheme scheme) {
     final markers = <Marker>[];
 
     if (vm.currentPosition != null) {
@@ -139,7 +140,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
           height: 32,
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFFF8F00),
+              color: scheme.primary,
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 3),
             ),
@@ -157,7 +158,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
           height: 32,
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFD32F2F),
+              color: scheme.error,
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 3),
             ),
@@ -179,7 +180,8 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       ),
       children: [
         TileLayer(
-          urlTemplate: ApiConfig.mapboxTilesUrl,
+          urlTemplate: ApiConfig.mapboxTilesUrlFor(
+              Theme.of(context).brightness),
           userAgentPackageName: 'com.uriel.viajeseguroapp',
         ),
         if (markers.isNotEmpty) MarkerLayer(markers: markers),
@@ -187,13 +189,13 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
     );
   }
 
-  Widget _buildBottomSheet(RideProgressViewModel vm, SolicitudViaje ride) {
+  Widget _buildBottomSheet(RideProgressViewModel vm, SolicitudViaje ride, ColorScheme scheme) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -202,15 +204,15 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF1E0),
+              color: scheme.primaryContainer,
               borderRadius: BorderRadius.circular(24),
             ),
             child: Text(
               ride.pasajeroIniciales.isNotEmpty
                   ? ride.pasajeroIniciales
                   : '?',
-              style: const TextStyle(
-                color: Color(0xFFFF8F00),
+              style: TextStyle(
+                color: scheme.primary,
                 fontWeight: FontWeight.w700,
                 fontSize: 18,
               ),
@@ -219,18 +221,18 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
           const SizedBox(height: 8),
           Text(
             ride.pasajeroNombre.isNotEmpty ? ride.pasajeroNombre : 'Pasajero',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF1A1410),
+              color: scheme.onSurface,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             '${ride.origen} → ${ride.destino}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: Color(0xFF6B6661),
+              color: scheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
           ),
@@ -242,8 +244,8 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
               child: ElevatedButton(
                 onPressed: vm.isLoading ? null : () => vm.startRide(),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF8F00),
-                  foregroundColor: Colors.white,
+                  backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -303,7 +305,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
               padding: const EdgeInsets.only(top: 12),
               child: Text(
                 vm.errorMessage!,
-                style: const TextStyle(color: Colors.red, fontSize: 13),
+                style: TextStyle(color: scheme.error, fontSize: 13),
               ),
             ),
         ],

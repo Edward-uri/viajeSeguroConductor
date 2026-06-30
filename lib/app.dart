@@ -5,14 +5,11 @@ import 'core/navigation/app_navigator.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/registration/getstarted_screen.dart';
 import 'features/auth/presentation/screens/registration/register_email_screen.dart';
-import 'features/auth/presentation/screens/registration/register_lastnames_screen.dart';
 import 'features/auth/presentation/screens/registration/register_license_screen.dart';
 import 'features/auth/presentation/screens/registration/register_municipio_screen.dart';
 import 'features/auth/presentation/screens/registration/register_names_screen.dart';
 import 'features/auth/presentation/screens/registration/register_otp_screen.dart';
 import 'features/auth/presentation/screens/registration/register_personal_data_screen.dart';
-import 'features/auth/presentation/screens/login_otp_screen.dart';
-import 'features/auth/presentation/screens/login_password_screen.dart';
 import 'features/documents/presentation/screens/document_upload_screen.dart';
 import 'features/documents/presentation/screens/document_view_screen.dart';
 import 'features/documents/presentation/screens/documents_approved_screen.dart';
@@ -62,14 +59,11 @@ class JalaApp extends StatelessWidget {
       routes: <String, WidgetBuilder>{
         AppRoutes.splash: (_) => const SplashScreen(),
         AppRoutes.login: (_) => const LoginScreen(),
-        AppRoutes.loginOtp: (_) => const LoginOtpScreen(),
-        AppRoutes.loginPassword: (_) => const LoginPasswordScreen(),
         AppRoutes.profile: (_) => const ProfileScreen(),
         AppRoutes.getstarted: (_) => const GetstartedScreen(),
         AppRoutes.registerEmail: (_) => const RegisterEmailScreen(),
         AppRoutes.registerOtp: (_) => const RegisterOtpScreen(),
         AppRoutes.registerNames: (_) => const RegisterNamesScreen(),
-        AppRoutes.registerLastnames: (_) => const RegisterLastnamesScreen(),
         AppRoutes.registerPersonalData: (_) =>
             const RegisterPersonalDataScreen(),
         AppRoutes.registerMunicipio: (_) => const RegisterMunicipioScreen(),

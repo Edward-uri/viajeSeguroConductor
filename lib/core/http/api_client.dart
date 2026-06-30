@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
@@ -30,6 +30,9 @@ class ApiClient {
     Map<String, String>? extraHeaders,
   }) async {
     final headers = extraHeaders ?? {};
+    if (path.contains('register/complete') && body is Map) {
+      debugPrint('[ApiClient] registerComplete body contains rol=${body.containsKey('rol')}');
+    }
     return _send(auth: auth, send: (h) => _client.post(
       _uri(path),
       headers: {...h, ...headers},
@@ -45,35 +48,69 @@ class ApiClient {
     MediaType? contentType,
     bool auth = true,
   }) async {
-    final request = http.MultipartRequest('POST', _uri(path));
+    final url = _uri(path);
+    final timeout = ApiConfig.uploadTimeout;
+    debugPrint('[ApiClient] multipartPost $path auth=$auth timeout=${timeout.inSeconds}s size=${bytes.length}');
 
     var token = auth ? await _authStorage.readAccessToken() : null;
     if (token != null) {
-      request.headers['Authorization'] = 'Bearer $token';
+      debugPrint('[ApiClient] Token: $token');
+    } else if (auth) {
+      debugPrint('[ApiClient] WARNING: auth=true but readAccessToken() returned null');
     }
 
-    request.files.add(http.MultipartFile.fromBytes(
-      fieldName,
-      bytes,
-      filename: fileName,
-      contentType: contentType,
-    ));
+    http.MultipartRequest buildRequest() {
+      final req = http.MultipartRequest('POST', url);
+      req.headers['Accept'] = 'application/json';
+      if (token != null) {
+        req.headers['Authorization'] = 'Bearer $token';
+        debugPrint('[ApiClient] Token presente (${token.length} chars)');
+      }
+      req.files.add(http.MultipartFile.fromBytes(
+        fieldName,
+        bytes,
+        filename: fileName,
+        contentType: contentType,
+      ));
+      return req;
+    }
 
     try {
-      final streamed = await request.send().timeout(ApiConfig.requestTimeout);
-      final response = await http.Response.fromStream(streamed);
+      var request = buildRequest();
+      var streamed = await request.send().timeout(timeout);
+      var response = await http.Response.fromStream(streamed);
+
+      debugPrint('[ApiClient] multipart response ${response.statusCode}');
+
+      if (response.statusCode == 401 && auth && token != null) {
+        debugPrint('[ApiClient] 401 — intentando refresh...');
+        final refreshed = await _tryRefresh();
+        if (refreshed) {
+          debugPrint('[ApiClient] Refresh OK, reintentando multipart...');
+          token = await _authStorage.readAccessToken();
+          request = buildRequest();
+          streamed = await request.send().timeout(timeout);
+          response = await http.Response.fromStream(streamed);
+          debugPrint('[ApiClient] multipart retry response ${response.statusCode}');
+        }
+      }
+
       _throwIfError(response);
       if (response.body.isEmpty) return const <String, dynamic>{};
       final decoded = jsonDecode(response.body);
       if (decoded is Map<String, dynamic>) return decoded;
       throw ApiException('Respuesta del servidor en formato inesperado', statusCode: response.statusCode);
     } on TimeoutException {
+      debugPrint('[ApiClient] multipart TIMEOUT');
       throw NetworkException('La solicitud tardó demasiado. Revisa tu conexión.');
     } on SocketException {
+      debugPrint('[ApiClient] multipart SOCKET EXCEPTION');
       throw NetworkException('Sin conexión. Revisa internet e intenta de nuevo.');
     } on http.ClientException catch (e) {
+      debugPrint('[ApiClient] multipart CLIENT EXCEPTION: ${e.message}');
       throw NetworkException('Error de red: ${e.message}');
     } on FormatException {
+      debugPrint('[ApiClient] multipart FORMAT EXCEPTION');
       throw ApiException('Respuesta del servidor en formato inválido');
     }
   }
@@ -138,6 +175,7 @@ class ApiClient {
   }) async {
     try {
       var token = auth ? await _authStorage.readAccessToken() : null;
+      if (token != null) debugPrint('[ApiClient] Token: $token');
       var headers = _buildHeaders(auth: auth, token: token, hasBody: true);
       var response = await send(headers).timeout(ApiConfig.requestTimeout);
 

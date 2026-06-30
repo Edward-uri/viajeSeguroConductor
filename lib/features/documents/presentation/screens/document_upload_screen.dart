@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/http/api_exception.dart';
 import '../../../../core/widgets/gradient_button.dart';
 import '../../domain/entities/documento.dart';
 import '../provider/documents_viewmodel.dart';
@@ -137,8 +138,17 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
+        final msg = e is ApiException
+            ? (e.statusCode == 403
+                ? 'No tienes permisos para subir documentos. Contacta a soporte.'
+                : e.statusCode == 401
+                    ? 'Sesión expirada. Inicia sesión de nuevo.'
+                    : e.message)
+            : e is NetworkException
+                ? e.message
+                : 'Error al subir: $e';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al subir: $e')),
+          SnackBar(content: Text(msg)),
         );
       }
     } finally {
