@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:socket_io_client/socket_io_client.dart';
 
@@ -103,12 +104,22 @@ class SocketService {
     _socket!.connect();
   }
 
-  void emitOnline(int idMunicipio) {
-    _socket?.emitWithAck('conductor:online', {'idMunicipio': idMunicipio}, ack: (data) {
-      if (data is Map && data['ok'] == false) {
-        return;
-      }
+  /// Emite conductor:online y resuelve true si el servidor confirmó la unión al
+  /// room de su municipio. false si fue rechazado, no hay socket, o timeout.
+  Future<bool> emitOnline(int idMunicipio) {
+    final socket = _socket;
+    if (socket == null) {
+      debugPrint('[Socket] emitOnline sin socket conectado');
+      return Future.value(false);
+    }
+    final completer = Completer<bool>();
+    socket.emitWithAck('conductor:online', {'idMunicipio': idMunicipio}, ack: (data) {
+      debugPrint('[Socket] conductor:online ack=$data');
+      final ok = data is Map && data['ok'] == true;
+      if (!completer.isCompleted) completer.complete(ok);
     });
+    return completer.future
+        .timeout(const Duration(seconds: 5), onTimeout: () => false);
   }
 
   void emitOffline() {

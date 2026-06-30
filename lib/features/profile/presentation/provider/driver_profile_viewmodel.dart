@@ -46,6 +46,7 @@ class DriverProfileViewModel extends ChangeNotifier {
   Vehiculo? _vehiculo;
   String _displayName = '';
   bool _isLoading = false;
+  bool _isUploadingPhoto = false;
   String? _errorMessage;
 
   User? get user => _user;
@@ -53,6 +54,7 @@ class DriverProfileViewModel extends ChangeNotifier {
   Vehiculo? get vehiculo => _vehiculo;
   String get displayName => _displayName;
   bool get isLoading => _isLoading;
+  bool get isUploadingPhoto => _isUploadingPhoto;
   String? get errorMessage => _errorMessage;
 
   int get viajes => _stats?.viajesHoy ?? 0;
@@ -112,6 +114,25 @@ class DriverProfileViewModel extends ChangeNotifier {
       notifyListeners();
     } catch (_) {
       _errorMessage = 'Error al actualizar perfil';
+      notifyListeners();
+    }
+  }
+
+  Future<bool> uploadPhoto({
+    required Uint8List bytes,
+    required String fileName,
+  }) async {
+    _isUploadingPhoto = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      _user = await _profileRepo.uploadPhoto(bytes: bytes, fileName: fileName);
+      return true;
+    } catch (_) {
+      _errorMessage = 'No pudimos actualizar tu foto. Intenta de nuevo.';
+      return false;
+    } finally {
+      _isUploadingPhoto = false;
       notifyListeners();
     }
   }

@@ -11,20 +11,24 @@ class HeatmapApi {
     required int municipio,
     required int diaSemana,
     required int hora,
+    int top = 5,
   }) async {
     final uri = Uri.parse('$_baseUrl/inferencias');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'municipio': municipio,
-        'dia_semana': diaSemana,
-        'hora': hora,
-      }),
-    );
+    final response = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'municipio': municipio,
+            'dia_semana': diaSemana,
+            'hora': hora,
+            'top': top,
+          }),
+        )
+        .timeout(const Duration(seconds: 12));
 
     if (response.statusCode != 200) {
-      throw Exception('Error al obtener zonas: ${response.statusCode}');
+      throw Exception('Zonas HTTP ${response.statusCode}');
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;

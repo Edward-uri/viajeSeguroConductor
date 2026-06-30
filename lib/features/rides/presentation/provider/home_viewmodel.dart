@@ -181,8 +181,11 @@ class HomeViewModel extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void goOnline(int idMunicipio) {
-    _socketService.emitOnline(idMunicipio);
+  Future<bool> goOnline(int idMunicipio) => _socketService.emitOnline(idMunicipio);
+
+  Future<void> refrescarPendientes() async {
+    _pendientes = await _repository.getPendingTrips();
+    notifyListeners();
   }
 
   void goOffline() {
@@ -198,15 +201,17 @@ class HomeViewModel extends ChangeNotifier {
         _repository.getStats(),
         _repository.getPendingTrips(),
         _vehicleRepository.getMiVehiculo(),
-        _profileRepository.getMe(),
+        // getMe no debe ser fatal: si falla, no debe ocultar la lista de viajes.
+        _profileRepository.getMe().then<User?>((u) => u).catchError((_) => null),
       ]);
       _stats = results[0] as DriverStats;
       _pendientes = results[1] as List<SolicitudViaje>;
       _miVehiculo = results[2] as Vehiculo?;
-      final user = results[3] as User;
-      if (user.idMunicipio != null) idMunicipio = user.idMunicipio!;
+      final user = results[3] as User?;
+      if (user?.idMunicipio != null) idMunicipio = user!.idMunicipio!;
+      debugPrint('[Home] pendientes=${_pendientes.length} municipio=$idMunicipio vehiculoAprobado=${_miVehiculo?.aprobado}');
     } catch (e) {
-      _errorMessage = 'Error al cargar datos';
+      _errorMessage = 'No pudimos cargar tu información. Revisa tu internet e intenta de nuevo.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -217,7 +222,7 @@ class HomeViewModel extends ChangeNotifier {
   Future<void> initLocation() async {
     final granted = await _locationService.requestPermission();
     if (!granted) {
-      _errorMessage = 'Permiso de ubicación requerido';
+      _errorMessage = 'Necesitamos tu ubicación para enviarte viajes cerca de ti. Actívala en los ajustes.';
       notifyListeners();
       return;
     }
@@ -252,7 +257,7 @@ class HomeViewModel extends ChangeNotifier {
           return;
         }
       } catch (_) {
-        _errorMessage = 'Error al verificar documentos y vehículo';
+        _errorMessage = 'No pudimos revisar tu estado. Intenta de nuevo en un momento.';
         notifyListeners();
         return;
       }
@@ -265,7 +270,7 @@ class HomeViewModel extends ChangeNotifier {
       } else {
         final granted = await _locationService.requestPermission();
         if (!granted) {
-          _errorMessage = 'Permiso de ubicación requerido';
+          _errorMessage = 'Necesitamos tu ubicación para enviarte viajes cerca de ti. Actívala en los ajustes.';
           notifyListeners();
           return;
         }
@@ -283,7 +288,12 @@ class HomeViewModel extends ChangeNotifier {
       _errorMessage = null;
 
       if (_isOnline) {
-        _socketService.emitOnline(idMunicipio);
+        final joined = await _socketService.emitOnline(idMunicipio);
+        if (!joined) {
+          _errorMessage =
+              'Ya estás disponible, pero aún no podemos enviarte viajes. Asegúrate de haber terminado tu registro (licencia y vehículo).';
+        }
+        await refrescarPendientes();
         _locationService.startTracking();
         _locationService.positionStream.listen((latLng) {
           _currentPosition = latLng;
@@ -297,7 +307,7 @@ class HomeViewModel extends ChangeNotifier {
         _currentRequest = null;
       }
     } catch (e) {
-      _errorMessage = 'Error al cambiar disponibilidad';
+      _errorMessage = 'No pudimos cambiar tu estado. Intenta de nuevo en un momento.';
     }
     notifyListeners();
   }
@@ -307,8 +317,11 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       _zonasCalientes = await _heatmapRepository.getZonasCalientes(idMunicipio);
+      debugPrint('[Home] zonas calientes: ${_zonasCalientes.length} (municipio $idMunicipio)');
     } catch (e) {
-      _errorMessage = 'Error al cargar zonas calientes';
+      // Las zonas son un extra: si fallan, no se molesta al usuario con un error técnico.
+      _zonasCalientes = [];
+      debugPrint('[Home] zonas calientes no disponibles: $e');
     } finally {
       _isLoadingZonas = false;
       notifyListeners();
@@ -345,7 +358,7 @@ class HomeViewModel extends ChangeNotifier {
             ? e.message
             : 'Este viaje ya fue tomado por otro conductor';
       } else {
-        _errorMessage = 'Error al aceptar viaje';
+        _errorMessage = 'No pudimos aceptar el viaje. Intenta de nuevo.';
       }
     }
     notifyListeners();
@@ -361,7 +374,7 @@ class HomeViewModel extends ChangeNotifier {
     try {
       await _repository.startRide(rideId);
     } catch (e) {
-      _errorMessage = 'Error al iniciar viaje';
+      _errorMessage = 'No pudimos iniciar el viaje. Intenta de nuevo.';
       notifyListeners();
     }
   }
@@ -370,7 +383,7 @@ class HomeViewModel extends ChangeNotifier {
     try {
       await _repository.completeRide(rideId);
     } catch (e) {
-      _errorMessage = 'Error al completar viaje';
+      _errorMessage = 'No pudimos terminar el viaje. Intenta de nuevo.';
       notifyListeners();
     }
   }
@@ -379,7 +392,7 @@ class HomeViewModel extends ChangeNotifier {
     try {
       await _repository.cancelRide(rideId, motivo: motivo);
     } catch (e) {
-      _errorMessage = 'Error al cancelar viaje';
+      _errorMessage = 'No pudimos cancelar el viaje. Intenta de nuevo.';
       notifyListeners();
     }
   }

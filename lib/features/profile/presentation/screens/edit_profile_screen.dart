@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../shared/data/providers/municipio_provider.dart';
+import '../../../../shared/utils/image_utils.dart';
+import '../../../../shared/widgets/authed_image.dart';
 import '../provider/driver_profile_viewmodel.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -55,6 +58,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: _PhotoEditor(
+                    url: vm.user?.fotoPerfilUrl,
+                    initials: _initials(vm.user?.correoElectronico),
+                    isUploading: vm.isUploadingPhoto,
+                    onTap: _cambiarFoto,
+                  ),
+                ),
+                const SizedBox(height: 28),
                 Text('Correo electrónico',
                     style: text.labelMedium?.copyWith(
                         fontWeight: FontWeight.w600)),
@@ -154,6 +166,45 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
+  String _initials(String? value) {
+    final v = (value ?? '').trim();
+    return v.isEmpty ? 'N/A' : v.substring(0, 1).toUpperCase();
+  }
+
+  Future<void> _cambiarFoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Tomar foto'),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Elegir de la galería'),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    final picked = await ImagePicker().pickImage(source: source, imageQuality: 88);
+    if (picked == null) return;
+    final jpeg = await compressToJpeg(await picked.readAsBytes());
+    if (!mounted) return;
+    final ok = await ref
+        .read(driverProfileViewModelProvider)
+        .uploadPhoto(bytes: jpeg, fileName: 'perfil.jpg');
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'Foto actualizada' : 'No pudimos actualizar tu foto. Intenta de nuevo.')),
+    );
+  }
+
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -196,6 +247,84 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         borderSide: const BorderSide(color: Color(0xFFFF8F00)),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    );
+  }
+}
+
+class _PhotoEditor extends StatelessWidget {
+  const _PhotoEditor({
+    required this.url,
+    required this.initials,
+    required this.isUploading,
+    required this.onTap,
+  });
+
+  final String? url;
+  final String initials;
+  final bool isUploading;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return GestureDetector(
+      onTap: isUploading ? null : onTap,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          ClipOval(
+            child: Container(
+              width: 104,
+              height: 104,
+              color: scheme.secondaryContainer,
+              alignment: Alignment.center,
+              child: AuthedImage(
+                path: url,
+                size: 104,
+                fallback: Text(
+                  initials,
+                  style: text.headlineMedium?.copyWith(
+                    color: scheme.onSecondaryContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (isUploading)
+            Container(
+              width: 104,
+              height: 104,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black.withValues(alpha: 0.4),
+              ),
+              child: const Center(
+                child: SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
+                ),
+              ),
+            ),
+          Positioned(
+            right: 2,
+            bottom: 2,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF8F00),
+                shape: BoxShape.circle,
+                border: Border.all(color: scheme.surface, width: 2),
+              ),
+              child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
