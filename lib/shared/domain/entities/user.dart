@@ -13,6 +13,7 @@ class User {
     this.apellidoPaterno,
     this.apellidoMaterno,
     this.fechaNacimiento,
+    this.nombreUsuario,
   });
 
   final int idUsuario;
@@ -28,6 +29,7 @@ class User {
   final String? apellidoPaterno;
   final String? apellidoMaterno;
   final String? fechaNacimiento;
+  final String? nombreUsuario;
 
   String get nombreCompleto => [nombre, apellidoPaterno, apellidoMaterno]
       .whereType<String>()
@@ -40,6 +42,7 @@ class User {
     String? telefono,
     String? correoElectronico,
     int? idMunicipio,
+    String? nombreUsuario,
   }) {
     return User(
       idUsuario: idUsuario,
@@ -55,6 +58,7 @@ class User {
       apellidoPaterno: apellidoPaterno,
       apellidoMaterno: apellidoMaterno,
       fechaNacimiento: fechaNacimiento,
+      nombreUsuario: nombreUsuario ?? this.nombreUsuario,
     );
   }
 }

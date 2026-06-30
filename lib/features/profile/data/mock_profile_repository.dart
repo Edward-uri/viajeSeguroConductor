@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../../../shared/domain/entities/user.dart';
+import '../domain/entities/update_profile_params.dart';
 import '../domain/repositories/profile_repository.dart';
 
 
@@ -50,6 +51,27 @@ class MockProfileRepository implements ProfileRepository {
       idMunicipio: _currentUser.idMunicipio,
       fotoPerfilUrl: 'https://mock.example.com/foto.jpg',
       fechaRegistro: _currentUser.fechaRegistro,
+    );
+    return _currentUser;
+  }
+
+  @override
+  Future<User> updateProfile(UpdateProfileParams params) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    _currentUser = User(
+      idUsuario: _currentUser.idUsuario,
+      rol: _currentUser.rol,
+      estadoCuenta: _currentUser.estadoCuenta,
+      telefono: params.telefono ?? _currentUser.telefono,
+      correoElectronico: params.correoElectronico,
+      telefonoVerificado: _currentUser.telefonoVerificado,
+      idMunicipio: _currentUser.idMunicipio,
+      fotoPerfilUrl: _currentUser.fotoPerfilUrl,
+      fechaRegistro: _currentUser.fechaRegistro,
+      nombre: params.nombre,
+      apellidoPaterno: params.apellidoPaterno,
+      apellidoMaterno: params.apellidoMaterno,
+      nombreUsuario: params.nombreUsuario,
     );
     return _currentUser;
   }
