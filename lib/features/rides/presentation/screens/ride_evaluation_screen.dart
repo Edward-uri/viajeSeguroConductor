@@ -108,87 +108,95 @@ class _RideEvaluationScreenState
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              const Spacer(),
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF1E0),
-                  borderRadius: BorderRadius.circular(40),
-                ),
-                child: const Icon(
-                  Icons.person_outline,
-                  color: Color(0xFFFF8F00),
-                  size: 40,
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 16),
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF1E0),
+                          borderRadius: BorderRadius.circular(40),
+                        ),
+                        child: const Icon(
+                          Icons.person_outline,
+                          color: Color(0xFFFF8F00),
+                          size: 40,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        '¿Cómo fue tu pasajero?',
+                        style: text.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1A1410),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(5, (i) {
+                          final starValue = i + 1;
+                          return GestureDetector(
+                            onTap: () => vm.setCalificacion(starValue),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                              child: Icon(
+                                starValue <= vm.calificacion
+                                    ? Icons.star_rounded
+                                    : Icons.star_outline_rounded,
+                                size: 44,
+                                color: starValue <= vm.calificacion
+                                    ? const Color(0xFFFF8F00)
+                                    : const Color(0xFFE2E2E2),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _starLabel(vm.calificacion),
+                        style: text.bodyMedium?.copyWith(
+                          color: const Color(0xFF6B6661),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      TextField(
+                        maxLines: 3,
+                        maxLength: 200,
+                        decoration: InputDecoration(
+                          hintText: 'Agrega un comentario (opcional)',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFE2E2E2)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFE2E2E2)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFFF8F00)),
+                          ),
+                        ),
+                        onChanged: vm.setComentario,
+                      ),
+                      if (vm.errorMessage != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          vm.errorMessage!,
+                          style: const TextStyle(color: Colors.red, fontSize: 13),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                '¿Cómo fue tu pasajero?',
-                style: text.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1410),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (i) {
-                  final starValue = i + 1;
-                  return GestureDetector(
-                    onTap: () => vm.setCalificacion(starValue),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Icon(
-                        starValue <= vm.calificacion
-                            ? Icons.star_rounded
-                            : Icons.star_outline_rounded,
-                        size: 44,
-                        color: starValue <= vm.calificacion
-                            ? const Color(0xFFFF8F00)
-                            : const Color(0xFFE2E2E2),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                _starLabel(vm.calificacion),
-                style: text.bodyMedium?.copyWith(
-                  color: const Color(0xFF6B6661),
-                ),
-              ),
-              const SizedBox(height: 32),
-              TextField(
-                maxLines: 3,
-                maxLength: 200,
-                decoration: InputDecoration(
-                  hintText: 'Agrega un comentario (opcional)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE2E2E2)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE2E2E2)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFFF8F00)),
-                  ),
-                ),
-                onChanged: vm.setComentario,
-              ),
-              const Spacer(),
-              if (vm.errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    vm.errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 13),
-                  ),
-                ),
               SizedBox(
                 width: double.infinity,
                 height: 54,

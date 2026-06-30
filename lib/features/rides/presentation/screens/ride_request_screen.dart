@@ -53,165 +53,174 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Nueva solicitud',
-                    style: text.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: scheme.primary,
-                    ),
-                  ),
-                  if (request != null)
-                    Text(
-                      '\$${request.monto.toStringAsFixed(2)}',
-                      style: text.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if (request != null) ...[
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: scheme.primaryContainer.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(Icons.money,
-                              size: 14,
-                              color: scheme.primary),
-                          const SizedBox(width: 4),
                           Text(
-                            request.metodoPago,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                            'Nueva solicitud',
+                            style: text.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
                               color: scheme.primary,
                             ),
                           ),
+                          if (request != null)
+                            Text(
+                              '\$${request.monto.toStringAsFixed(2)}',
+                              style: text.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: scheme.onSurface,
+                              ),
+                            ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${request.distanciaKm.toStringAsFixed(1)} km · ${request.duracionMin} min',
-                      style: text.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 24),
-              Center(
-                child: SizedBox(
-                  width: 80,
-                  height: 80,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CircularProgressIndicator(
-                        value: _countdown / 15,
-                        strokeWidth: 6,
-                        backgroundColor: scheme.surfaceContainerHigh,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            scheme.primary),
-                      ),
+                      const SizedBox(height: 8),
+                      if (request != null) ...[
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: scheme.primaryContainer.withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.money,
+                                      size: 14,
+                                      color: scheme.primary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    request.metodoPago,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: scheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${request.distanciaKm.toStringAsFixed(1)} km · ${request.duracionMin} min',
+                              style: text.bodyMedium?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 24),
                       Center(
-                        child: Text(
-                          '${_countdown}s',
-                          style: text.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: _countdown <= 3
-                                ? scheme.error
-                                : scheme.primary,
+                        child: SizedBox(
+                          width: 80,
+                          height: 80,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              CircularProgressIndicator(
+                                value: _countdown / 15,
+                                strokeWidth: 6,
+                                backgroundColor: scheme.surfaceContainerHigh,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    scheme.primary),
+                              ),
+                              Center(
+                                child: Text(
+                                  '${_countdown}s',
+                                  style: text.headlineMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: _countdown <= 3
+                                        ? scheme.error
+                                        : scheme.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
+                      const SizedBox(height: 24),
+                      if (request != null) ...[
+                          Center(
+                            child: CircleAvatar(
+                              radius: 32,
+                              backgroundColor: scheme.primary,
+                              child: Text(
+                                request.pasajeroIniciales,
+                                style: text.titleLarge?.copyWith(
+                                  color: scheme.onPrimary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 12),
+                          Center(
+                            child: Text(
+                              request.nombreCompleto,
+                              style: text.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                          ),
+                          Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.star,
+                                    size: 16, color: scheme.primary),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${request.pasajeroCalificacion.toStringAsFixed(1)} · Pasajera',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 24),
+                        _locationRow(
+                          Icons.circle_outlined,
+                          request.origen,
+                          'Recoger · ${request.origenDistancia}',
+                          scheme.primary,
+                          scheme,
+                        ),
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 11),
+                          child: Container(
+                            width: 2,
+                            height: 24,
+                            color: scheme.outlineVariant,
+                          ),
+                        ),
+                        _locationRow(
+                          Icons.location_on_outlined,
+                          request.destino,
+                          'Destino del pasajero',
+                          scheme.primary,
+                          scheme,
+                        ),
+                      ],
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              if (request != null) ...[
-                  Center(
-                    child: CircleAvatar(
-                      radius: 32,
-                      backgroundColor: scheme.primary,
-                      child: Text(
-                        request.pasajeroIniciales,
-                        style: text.titleLarge?.copyWith(
-                          color: scheme.onPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                  Center(
-                    child: Text(
-                      request.nombreCompleto,
-                      style: text.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.star,
-                            size: 16, color: scheme.primary),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${request.pasajeroCalificacion.toStringAsFixed(1)} · Pasajera',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 24),
-                _locationRow(
-                  Icons.circle_outlined,
-                  request.origen,
-                  'Recoger · ${request.origenDistancia}',
-                  scheme.primary,
-                  scheme,
-                ),
-                const SizedBox(height: 4),
-                Padding(
-                  padding: const EdgeInsets.only(left: 11),
-                  child: Container(
-                    width: 2,
-                    height: 24,
-                    color: scheme.outlineVariant,
-                  ),
-                ),
-                _locationRow(
-                  Icons.location_on_outlined,
-                  request.destino,
-                  'Destino del pasajero',
-                  scheme.primary,
-                  scheme,
-                ),
-              ],
-              const Spacer(),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
