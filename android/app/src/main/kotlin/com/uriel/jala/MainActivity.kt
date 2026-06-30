@@ -1,4 +1,4 @@
-package com.jala.viajeseguroconductor
+package com.uriel.jala
 
 import io.flutter.embedding.android.FlutterActivity
 
