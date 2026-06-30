@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/di/core_module.dart';
+import '../../../core/http/api_exception.dart';
 import '../../../core/widgets/logo_badge.dart';
 import '../../../features/documents/di/documents_module.dart';
 import '../../../features/documents/presentation/utils/document_route_helper.dart';
@@ -37,7 +38,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       return;
     }
     final repo = ref.read(documentoRepositoryProvider);
-    final route = await resolveDocumentsRoute(repo);
+    String route;
+    try {
+      route = await resolveDocumentsRoute(repo);
+    } on UnauthorizedException {
+      // Token y refresh vencidos: limpia la sesión y manda al login.
+      await session.logout();
+      route = AppRoutes.login;
+    }
     if (!mounted) return;
     context.go(route);
   }

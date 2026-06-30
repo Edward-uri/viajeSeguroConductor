@@ -1,3 +1,4 @@
+import '../../../../core/http/api_exception.dart';
 import '../../../../routes/app_routes.dart';
 import '../../domain/entities/documento.dart';
 import '../../domain/repositories/documento_repository.dart';
@@ -13,6 +14,9 @@ Future<String> resolveDocumentsRoute(DocumentoRepository repo) async {
       return AppRoutes.documentsReview;
     }
     return AppRoutes.documents;
+  } on UnauthorizedException {
+    // Sesión vencida (el refresh también falló): que el splash mande a login.
+    rethrow;
   } catch (_) {
     return AppRoutes.documents;
   }
