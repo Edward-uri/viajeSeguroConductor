@@ -42,9 +42,11 @@ class RideProgressViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   LatLng? _currentPosition;
+  LatLng? _pasajeroPosition;
   StreamSubscription? _positionSub;
   StreamSubscription? _stateChangedSub;
   StreamSubscription? _notAvailableSub;
+  StreamSubscription? _pasajeroLocationSub;
   bool _canceladoPorPasajero = false;
 
   List<LatLng> _routePoints = const [];
@@ -58,6 +60,7 @@ class RideProgressViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   LatLng? get currentPosition => _currentPosition;
+  LatLng? get pasajeroPosition => _pasajeroPosition;
   bool get canceladoPorPasajero => _canceladoPorPasajero;
   List<LatLng> get routePoints => _routePoints;
   int? get etaMin => _etaMin;
@@ -99,6 +102,15 @@ class RideProgressViewModel extends ChangeNotifier {
     _notAvailableSub = _socketService.onRideNotAvailable.listen((data) {
       _marcarCancelado(data['idViaje']?.toString());
     });
+    _pasajeroLocationSub?.cancel();
+    _pasajeroLocationSub = _socketService.onPassengerLocation.listen((data) {
+      if (_ride == null || data['idViaje']?.toString() != _ride!.id) return;
+      final lat = (data['lat'] as num?)?.toDouble();
+      final lng = (data['lng'] as num?)?.toDouble();
+      if (lat == null || lng == null) return;
+      _pasajeroPosition = LatLng(lat, lng);
+      notifyListeners();
+    });
   }
 
   void _marcarCancelado(String? idViaje) {
@@ -114,7 +126,8 @@ class RideProgressViewModel extends ChangeNotifier {
       _currentPosition = latLng;
       notifyListeners();
 
-      if (_ride != null && _hasStarted) {
+      // Comparte la posición desde que va por el pasajero (aceptado) hasta el destino.
+      if (_ride != null) {
         _socketService.emitLocation(
           idViaje: _ride!.idViaje,
           lat: latLng.latitude,
@@ -217,6 +230,7 @@ class RideProgressViewModel extends ChangeNotifier {
     _positionSub?.cancel();
     _stateChangedSub?.cancel();
     _notAvailableSub?.cancel();
+    _pasajeroLocationSub?.cancel();
     _locationService.stopTracking();
     super.dispose();
   }

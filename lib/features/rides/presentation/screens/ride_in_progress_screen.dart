@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/env/api_config.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../shared/widgets/authed_image.dart';
 import '../../domain/entities/solicitud_viaje.dart';
 import '../provider/home_viewmodel.dart';
 import '../provider/ride_progress_viewmodel.dart';
@@ -236,6 +237,32 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       );
     }
 
+    // Ubicación del pasajero en vivo (se mueve conforme camina/espera).
+    if (vm.pasajeroPosition != null) {
+      markers.add(
+        Marker(
+          point: vm.pasajeroPosition!,
+          width: 40,
+          height: 40,
+          child: Container(
+            decoration: BoxDecoration(
+              color: scheme.tertiary,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.person, color: Colors.white, size: 20),
+          ),
+        ),
+      );
+    }
+
     if (ride.origenLat != null && ride.origenLng != null) {
       markers.add(
         Marker(
@@ -325,21 +352,23 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: scheme.primaryContainer,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Text(
-              ride.pasajeroIniciales.isNotEmpty
-                  ? ride.pasajeroIniciales
-                  : '?',
-              style: TextStyle(
-                color: scheme.primary,
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
+          ClipOval(
+            child: AuthedImage(
+              path: ride.pasajeroFotoUrl,
+              size: 48,
+              fallback: Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                color: scheme.primaryContainer,
+                child: Text(
+                  ride.pasajeroIniciales.isNotEmpty ? ride.pasajeroIniciales : '?',
+                  style: TextStyle(
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                  ),
+                ),
               ),
             ),
           ),
