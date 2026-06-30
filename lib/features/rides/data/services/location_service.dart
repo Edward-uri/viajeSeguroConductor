@@ -45,9 +45,13 @@ class LocationService {
   /// ¿El GPS del teléfono está encendido? (distinto del permiso de la app).
   Future<bool> isServiceEnabled() => Geolocator.isLocationServiceEnabled();
 
-  void startTracking({Duration interval = const Duration(seconds: 10)}) {
+  void startTracking({
+    Duration interval = const Duration(seconds: 10),
+    bool immediate = true,
+  }) {
     stopTracking();
-    _tick();
+    // immediate:false evita re-pedir GPS si quien llama ya tiene una posición fresca.
+    if (immediate) _tick();
     _timer = Timer.periodic(interval, (_) => _tick());
   }
 

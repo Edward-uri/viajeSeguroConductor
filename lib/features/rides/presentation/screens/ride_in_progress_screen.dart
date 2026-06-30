@@ -83,12 +83,14 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
   }
 
   Future<void> _onSoltar(RideProgressViewModel vm, SolicitudViaje ride) async {
+    final enCurso = vm.hasStarted;
     final soltar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('¿Soltar este viaje?'),
-        content: const Text(
-            'El viaje volverá a estar disponible para otros conductores. Esto solo se puede antes de iniciar.'),
+        title: Text(enCurso ? '¿Cancelar este viaje?' : '¿Soltar este viaje?'),
+        content: Text(enCurso
+            ? 'El viaje en curso se cancelará. Avísale al pasajero el motivo.'
+            : 'El viaje volverá a estar disponible para otros conductores.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -96,7 +98,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Soltar'),
+            child: Text(enCurso ? 'Cancelar viaje' : 'Soltar'),
           ),
         ],
       ),
@@ -346,7 +348,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
               ),
             ),
           ]
-          else
+          else ...[
             SizedBox(
               width: double.infinity,
               height: 56,
@@ -385,6 +387,15 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: vm.isLoading ? null : () => _onSoltar(vm, ride),
+              child: Text(
+                'Cancelar viaje',
+                style: TextStyle(color: scheme.error, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
           if (vm.errorMessage != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),

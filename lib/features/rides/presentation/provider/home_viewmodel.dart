@@ -233,114 +233,134 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   Future<void> initLocation() async {
+    final pos = await _ensurePosition();
+    if (pos != null) notifyListeners();
+  }
+
+  /// Devuelve la posición actual reutilizando la ya conocida; sólo pide
+  /// permiso/GPS si todavía no la tenemos. Pone _errorMessage y devuelve null
+  /// si no se puede obtener (notifica en los caminos de error).
+  Future<LatLng?> _ensurePosition() async {
+    if (_currentPosition != null) return _currentPosition;
     final granted = await _locationService.requestPermission();
     if (!granted) {
       _errorMessage = 'Necesitamos tu ubicación para enviarte viajes cerca de ti. Actívala en los ajustes.';
       notifyListeners();
-      return;
+      return null;
     }
     if (!await _locationService.isServiceEnabled()) {
       _errorMessage = 'Activa la ubicación (GPS) de tu teléfono para mostrar tu posición.';
       notifyListeners();
-      return;
+      return null;
     }
     try {
       _currentPosition = await _locationService.getCurrentPosition();
+      return _currentPosition;
     } catch (_) {
       _errorMessage = 'No pudimos obtener tu ubicación. Revisa que el GPS esté activo.';
+      notifyListeners();
+      return null;
     }
-    notifyListeners();
   }
 
   Future<void> toggleOnline() async {
-    if (!_isOnline) {
-      try {
-        final docs = await _documentoRepository.getDocumentos();
-        debugPrint('[Gate] docs=${docs.map((d) => "${d.id}:${d.status.name}").toList()}');
-        final pendientes =
-            docs.where((d) => d.status != DocumentStatus.approved).toList();
-        if (docs.isEmpty || pendientes.isNotEmpty) {
-          _errorMessage = docs.isEmpty
-              ? 'Aún no pudimos verificar tus documentos. Revisa tu internet e intenta de nuevo.'
-              : 'Te falta que aprueben: ${pendientes.map((d) => d.nombre).join(', ')}.';
-          notifyListeners();
-          return;
-        }
-        _miVehiculo = await _vehicleRepository.getMiVehiculo();
-        if (_miVehiculo == null) {
-          _errorMessage =
-              'Registra tu vehículo para poder recibir viajes.';
-          notifyListeners();
-          return;
-        }
-        if (!_miVehiculo!.aprobado) {
-          _errorMessage =
-              'Tu vehículo aún no está aprobado. Espera la revisión del administrador.';
-          notifyListeners();
-          return;
-        }
-      } catch (_) {
-        _errorMessage = 'No pudimos revisar tu estado. Intenta de nuevo en un momento.';
+    if (_isOnline) {
+      _goOfflineLocal();
+      return;
+    }
+
+    // 1) Verificaciones en paralelo: documentos aprobados + vehículo aprobado.
+    try {
+      final results = await Future.wait<Object?>([
+        _documentoRepository.getDocumentos(),
+        _vehicleRepository.getMiVehiculo(),
+      ]);
+      final docs = results[0] as List<Documento>;
+      _miVehiculo = results[1] as Vehiculo?;
+      final pendientesDocs =
+          docs.where((d) => d.status != DocumentStatus.approved).toList();
+      if (docs.isEmpty || pendientesDocs.isNotEmpty) {
+        _errorMessage = docs.isEmpty
+            ? 'Aún no pudimos verificar tus documentos. Revisa tu internet e intenta de nuevo.'
+            : 'Te falta que aprueben: ${pendientesDocs.map((d) => d.nombre).join(', ')}.';
         notifyListeners();
         return;
       }
-    }
-    final newState = !_isOnline;
-    try {
-      LatLng pos;
-      if (_currentPosition != null) {
-        pos = _currentPosition!;
-      } else {
-        final granted = await _locationService.requestPermission();
-        if (!granted) {
-          _errorMessage = 'Necesitamos tu ubicación para enviarte viajes cerca de ti. Actívala en los ajustes.';
-          notifyListeners();
-          return;
-        }
-        if (!await _locationService.isServiceEnabled()) {
-          _errorMessage = 'Activa la ubicación (GPS) de tu teléfono para ponerte disponible.';
-          notifyListeners();
-          return;
-        }
-        pos = await _locationService.getCurrentPosition();
-        _currentPosition = pos;
+      if (_miVehiculo == null) {
+        _errorMessage = 'Registra tu vehículo para poder recibir viajes.';
+        notifyListeners();
+        return;
       }
+      if (!_miVehiculo!.aprobado) {
+        _errorMessage =
+            'Tu vehículo aún no está aprobado. Espera la revisión del administrador.';
+        notifyListeners();
+        return;
+      }
+    } catch (_) {
+      _errorMessage = 'No pudimos revisar tu estado. Intenta de nuevo en un momento.';
+      notifyListeners();
+      return;
+    }
 
+    // 2) Posición: reutiliza la que ya tenemos; sólo pide GPS si falta.
+    final pos = await _ensurePosition();
+    if (pos == null) return; // _ensurePosition ya mostró el mensaje.
+
+    // 3) Marcar disponible en el backend (única llamada que bloquea el switch).
+    try {
       await _repository.toggleAvailability(
-        disponible: newState,
+        disponible: true,
         lat: pos.latitude,
         lng: pos.longitude,
       );
-
-      _isOnline = newState;
-      _errorMessage = null;
-
-      if (_isOnline) {
-        final joined = await _socketService.emitOnline(idMunicipio);
-        if (!joined) {
-          _errorMessage =
-              'Ya estás disponible, pero aún no podemos enviarte viajes. Asegúrate de haber terminado tu registro (licencia y vehículo).';
-        }
-        await refrescarPendientes();
-        _locationService.startTracking();
-        _positionSub?.cancel();
-        _positionSub = _locationService.positionStream.listen((latLng) {
-          _currentPosition = latLng;
-          notifyListeners();
-        });
-        _fetchZonasCalientes();
-      } else {
-        _socketService.emitOffline();
-        _locationService.stopTracking();
-        _positionSub?.cancel();
-        _aceptadosPorMi.clear();
-        _zonasCalientes = [];
-        _currentRequest = null;
-      }
-    } catch (e) {
+    } catch (_) {
       _errorMessage = 'No pudimos cambiar tu estado. Intenta de nuevo en un momento.';
+      notifyListeners();
+      return;
     }
+
+    // 4) Ya estás en línea: el switch responde AQUÍ, sin esperar socket ni zonas.
+    _isOnline = true;
+    _errorMessage = null;
+    // immediate:false → no re-pide GPS; ya tenemos `pos` fresca.
+    _locationService.startTracking(immediate: false);
+    _positionSub?.cancel();
+    _positionSub = _locationService.positionStream.listen((latLng) {
+      _currentPosition = latLng;
+      notifyListeners();
+    });
     notifyListeners();
+
+    // 5) Resto del trabajo en segundo plano (no bloquea la UI).
+    _socketService.emitOnline(idMunicipio).then((joined) {
+      if (!joined) {
+        _errorMessage =
+            'Ya estás disponible, pero aún no podemos enviarte viajes. Asegúrate de haber terminado tu registro (licencia y vehículo).';
+        notifyListeners();
+      }
+    });
+    refrescarPendientes();
+    _fetchZonasCalientes();
+  }
+
+  void _goOfflineLocal() {
+    _isOnline = false;
+    _socketService.emitOffline();
+    _locationService.stopTracking();
+    _positionSub?.cancel();
+    _aceptadosPorMi.clear();
+    _zonasCalientes = [];
+    _currentRequest = null;
+    notifyListeners();
+    // Avisar al backend en segundo plano: no es crítico para la UI.
+    final pos = _currentPosition;
+    if (pos != null) {
+      _repository
+          .toggleAvailability(
+              disponible: false, lat: pos.latitude, lng: pos.longitude)
+          .catchError((_) {});
+    }
   }
 
   Future<void> _fetchZonasCalientes() async {
