@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show Color;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,6 +48,34 @@ final homeViewModelProvider =
   return vm;
 });
 
+/// Corre en un isolate de background. Procesa los mapas crudos de zonas
+/// calientes: extrae valores numéricos y pre-computa el color del marcador
+/// para evitar trabajo pesado en el hilo principal.
+List<Map<String, dynamic>> _processHeatZoneMaps(List<Map<String, dynamic>> raw) {
+  int lerpColor(int a, int b, double t) {
+    final ar = (a >> 16) & 0xFF, ag = (a >> 8) & 0xFF, ab = a & 0xFF;
+    final br = (b >> 16) & 0xFF, bg = (b >> 8) & 0xFF, bb = b & 0xFF;
+    return 0xFF000000 |
+        ((ar + ((br - ar) * t).round()) << 16) |
+        ((ag + ((bg - ag) * t).round()) << 8) |
+        ((ab + ((bb - ab) * t).round()));
+  }
+
+  return raw.map((z) {
+    final intensidad = (z['intensidad'] as num).toDouble();
+    return <String, dynamic>{
+      'lat': (z['lat'] as num).toDouble(),
+      'lng': (z['lng'] as num).toDouble(),
+      'intensidad': intensidad,
+      'demand_density': (z['demand_density'] as num).toDouble(),
+      'supply_demand_ratio': (z['supply_demand_ratio'] as num).toDouble(),
+      'n_requests': (z['n_requests'] as num).toInt(),
+      'radio_m': (z['radio_m'] as num).toDouble(),
+      'color': lerpColor(0xFFFFA000, 0xFFD32F2F, intensidad),
+    };
+  }).toList();
+}
+
 class HomeViewModel extends ChangeNotifier {
   HomeViewModel(
     this._repository,
@@ -93,6 +122,7 @@ class HomeViewModel extends ChangeNotifier {
   StreamSubscription? _positionSub;
 
   List<HeatZone> _zonasCalientes = [];
+  List<Color> _heatZoneColors = [];
   bool _isLoadingZonas = false;
   int idMunicipio = 1;
 
@@ -105,6 +135,7 @@ class HomeViewModel extends ChangeNotifier {
   LatLng? get currentPosition => _currentPosition;
   SocketStatus get socketStatus => _socketStatus;
   List<HeatZone> get zonasCalientes => _zonasCalientes;
+  List<Color> get heatZoneColors => _heatZoneColors;
   bool get isLoadingZonas => _isLoadingZonas;
 
   void initSocket({required String token}) {
@@ -365,6 +396,7 @@ class HomeViewModel extends ChangeNotifier {
     _positionSub?.cancel();
     _aceptadosPorMi.clear();
     _zonasCalientes = [];
+    _heatZoneColors = [];
     _currentRequest = null;
     notifyListeners();
     // Avisar al backend en segundo plano: no es crítico para la UI.
@@ -381,11 +413,26 @@ class HomeViewModel extends ChangeNotifier {
     _isLoadingZonas = true;
     notifyListeners();
     try {
-      _zonasCalientes = await _heatmapRepository.getZonasCalientes(idMunicipio);
+      final raw = await _heatmapRepository.getZonasCalientesRaw(idMunicipio);
+      final processed = await compute(_processHeatZoneMaps, raw);
+
+      _zonasCalientes = processed.map((m) => HeatZone(
+        lat: (m['lat'] as num).toDouble(),
+        lng: (m['lng'] as num).toDouble(),
+        intensidad: (m['intensidad'] as num).toDouble(),
+        demandDensity: (m['demand_density'] as num).toDouble(),
+        supplyDemandRatio: (m['supply_demand_ratio'] as num).toDouble(),
+        nRequests: (m['n_requests'] as num).toInt(),
+        radioM: (m['radio_m'] as num).toDouble(),
+      )).toList();
+      _heatZoneColors = processed
+          .map((m) => Color((m['color'] as num).toInt()))
+          .toList();
+
       debugPrint('[Home] zonas calientes: ${_zonasCalientes.length} (municipio $idMunicipio)');
     } catch (e) {
-      // Las zonas son un extra: si fallan, no se molesta al usuario con un error técnico.
       _zonasCalientes = [];
+      _heatZoneColors = [];
       debugPrint('[Home] zonas calientes no disponibles: $e');
     } finally {
       _isLoadingZonas = false;

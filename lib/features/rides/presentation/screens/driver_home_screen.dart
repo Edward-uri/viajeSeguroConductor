@@ -111,10 +111,6 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     }
   }
 
-  // Naranja (baja) → rojo (alta intensidad).
-  Color _zonaColor(double intensidad) =>
-      Color.lerp(const Color(0xFFFFA000), const Color(0xFFD32F2F), intensidad)!;
-
   void _onHeatZoneTap() {
     final hit = _heatHitNotifier.value;
     if (hit != null && hit.hitValues.isNotEmpty && context.mounted) {
@@ -287,8 +283,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                         ),
                       if (vm.zonasCalientes.isNotEmpty) ...[
                         CircleLayer(
-                          circles: vm.zonasCalientes.map((z) {
-                            final base = _zonaColor(z.intensidad);
+                          circles: vm.zonasCalientes.asMap().entries.map((e) {
+                            final i = e.key;
+                            final z = e.value;
+                            final base = vm.heatZoneColors[i];
                             return CircleMarker(
                               point: LatLng(z.lat, z.lng),
                               radius: z.radioM,
@@ -304,17 +302,20 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                         ),
                         MarkerLayer(
                           markers: vm.zonasCalientes
-                              .map((z) => Marker(
-                                    point: LatLng(z.lat, z.lng),
-                                    width: 56,
-                                    height: 56,
-                                    child: _ZonaBadge(
-                                      intensidad: z.intensidad,
-                                      color: _zonaColor(z.intensidad),
-                                      onTap: () => _showZoneDetails(z),
-                                    ),
-                                  ))
-                              .toList(),
+                              .asMap().entries.map((e) {
+                            final i = e.key;
+                            final z = e.value;
+                            return Marker(
+                              point: LatLng(z.lat, z.lng),
+                              width: 56,
+                              height: 56,
+                              child: _ZonaBadge(
+                                intensidad: z.intensidad,
+                                color: vm.heatZoneColors[i],
+                                onTap: () => _showZoneDetails(z),
+                              ),
+                            );
+                          }).toList(),
                         ),
                       ],
                     ],
