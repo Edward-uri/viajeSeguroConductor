@@ -353,16 +353,36 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                     ),
                   ),
                   if (isLandscape)
-                    _LandscapeBottomBar(
-                      stats: vm.stats,
-                      pendientes: vm.pendientes,
-                      onSelect: vm.seleccionarViaje,
-                      isOnline: vm.isOnline,
-                      onToggle: (_) => vm.toggleOnline(),
-                      onlineElapsed: onlineElapsed,
-                      text: text,
-                      scheme: scheme,
-                    ),
+                    vm.esConductor
+                        ? _LandscapeBottomBar(
+                            stats: vm.stats,
+                            pendientes: vm.pendientes,
+                            onSelect: vm.seleccionarViaje,
+                            isOnline: vm.isOnline,
+                            onToggle: (_) => vm.toggleOnline(),
+                            onlineElapsed: onlineElapsed,
+                            text: text,
+                            scheme: scheme,
+                          )
+                        : Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: InkWell(
+                              onTap: () => context.push(AppRoutes.documents),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 12),
+                                color: scheme.surfaceContainerLow,
+                                child: Text(
+                                  'Completa tu registro de conductor para recibir viajes →',
+                                  style: text.bodyMedium
+                                      ?.copyWith(color: scheme.primary),
+                                ),
+                              ),
+                            ),
+                          ),
                 ],
               ),
             ),
