@@ -5,9 +5,12 @@ class UserMapper {
 
   static User fromJson(Map<String, dynamic> json) {
     final persona = json['persona'] as Map<String, dynamic>?;
+    final roles = (json['roles'] as List?)?.map((e) => e.toString()).toList() ??
+        const <String>[];
     return User(
       idUsuario: (json['idUsuario'] as num).toInt(),
-      rol: json['rol'] as String,
+      rol: json['rol']?.toString() ?? (roles.isNotEmpty ? roles.first : 'pasajero'),
+      roles: roles,
       estadoCuenta: json['estadoCuenta'] as String,
       telefono: json['telefono'] as String?,
       correoElectronico: json['correoElectronico'] as String?,
