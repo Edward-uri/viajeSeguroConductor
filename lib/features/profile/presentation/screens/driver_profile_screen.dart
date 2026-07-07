@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../features/documents/di/documents_module.dart';
-import '../../../../features/documents/domain/entities/documento.dart';
 import '../../../../routes/app_routes.dart';
 import '../../../../shared/widgets/authed_image.dart';
 import '../provider/driver_profile_viewmodel.dart';
@@ -45,29 +43,12 @@ class DriverProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
-  bool _docsApproved = false;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(driverProfileViewModelProvider).loadData();
-      _checkDocsApproved();
     });
-  }
-
-  Future<void> _checkDocsApproved() async {
-    final repo = ref.read(documentoRepositoryProvider);
-    try {
-      final docs = await repo.getDocumentos();
-      if (mounted) {
-        setState(() {
-          _docsApproved = docs.every((d) => d.status == DocumentStatus.approved);
-        });
-      }
-    } catch (_) {
-      // si falla, asumimos que no están aprobados
-    }
   }
 
   @override
@@ -224,16 +205,16 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push(AppRoutes.editProfile),
                   ),
-                  if (!_docsApproved) ...[
-                    const Divider(height: 1, indent: 16, endIndent: 16),
-                    ListTile(
-                      leading: const Icon(Icons.description_outlined),
-                      title: const Text('Mis documentos'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push(AppRoutes.documents),
-                    ),
-                    const Divider(height: 1, indent: 16, endIndent: 16),
-                  ],
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: Text(user != null && user.esConductor
+                        ? 'Mis documentos'
+                        : 'Quiero manejar · Documentos'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(AppRoutes.documents),
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
                     leading: const Icon(Icons.credit_card_outlined),
                     title: const Text('Métodos de cobro'),

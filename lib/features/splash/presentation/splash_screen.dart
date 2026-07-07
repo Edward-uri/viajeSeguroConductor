@@ -3,10 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/di/core_module.dart';
-import '../../../core/http/api_exception.dart';
 import '../../../core/widgets/logo_badge.dart';
-import '../../../features/documents/di/documents_module.dart';
-import '../../../features/documents/presentation/utils/document_route_helper.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/theme.dart';
 
@@ -26,9 +23,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _decideRoute() async {
-    // Mantiene la sesión: si hay token válido entra directo según el estado de
-    // documentos (no aprobado → siempre ve el estado de sus documentos). Si la
-    // sesión venció (refresh también falló) → login. Sin sesión → bienvenida.
+    // Mantiene la sesión: si hay token entra directo al home (los documentos
+    // ya no bloquean el acceso; son un opt-in desde "Quiero manejar"). Sin
+    // sesión → bienvenida.
     final session = ref.read(sessionServiceProvider);
     final results = await Future.wait<dynamic>([
       session.hasSession(),
@@ -36,20 +33,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     ]);
     final hasSession = results[0] as bool;
     if (!mounted) return;
-    if (!hasSession) {
-      context.go(AppRoutes.getstarted);
-      return;
-    }
-    final repo = ref.read(documentoRepositoryProvider);
-    String route;
-    try {
-      route = await resolveDocumentsRoute(repo);
-    } on UnauthorizedException {
-      await session.logout();
-      route = AppRoutes.login;
-    }
-    if (!mounted) return;
-    context.go(route);
+    context.go(hasSession ? AppRoutes.driverHome : AppRoutes.getstarted);
   }
 
   @override

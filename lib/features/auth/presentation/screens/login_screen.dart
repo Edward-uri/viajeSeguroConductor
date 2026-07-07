@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/http/api_exception.dart';
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../core/widgets/logo_badge.dart';
-import '../../../../features/documents/di/documents_module.dart';
-import '../../../../features/documents/presentation/utils/document_route_helper.dart';
 import '../../../../routes/app_routes.dart';
 import '../provider/login_password_viewmodel.dart';
 
@@ -37,15 +34,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     vm.setPassword(_passwordCtrl.text);
     final ok = await vm.login();
     if (ok && context.mounted) {
-      final repo = ref.read(documentoRepositoryProvider);
-      String route;
-      try {
-        route = await resolveDocumentsRoute(repo);
-      } on UnauthorizedException {
-        route = AppRoutes.documents;
-      }
-      if (!context.mounted) return;
-      context.go(route);
+      context.go(AppRoutes.driverHome);
     }
   }
 

@@ -36,13 +36,13 @@ class _RegisterPhotoScreenState extends ConsumerState<RegisterPhotoScreen> {
     setState(() => _bytes = jpeg);
   }
 
-  void _irADocumentos() {
+  void _irAlHome() {
     context.go(AppRoutes.driverHome);
   }
 
   Future<void> _subir() async {
     if (_bytes == null) {
-      _irADocumentos();
+      _irAlHome();
       return;
     }
     setState(() => _subiendo = true);
@@ -50,12 +50,12 @@ class _RegisterPhotoScreenState extends ConsumerState<RegisterPhotoScreen> {
     if (!mounted) return;
     setState(() => _subiendo = false);
     if (ok) {
-      _irADocumentos();
+      _irAlHome();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No se pudo subir la foto. Puedes hacerlo luego desde tu perfil.')),
       );
-      _irADocumentos();
+      _irAlHome();
     }
   }
 
@@ -131,7 +131,7 @@ class _RegisterPhotoScreenState extends ConsumerState<RegisterPhotoScreen> {
               const SizedBox(height: 8),
               if (_bytes != null)
                 TextButton(
-                  onPressed: _subiendo ? null : _irADocumentos,
+                  onPressed: _subiendo ? null : _irAlHome,
                   child: const Text('Omitir por ahora',
                       style: TextStyle(color: _kOrange, fontWeight: FontWeight.w600)),
                 ),

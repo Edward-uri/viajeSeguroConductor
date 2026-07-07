@@ -9,8 +9,6 @@ import 'package:latlong2/latlong.dart';
 import '../../../../core/di/core_module.dart';
 import '../../../../core/env/api_config.dart';
 import '../../../../features/auth/di/auth_module.dart';
-import '../../../../features/documents/di/documents_module.dart';
-import '../../../../features/documents/presentation/utils/document_route_helper.dart';
 import '../../../../features/heatmap/data/models/heat_zone.dart';
 import '../../../../routes/app_routes.dart';
 import '../../domain/entities/solicitud_viaje.dart';
@@ -35,13 +33,6 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final repo = ref.read(documentoRepositoryProvider);
-      final route = await resolveDocumentsRoute(repo);
-      if (route != AppRoutes.driverHome) {
-        if (!context.mounted) return;
-        context.go(route);
-        return;
-      }
       final vm = ref.read(homeViewModelProvider);
       vm.loadData();
 
@@ -376,14 +367,28 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               ),
             ),
             if (!isLandscape)
-              _BottomSheet(
-                pendientes: vm.pendientes,
-                onSelect: vm.seleccionarViaje,
-                isOnline: vm.isOnline,
-                onToggle: (_) => vm.toggleOnline(),
-                text: text,
-                scheme: scheme,
-              ),
+              vm.esConductor
+                  ? _BottomSheet(
+                      pendientes: vm.pendientes,
+                      onSelect: vm.seleccionarViaje,
+                      isOnline: vm.isOnline,
+                      onToggle: (_) => vm.toggleOnline(),
+                      text: text,
+                      scheme: scheme,
+                    )
+                  : InkWell(
+                      onTap: () => context.push(AppRoutes.documents),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                        color: scheme.surfaceContainerLow,
+                        child: Text(
+                          'Completa tu registro de conductor para recibir viajes →',
+                          style: text.bodyMedium?.copyWith(color: scheme.primary),
+                        ),
+                      ),
+                    ),
           ],
         ),
       ),
