@@ -19,15 +19,21 @@ class RegisterMunicipioScreen extends ConsumerStatefulWidget {
 class _RegisterMunicipioScreenState extends ConsumerState<RegisterMunicipioScreen> {
   Municipio? _selected;
 
-  void _onContinue() {
+  Future<void> _onContinue() async {
     if (_selected == null) return;
-    ref.read(registerViewModelProvider).setIdMunicipio(_selected!.idMunicipio);
-    context.push(AppRoutes.license);
+    final vm = ref.read(registerViewModelProvider);
+    vm.setIdMunicipio(_selected!.idMunicipio);
+    final ok = await vm.completeRegistration();
+    if (ok && context.mounted) {
+      // Ya autenticado: paso opcional de foto de perfil antes de entrar a la app.
+      context.go(AppRoutes.registerPhoto);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final municipios = ref.watch(municipiosProvider);
+    final vm = ref.watch(registerViewModelProvider);
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
@@ -69,10 +75,17 @@ class _RegisterMunicipioScreenState extends ConsumerState<RegisterMunicipioScree
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Text('Error al cargar municipios: $e'),
               ),
+              if (vm.errorMessage != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  vm.errorMessage!,
+                  style: TextStyle(fontSize: 13, color: scheme.error),
+                ),
+              ],
               const SizedBox(height: 32),
               GradientButton(
-                label: 'Continuar',
-                onPressed: _selected == null ? null : _onContinue,
+                label: vm.isLoading ? 'Creando cuenta...' : 'Continuar',
+                onPressed: (_selected == null || vm.isLoading) ? null : _onContinue,
               ),
             ],
           ),

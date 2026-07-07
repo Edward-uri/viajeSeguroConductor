@@ -124,7 +124,7 @@ class RegisterViewModel extends ChangeNotifier {
     try {
       await _repository.registerStart(
         correo: _email.trim(),
-        rol: 'conductor',
+        rol: 'propietario',
       );
       return true;
     } on ApiException catch (e) {
@@ -148,7 +148,7 @@ class RegisterViewModel extends ChangeNotifier {
       _registrationToken = await _repository.registerVerify(
         correo: _email.trim(),
         codigo: codigo,
-        rol: 'conductor',
+        rol: 'propietario',
       );
       return true;
     } on ApiException catch (e) {
@@ -184,18 +184,6 @@ class RegisterViewModel extends ChangeNotifier {
           dispositivo: 'flutter',
         ),
       );
-      if (_licencia.isNotEmpty && _licenciaFechaVencimiento.isNotEmpty) {
-        try {
-          await _repository.guardarLicencia(
-            idMunicipio: _idMunicipio ?? 1,
-            licencia: _licencia.trim(),
-            licenciaFechaExpedicion: _normalizeDate(_licenciaFechaExpedicion),
-            licenciaFechaVencimiento: _normalizeDate(_licenciaFechaVencimiento),
-          );
-        } on ApiException catch (e) {
-          debugPrint('[RegisterVM] guardarLicencia falló (${e.statusCode}): ${e.message} — continuando');
-        }
-      }
       return true;
     } on ApiException catch (e) {
       _errorMessage = e.message;
@@ -207,15 +195,5 @@ class RegisterViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-  }
-
-  String _normalizeDate(String date) {
-    final parts = date.split(' / ');
-    if (parts.length == 3) {
-      return '${parts[2]}-${parts[1]}-${parts[0]}';
-    }
-    final alt = date.split('-');
-    if (alt.length == 3 && alt[0].length == 4) return date;
-    return date;
   }
 }

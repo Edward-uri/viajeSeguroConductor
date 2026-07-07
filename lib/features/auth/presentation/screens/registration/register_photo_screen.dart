@@ -37,7 +37,7 @@ class _RegisterPhotoScreenState extends ConsumerState<RegisterPhotoScreen> {
   }
 
   void _irADocumentos() {
-    context.go(AppRoutes.documents);
+    context.go(AppRoutes.driverHome);
   }
 
   Future<void> _subir() async {
