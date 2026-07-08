@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/registration/getstarted_screen.dart';
 import '../features/auth/presentation/screens/registration/register_email_screen.dart';
-import '../features/auth/presentation/screens/registration/register_license_screen.dart';
 import '../features/auth/presentation/screens/registration/register_municipio_screen.dart';
 import '../features/auth/presentation/screens/registration/register_names_screen.dart';
 import '../features/auth/presentation/screens/registration/register_otp_screen.dart';
@@ -54,7 +53,6 @@ final GoRouter appRouter = GoRouter(
     _page(AppRoutes.registerNames, (_) => const RegisterNamesScreen()),
     _page(AppRoutes.registerPersonalData, (_) => const RegisterPersonalDataScreen()),
     _page(AppRoutes.registerMunicipio, (_) => const RegisterMunicipioScreen()),
-    _page(AppRoutes.license, (_) => const RegisterLicenseScreen()),
     _page(AppRoutes.registerPhoto, (_) => const RegisterPhotoScreen()),
     _page(AppRoutes.documents, (_) => const DocumentsListScreen()),
     _page(AppRoutes.documentUpload, (_) => const DocumentUploadScreen()),

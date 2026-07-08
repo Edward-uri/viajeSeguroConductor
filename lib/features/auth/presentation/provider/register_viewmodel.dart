@@ -30,6 +30,7 @@ class RegisterViewModel extends ChangeNotifier {
   String _fechaNacimiento = '';
   int? _idMunicipio;
 
+  // se reusan cuando el onboarding de conductor pida licencia (parte 4+)
   String _licencia = '';
   String _licenciaFechaExpedicion = '';
   String _licenciaFechaVencimiento = '';
@@ -49,6 +50,7 @@ class RegisterViewModel extends ChangeNotifier {
 
   String get password => _password;
 
+  // se reusan cuando el onboarding de conductor pida licencia (parte 4+)
   String get licencia => _licencia;
   String get licenciaFechaExpedicion => _licenciaFechaExpedicion;
   String get licenciaFechaVencimiento => _licenciaFechaVencimiento;
@@ -98,6 +100,7 @@ class RegisterViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  // se reusan cuando el onboarding de conductor pida licencia (parte 4+)
   void setLicencia(String v) {
     _licencia = v;
   }

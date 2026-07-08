@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/di/core_module.dart';
+import '../../../core/http/api_exception.dart';
 import '../../../core/widgets/logo_badge.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/theme.dart';
+import '../../profile/di/profile_module.dart';
 
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -33,7 +35,25 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     ]);
     final hasSession = results[0] as bool;
     if (!mounted) return;
-    context.go(hasSession ? AppRoutes.driverHome : AppRoutes.getstarted);
+    if (!hasSession) {
+      context.go(AppRoutes.getstarted);
+      return;
+    }
+    // Preflight: valida la sesión antes de entrar al home para no mostrar un
+    // flash del home cuando el token ya está muerto (el auto-logout global
+    // llegaría después de todos modos).
+    try {
+      await ref.read(profileRepositoryProvider).getMe();
+      if (!mounted) return;
+      context.go(AppRoutes.driverHome);
+    } on UnauthorizedException {
+      if (!mounted) return;
+      context.go(AppRoutes.login);
+    } catch (_) {
+      // Sin red / timeout / error del servidor: no bloquear el arranque.
+      if (!mounted) return;
+      context.go(AppRoutes.driverHome);
+    }
   }
 
   @override

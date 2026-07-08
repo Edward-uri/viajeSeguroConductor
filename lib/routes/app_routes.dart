@@ -13,7 +13,6 @@ class AppRoutes {
   static const String registerPersonalData = '/register-personal-data';
   static const String registerMunicipio = '/register-municipio';
 
-  static const String license = '/license';
   static const String registerPhoto = '/register-photo';
   static const String documents = '/documents';
   static const String documentUpload = '/document-upload';
