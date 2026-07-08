@@ -29,6 +29,14 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
     final vm = ref.watch(vehicleViewModelProvider);
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
+    ref.listen<String?>(vehicleViewModelProvider.select((v) => v.errorMessage), (_, msg) {
+      if (msg != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700, behavior: SnackBarBehavior.floating),
+        );
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(title: const Text('Mi flotilla')),
       body: vm.isLoading
@@ -66,6 +74,8 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
                             descripcion:
                                 '${v.marca} · ${v.color} · ${v.anio}',
                             status: v.status,
+                            activo: v.activo,
+                            onUsar: () => vm.usarVehiculo(v.idVehiculo),
                             onTap: () => context.push(
                               v.status == VehicleStatus.incomplete
                                   ? AppRoutes.vehicleEdit
@@ -73,6 +83,7 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
                               extra: v,
                             ),
                             isLandscape: isLandscape,
+                            isSaving: vm.isSaving,
                           );
                         },
                       ),
@@ -168,15 +179,21 @@ class _VehicleCard extends StatelessWidget {
   final String placa;
   final String descripcion;
   final VehicleStatus status;
+  final bool activo;
   final VoidCallback onTap;
+  final VoidCallback onUsar;
   final bool isLandscape;
+  final bool isSaving;
 
   const _VehicleCard({
     required this.placa,
     required this.descripcion,
     required this.status,
+    required this.activo,
     required this.onTap,
+    required this.onUsar,
     this.isLandscape = false,
+    this.isSaving = false,
   });
 
   Color get _iconBg {
@@ -281,6 +298,35 @@ class _VehicleCard extends StatelessWidget {
                           : const Color(0xFF6B6661),
                     ),
                   ),
+                  if (activo)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text(
+                        'En uso',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1E8E5A),
+                        ),
+                      ),
+                    )
+                  else
+                    TextButton(
+                      onPressed: isSaving ? null : onUsar,
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 28),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        alignment: Alignment.centerLeft,
+                      ),
+                      child: const Text(
+                        'Usar este',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

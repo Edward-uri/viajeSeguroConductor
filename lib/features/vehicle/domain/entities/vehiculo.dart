@@ -12,6 +12,7 @@ class Vehiculo {
   final VehicleStatus status;
   final String? rfc;
   final String? razonSocial;
+  final bool activo;
 
   const Vehiculo({
     this.idVehiculo = 0,
@@ -25,6 +26,7 @@ class Vehiculo {
     required this.status,
     this.rfc,
     this.razonSocial,
+    this.activo = false,
   });
 
   bool get aprobado => status == VehicleStatus.active;

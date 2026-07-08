@@ -20,8 +20,9 @@ class ApiClient {
   final AuthStorage _authStorage;
   final String baseUrl;
 
- 
   Future<bool>? _refreshing;
+  DateTime? _refreshBlockedUntil;
+  bool _sessionDead = false;
 
   Future<Map<String, dynamic>> get(String path, {bool auth = true}) async {
     return _send(auth: auth, send: (headers) => _client.get(_uri(path), headers: headers));
@@ -82,8 +83,6 @@ class ApiClient {
 
     try {
       var request = buildRequest();
-      // El timeout cubre envío Y lectura de la respuesta: si el server/proxy no
-      // completa la respuesta, no se queda "subiendo" para siempre.
       var streamed = await request.send().timeout(timeout);
       var response = await http.Response.fromStream(streamed).timeout(timeout);
 
@@ -128,6 +127,18 @@ class ApiClient {
     bool auth = true,
   }) async {
     return _send(auth: auth, send: (headers) => _client.put(
+      _uri(path),
+      headers: headers,
+      body: body == null ? null : jsonEncode(body),
+    ));
+  }
+
+  Future<Map<String, dynamic>> patch(
+    String path, {
+    Object? body,
+    bool auth = true,
+  }) async {
+    return _send(auth: auth, send: (headers) => _client.patch(
       _uri(path),
       headers: headers,
       body: body == null ? null : jsonEncode(body),
@@ -195,6 +206,11 @@ class ApiClient {
         }
       }
 
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        _sessionDead = false;
+        _refreshBlockedUntil = null;
+      }
+
       return response;
     } on TimeoutException {
       throw NetworkException('La solicitud tardó demasiado. Revisa tu conexión.');
@@ -206,6 +222,12 @@ class ApiClient {
   }
 
   Future<bool> _tryRefresh() {
+    // Sesión muerta o en cooldown: no martillar /refresh.
+    if (_sessionDead) return Future.value(false);
+    if (_refreshBlockedUntil != null &&
+        DateTime.now().isBefore(_refreshBlockedUntil!)) {
+      return Future.value(false);
+    }
     // Si ya hay un refresh en curso, comparte ese mismo Future (single-flight).
     return _refreshing ??= _doRefresh().whenComplete(() => _refreshing = null);
   }
@@ -213,7 +235,10 @@ class ApiClient {
   Future<bool> _doRefresh() async {
     try {
       final refreshToken = await _authStorage.readRefreshToken();
-      if (refreshToken == null) return false;
+      if (refreshToken == null) {
+        _killSession();
+        return false;
+      }
 
       final response = await _client
           .post(
@@ -223,27 +248,37 @@ class ApiClient {
           )
           .timeout(ApiConfig.requestTimeout);
 
-      if (response.statusCode != 200) {
-        // Refresh rechazado (refresh token vencido/revocado): limpia la sesión y
-        // manda a login. Sin esto, cada request siguiente reintenta refrescar en
-        // cascada infinita hasta que el servidor responde 429.
-        if (response.statusCode == 401 || response.statusCode == 403) {
-          await _authStorage.clear();
-          AppNavigator.goToLogin();
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final accessToken = decoded['accessToken'] as String?;
+        final newRefreshToken = decoded['refreshToken'] as String?;
+        if (accessToken == null || newRefreshToken == null) {
+          _killSession();
+          return false;
         }
+        await _authStorage.writeTokens(accessToken: accessToken, refreshToken: newRefreshToken);
+        _refreshBlockedUntil = null;
+        return true;
+      }
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        _killSession();
         return false;
       }
 
-      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-      final accessToken = decoded['accessToken'] as String?;
-      final newRefreshToken = decoded['refreshToken'] as String?;
-      if (accessToken == null || newRefreshToken == null) return false;
-
-      await _authStorage.writeTokens(accessToken: accessToken, refreshToken: newRefreshToken);
-      return true;
+      _refreshBlockedUntil = DateTime.now().add(const Duration(seconds: 60));
+      return false;
     } catch (_) {
+      _refreshBlockedUntil = DateTime.now().add(const Duration(seconds: 10));
       return false;
     }
+  }
+
+  void _killSession() {
+    if (_sessionDead) return;
+    _sessionDead = true;
+    _authStorage.clear();
+    AppNavigator.goToLogin();
   }
 
   void _throwIfError(http.Response response) {

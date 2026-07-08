@@ -16,6 +16,7 @@ class VehiculoMapper {
       status: _mapStatus(json['estadoVerificacion']?.toString() ?? ''),
       rfc: json['rfc']?.toString(),
       razonSocial: json['razonSocial']?.toString(),
+      activo: json['activo'] == true,
     );
   }
 

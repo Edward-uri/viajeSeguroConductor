@@ -58,6 +58,8 @@ class ApiEndpoints {
 
   // ───── Flotillas / Vehículos ─────
   static const String flotillasVehiculos = '/api/flotillas/vehiculos';
+  static const String flotillasVehiculoActivo =
+      '/api/flotillas/vehiculos/activo';
   static String flotillasVehiculo(String placa) =>
       '/api/flotillas/vehiculos/$placa';
   static String flotillasVehiculoDocumentos(String placa) =>
