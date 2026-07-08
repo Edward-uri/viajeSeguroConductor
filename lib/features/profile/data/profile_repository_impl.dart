@@ -43,6 +43,9 @@ class ProfileRepositoryImpl implements ProfileRepository {
   @override
   Future<void> deleteAccount() => _api.deleteAccount();
 
+  @override
+  Future<void> activarPropietario() => _api.activarPropietario();
+
 
   Map<String, dynamic> _unwrapData(Map<String, dynamic> response) {
     final data = response['data'];

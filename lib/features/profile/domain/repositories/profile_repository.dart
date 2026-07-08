@@ -14,4 +14,9 @@ abstract class ProfileRepository {
   Future<User> uploadPhoto({required Uint8List bytes, required String fileName});
 
   Future<void> deleteAccount();
+
+  /// Convierte una cuenta solo-pasajero en propietario (agrega el rol
+  /// 'propietario'). El access token viejo no trae el rol nuevo: quien llame
+  /// esto debe refrescar tokens después.
+  Future<void> activarPropietario();
 }

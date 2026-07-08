@@ -43,8 +43,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     // flash del home cuando el token ya está muerto (el auto-logout global
     // llegaría después de todos modos).
     try {
-      await ref.read(profileRepositoryProvider).getMe();
+      final user = await ref.read(profileRepositoryProvider).getMe();
       if (!mounted) return;
+      // Cuenta solo-pasajero (sin rol conductor ni propietario): no tiene
+      // nada que hacer en driverHome, se le ofrece el upgrade.
+      if (!user.esConductor && !user.esPropietario) {
+        context.go(AppRoutes.upgradePropietario);
+        return;
+      }
       context.go(AppRoutes.driverHome);
     } on UnauthorizedException {
       if (!mounted) return;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/presentation/screens/login_screen.dart';
+import '../features/auth/presentation/screens/upgrade_propietario_screen.dart';
 import '../features/auth/presentation/screens/registration/getstarted_screen.dart';
 import '../features/auth/presentation/screens/registration/register_email_screen.dart';
 import '../features/auth/presentation/screens/registration/register_municipio_screen.dart';
@@ -9,6 +10,11 @@ import '../features/auth/presentation/screens/registration/register_names_screen
 import '../features/auth/presentation/screens/registration/register_otp_screen.dart';
 import '../features/auth/presentation/screens/registration/register_personal_data_screen.dart';
 import '../features/auth/presentation/screens/registration/register_photo_screen.dart';
+import '../features/bolsa/presentation/screens/bolsa_screen.dart';
+import '../features/bolsa/presentation/screens/mis_vacantes_screen.dart';
+import '../features/bolsa/presentation/screens/vacante_form_screen.dart';
+import '../features/bolsa/presentation/screens/vacante_postulaciones_screen.dart';
+import '../features/bolsa/domain/entities/vacante.dart';
 import '../features/documents/presentation/screens/document_upload_screen.dart';
 import '../features/documents/presentation/screens/document_view_screen.dart';
 import '../features/documents/presentation/screens/documents_approved_screen.dart';
@@ -48,6 +54,7 @@ final GoRouter appRouter = GoRouter(
     _page(AppRoutes.splash, (_) => const SplashScreen()),
     _page(AppRoutes.getstarted, (_) => const GetstartedScreen()),
     _page(AppRoutes.login, (_) => const LoginScreen()),
+    _page(AppRoutes.upgradePropietario, (_) => const UpgradePropietarioScreen()),
     _page(AppRoutes.registerEmail, (_) => const RegisterEmailScreen()),
     _page(AppRoutes.registerOtp, (_) => const RegisterOtpScreen()),
     _page(AppRoutes.registerNames, (_) => const RegisterNamesScreen()),
@@ -70,6 +77,11 @@ final GoRouter appRouter = GoRouter(
     _page(AppRoutes.vehicleDetail, (_) => const VehicleDetailScreen()),
     _page(AppRoutes.vehicleEdit, (_) => const VehicleEditScreen()),
     _page(AppRoutes.vehicleOwner, (_) => const VehicleOwnerScreen()),
+    _page(AppRoutes.bolsa, (_) => const BolsaScreen()),
+    _page(AppRoutes.misVacantes, (_) => const MisVacantesScreen()),
+    _page(AppRoutes.vacanteForm, (_) => const VacanteFormScreen()),
+    _page(AppRoutes.vacantePostulaciones,
+        (state) => VacantePostulacionesScreen(vacante: state.extra as Vacante?)),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
           MainShell(navigationShell: navigationShell),

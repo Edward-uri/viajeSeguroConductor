@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../core/widgets/logo_badge.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../profile/di/profile_module.dart';
 import '../provider/login_password_viewmodel.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -33,9 +34,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     vm.setEmail(_emailCtrl.text.trim());
     vm.setPassword(_passwordCtrl.text);
     final ok = await vm.login();
-    if (ok && context.mounted) {
-      context.go(AppRoutes.driverHome);
+    if (!ok || !context.mounted) return;
+    // El viewmodel de login no expone el user: se pide getMe (mismo patrón
+    // que el preflight del splash) para decidir si es una cuenta solo-pasajero.
+    try {
+      final user = await ref.read(profileRepositoryProvider).getMe();
+      if (!context.mounted) return;
+      if (!user.esConductor && !user.esPropietario) {
+        context.go(AppRoutes.upgradePropietario);
+        return;
+      }
+    } catch (_) {
+      // Sin red / error del servidor: no bloquear el login, el preflight
+      // del splash/home ya cubre este caso en el próximo arranque.
     }
+    if (context.mounted) context.go(AppRoutes.driverHome);
   }
 
   @override
