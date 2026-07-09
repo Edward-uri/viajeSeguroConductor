@@ -190,8 +190,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                         ),
                       if (vm.zonasCalientes.isNotEmpty)
                         CircleLayer(
-                          circles: vm.zonasCalientes.map((z) {
-                            final base = _zonaColor(z.intensidad);
+                          circles: vm.zonasCalientes.asMap().entries.map((e) {
+                            final i = e.key;
+                            final z = e.value;
+                            final base = vm.heatZoneColors[i];
                             return CircleMarker(
                               point: LatLng(z.lat, z.lng),
                               radius: z.radioM,
