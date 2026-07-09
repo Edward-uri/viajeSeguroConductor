@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../../core/widgets/gradient_button.dart';
 import '../../../../../routes/app_routes.dart';
 import '../../provider/register_viewmodel.dart';
+import 'paso_registro_scaffold.dart';
 
 class RegisterOtpScreen extends ConsumerStatefulWidget {
   const RegisterOtpScreen({super.key});
@@ -53,8 +53,7 @@ class _RegisterOtpScreenState extends ConsumerState<RegisterOtpScreen> {
   }
 
   Future<void> _onContinue() async {
-    final code =
-        _controllers.map((c) => c.text).join();
+    final code = _controllers.map((c) => c.text).join();
     if (code.length != 6) return;
 
     final vm = ref.read(registerViewModelProvider);
@@ -70,102 +69,63 @@ class _RegisterOtpScreenState extends ConsumerState<RegisterOtpScreen> {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Verificación')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 32),
-              Text(
-                'Código de verificación',
-                style: text.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurface,
+    return PasoRegistroScaffold(
+      paso: 2,
+      titulo: 'Código de verificación',
+      caption: 'Ingresa el código de 6 dígitos que enviamos a tu correo.',
+      ctaLabel: vm.isLoading ? 'Verificando...' : 'Continuar',
+      onCta: vm.isLoading ? null : _onContinue,
+      belowCta: TextButton(
+        onPressed: _secondsLeft == 0
+            ? () {
+                setState(() => _secondsLeft = 60);
+                _startTimer();
+              }
+            : null,
+        child: Text(
+          _secondsLeft > 0
+              ? 'Reenviar código en $_secondsLeft s'
+              : 'Reenviar código',
+        ),
+      ),
+      children: [
+        Row(
+          children: List.generate(6, (i) {
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: i == 0 ? 0 : 4,
+                  right: i == 5 ? 0 : 4,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Ingresa el código de 6 dígitos que enviamos a tu correo.',
-                style: text.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 32),
-              Row(
-                children: List.generate(6, (i) {
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        left: i == 0 ? 0 : 4,
-                        right: i == 5 ? 0 : 4,
-                      ),
-                      child: SizedBox(
-                        height: 64,
-                        child: TextField(
-                          controller: _controllers[i],
-                          focusNode: _focusNodes[i],
-                          textAlign: TextAlign.center,
-                          keyboardType: TextInputType.number,
-                          maxLength: 1,
-                          style: text.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                          decoration: InputDecoration(
-                            counterText: '',
-                            filled: true,
-                            fillColor: scheme.surfaceContainerLow,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: scheme.outlineVariant),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
-                                  color: Color(0xFFFF8F00), width: 2),
-                            ),
-                          ),
-                          onChanged: (v) => _onDigitChange(i, v),
-                        ),
-                      ),
+                child: SizedBox(
+                  height: 64,
+                  child: TextField(
+                    controller: _controllers[i],
+                    focusNode: _focusNodes[i],
+                    textAlign: TextAlign.center,
+                    keyboardType: TextInputType.number,
+                    maxLength: 1,
+                    style: text.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
-                  );
-                }),
-              ),
-              if (vm.errorMessage != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  vm.errorMessage!,
-                  style: text.bodySmall?.copyWith(color: scheme.error),
-                ),
-              ],
-              const SizedBox(height: 24),
-              Center(
-                child: TextButton(
-                  onPressed: _secondsLeft == 0
-                      ? () {
-                          setState(() => _secondsLeft = 60);
-                          _startTimer();
-                        }
-                      : null,
-                  child: Text(
-                    _secondsLeft > 0
-                        ? 'Reenviar código en $_secondsLeft s'
-                        : 'Reenviar código',
+                    decoration: const InputDecoration(
+                      counterText: '',
+                    ),
+                    onChanged: (v) => _onDigitChange(i, v),
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
-              GradientButton(
-                label: vm.isLoading ? 'Verificando...' : 'Continuar',
-                onPressed: vm.isLoading ? null : _onContinue,
-              ),
-            ],
-          ),
+            );
+          }),
         ),
-      ),
+        if (vm.errorMessage != null) ...[
+          const SizedBox(height: 16),
+          Text(
+            vm.errorMessage!,
+            style: text.bodySmall?.copyWith(color: scheme.error),
+          ),
+        ],
+      ],
     );
   }
 }

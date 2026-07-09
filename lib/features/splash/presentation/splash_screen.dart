@@ -5,10 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/di/core_module.dart';
 import '../../../core/http/api_exception.dart';
 import '../../../core/widgets/logo_badge.dart';
-import '../../../features/documents/di/documents_module.dart';
-import '../../../features/documents/presentation/utils/document_route_helper.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/theme.dart';
+import '../../profile/di/profile_module.dart';
 
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -26,9 +25,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _decideRoute() async {
-    // Mantiene la sesión: si hay token válido entra directo según el estado de
-    // documentos (no aprobado → siempre ve el estado de sus documentos). Si la
-    // sesión venció (refresh también falló) → login. Sin sesión → bienvenida.
+    // Mantiene la sesión: si hay token entra directo al home (los documentos
+    // ya no bloquean el acceso; son un opt-in desde "Quiero manejar"). Sin
+    // sesión → bienvenida.
     final session = ref.read(sessionServiceProvider);
     final results = await Future.wait<dynamic>([
       session.hasSession(),
@@ -40,16 +39,27 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       context.go(AppRoutes.getstarted);
       return;
     }
-    final repo = ref.read(documentoRepositoryProvider);
-    String route;
+    // Preflight: valida la sesión antes de entrar al home para no mostrar un
+    // flash del home cuando el token ya está muerto (el auto-logout global
+    // llegaría después de todos modos).
     try {
-      route = await resolveDocumentsRoute(repo);
+      final user = await ref.read(profileRepositoryProvider).getMe();
+      if (!mounted) return;
+      // Cuenta solo-pasajero (sin rol conductor ni propietario): no tiene
+      // nada que hacer en driverHome, se le ofrece el upgrade.
+      if (!user.esConductor && !user.esPropietario) {
+        context.go(AppRoutes.upgradePropietario);
+        return;
+      }
+      context.go(AppRoutes.driverHome);
     } on UnauthorizedException {
-      await session.logout();
-      route = AppRoutes.login;
+      if (!mounted) return;
+      context.go(AppRoutes.login);
+    } catch (_) {
+      // Sin red / timeout / error del servidor: no bloquear el arranque.
+      if (!mounted) return;
+      context.go(AppRoutes.driverHome);
     }
-    if (!mounted) return;
-    context.go(route);
   }
 
   @override

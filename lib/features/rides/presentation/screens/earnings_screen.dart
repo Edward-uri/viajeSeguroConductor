@@ -65,6 +65,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = ref.watch(_earningsProvider);
+    final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
@@ -78,10 +79,12 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        Icon(Icons.error_outline, size: 48, color: scheme.outline),
+                        const SizedBox(height: 16),
                         Text(vm.errorMessage!,
-                            style: text.bodyMedium?.copyWith(
-                                color: const Color(0xFF6B6661))),
-                        const SizedBox(height: 12),
+                            style: text.bodyMedium
+                                ?.copyWith(color: scheme.onSurfaceVariant)),
+                        const SizedBox(height: 16),
                         TextButton(
                           onPressed: () => ref.read(_earningsProvider).load(),
                           child: const Text('Reintentar'),
@@ -90,7 +93,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
                     ),
                   )
                 : Padding(
-                    padding: EdgeInsets.all(isLandscape ? 12 : 24),
+                    padding: EdgeInsets.all(isLandscape ? 16 : 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -98,23 +101,29 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
                         SizedBox(height: isLandscape ? 12 : 24),
                         Text(
                           'Últimos viajes',
-                          style: text.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF1A1410),
-                          ),
+                          style: text.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         SizedBox(height: isLandscape ? 8 : 12),
                         Expanded(
                           child: vm.recentRides.isEmpty
                               ? Center(
-                                  child: Text('Aún no tienes viajes hoy',
-                                      style: text.bodyMedium?.copyWith(
-                                          color: const Color(0xFF6B6661))),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.directions_car_outlined,
+                                          size: 48, color: scheme.outline),
+                                      const SizedBox(height: 16),
+                                      Text('Aún no tienes viajes hoy',
+                                          style: text.bodyLarge?.copyWith(
+                                              color: scheme.onSurfaceVariant)),
+                                    ],
+                                  ),
                                 )
                               : ListView.separated(
                                   itemCount: vm.recentRides.length,
                                   separatorBuilder: (_, _) =>
-                                      const SizedBox(height: 8),
+                                      const SizedBox(height: 12),
                                   itemBuilder: (context, i) {
                                     final r = vm.recentRides[i];
                                     return _EarningRow(
@@ -142,71 +151,31 @@ class _EarningsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
     final ganancias = stats?.gananciasHoy ?? 0;
     final viajes = stats?.viajesHoy ?? 0;
     final horas = stats?.horasEnLinea ?? 0;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(isLandscape ? 12 : 24),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFF8F00),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Ganancias de hoy',
-            style: TextStyle(
-              fontSize: isLandscape ? 12 : 14,
-              color: Colors.white70,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '\$${ganancias.toStringAsFixed(2)}',
-            style: TextStyle(
-              fontSize: isLandscape ? 24 : 36,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-          SizedBox(height: isLandscape ? 6 : 12),
-          Row(
-            children: [
-              _Chip('$viajes viajes'),
-              const SizedBox(width: 8),
-              _Chip('${horas.toStringAsFixed(1)} h en línea'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  final String label;
-  const _Chip(this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Ganancias de hoy',
+          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
         ),
-      ),
+        const SizedBox(height: 4),
+        Text(
+          '\$${ganancias.toStringAsFixed(2)}',
+          style: isLandscape ? text.headlineSmall : text.displaySmall,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '$viajes viajes · ${horas.toStringAsFixed(1)} h en línea',
+          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }
@@ -226,60 +195,55 @@ class _EarningRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFECECEC)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF1E0),
-              borderRadius: BorderRadius.circular(10),
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: scheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.directions_car_outlined,
+                size: 18,
+                color: scheme.onSecondaryContainer,
+              ),
             ),
-            child: const Icon(Icons.directions_car_outlined,
-                size: 18, color: Color(0xFFFF8F00)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$origen → $destino',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1410),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$origen → $destino',
+                    style:
+                        text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  hora,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF6B6661),
+                  const SizedBox(height: 2),
+                  Text(
+                    hora,
+                    style:
+                        text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Text(
-            '\$${monto.toStringAsFixed(2)}',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFFFF8F00),
+            const SizedBox(width: 12),
+            Text(
+              '\$${monto.toStringAsFixed(2)}',
+              style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

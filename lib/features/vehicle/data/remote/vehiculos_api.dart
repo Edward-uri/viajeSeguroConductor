@@ -27,6 +27,12 @@ class VehiculosApi {
   Future<void> eliminarVehiculo(String placa) =>
       _api.delete(ApiEndpoints.flotillasVehiculo(placa));
 
+  Future<Map<String, dynamic>> setVehiculoActivo(int idVehiculo) =>
+      _api.patch(
+        ApiEndpoints.flotillasVehiculoActivo,
+        body: {'idVehiculo': idVehiculo},
+      );
+
   /// [tipo] en kebab-case según la ruta del backend: 'tarjeta-circulacion' | 'foto-vehiculo'.
   Future<Map<String, dynamic>> subirDocumentoVehiculo({
     required int idVehiculo,

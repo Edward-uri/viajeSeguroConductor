@@ -125,6 +125,21 @@ class VehicleViewModel extends ChangeNotifier {
     await loadVehiculos();
   }
 
+  Future<void> usarVehiculo(int idVehiculo) async {
+    _isSaving = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.setVehiculoActivo(idVehiculo);
+      await loadVehiculos();
+    } catch (e) {
+      _errorMessage = 'No se pudo seleccionar el vehículo. Intenta de nuevo.';
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
   String statusLabel(VehicleStatus status) {
     switch (status) {
       case VehicleStatus.active:

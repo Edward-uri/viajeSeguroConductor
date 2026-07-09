@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../features/documents/di/documents_module.dart';
-import '../../../../features/documents/domain/entities/documento.dart';
 import '../../../../routes/app_routes.dart';
 import '../../../../shared/widgets/authed_image.dart';
+import '../../../../theme/theme.dart';
 import '../provider/driver_profile_viewmodel.dart';
 
 
@@ -25,7 +24,7 @@ String _estadoLabel(String estado) {
 Color _estadoColor(String estado) {
   switch (estado.toLowerCase()) {
     case 'activo':
-      return const Color(0xFF1E8E5A);
+      return JalaBrand.success;
     case 'suspendido':
       return const Color(0xFFD84315);
     case 'eliminado':
@@ -45,29 +44,12 @@ class DriverProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
-  bool _docsApproved = false;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(driverProfileViewModelProvider).loadData();
-      _checkDocsApproved();
     });
-  }
-
-  Future<void> _checkDocsApproved() async {
-    final repo = ref.read(documentoRepositoryProvider);
-    try {
-      final docs = await repo.getDocumentos();
-      if (mounted) {
-        setState(() {
-          _docsApproved = docs.every((d) => d.status == DocumentStatus.approved);
-        });
-      }
-    } catch (_) {
-      // si falla, asumimos que no están aprobados
-    }
   }
 
   @override
@@ -85,13 +67,12 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
     }
 
     final user = vm.user;
-    final vehicle = vm.vehiculo;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Perfil')),
       body: SafeArea(
         child: ListView(
-          padding: EdgeInsets.all(isLandscape ? 12 : 20),
+          padding: EdgeInsets.all(isLandscape ? 16 : 24),
           children: [
             // ─── Avatar ───
             Center(
@@ -99,7 +80,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                 child: Container(
                   width: 88,
                   height: 88,
-                  color: const Color(0xFFFF8F00),
+                  color: JalaBrand.amber,
                   alignment: Alignment.center,
                   child: AuthedImage(
                     path: user?.fotoPerfilUrl,
@@ -125,45 +106,30 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 4),
-            // ─── Rol ───
-            Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    user != null
-                        ? user.rol.toUpperCase()
-                        : 'N/A',
-                    style: text.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            // ─── Estado badge ───
+            const SizedBox(height: 6),
+            // ─── Rol · estado ───
             if (user != null)
               Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _estadoColor(user.estadoCuenta).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(4),
+                child: Text.rich(
+                  TextSpan(
+                    text: '${user.rol.toUpperCase()} · ',
+                    children: [
+                      TextSpan(
+                        text: _estadoLabel(user.estadoCuenta),
+                        style: TextStyle(
+                          color: _estadoColor(user.estadoCuenta),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    _estadoLabel(user.estadoCuenta),
-                    style: TextStyle(
-                      color: _estadoColor(user.estadoCuenta),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
+                  style: text.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
-            SizedBox(height: isLandscape ? 16 : 24),
+            SizedBox(height: isLandscape ? 16 : 32),
             // ─── Stats ───
             Row(
               children: [
@@ -186,29 +152,7 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                 ),
               ],
             ),
-            SizedBox(height: isLandscape ? 8 : 16),
-            // ─── Vehículo ───
-            if (vehicle != null)
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.directions_bike_outlined),
-                  title: Text(
-                    vehicle.marca.isNotEmpty && vehicle.modelo.isNotEmpty
-                        ? '${vehicle.marca} — ${vehicle.modelo}'
-                        : vehicle.placa,
-                  ),
-                  subtitle: Text('Placa ${vehicle.placa.isNotEmpty ? vehicle.placa : 'N/A'}'),
-                ),
-              ),
-            if (vehicle == null)
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.directions_bike_outlined),
-                  title: const Text('Sin vehículo registrado'),
-                  subtitle: const Text('N/A'),
-                ),
-              ),
-            SizedBox(height: isLandscape ? 16 : 24),
+            SizedBox(height: isLandscape ? 16 : 32),
             // ─── CUENTA ───
             Text('CUENTA',
                 style: text.labelSmall?.copyWith(
@@ -224,16 +168,34 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push(AppRoutes.editProfile),
                   ),
-                  if (!_docsApproved) ...[
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: Text(user != null && user.esConductor
+                        ? 'Mis documentos'
+                        : 'Quiero manejar · Documentos'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(AppRoutes.documents),
+                  ),
+                  if (user != null && user.esConductor) ...[
                     const Divider(height: 1, indent: 16, endIndent: 16),
                     ListTile(
-                      leading: const Icon(Icons.description_outlined),
-                      title: const Text('Mis documentos'),
+                      leading: const Icon(Icons.work_outline),
+                      title: const Text('Bolsa de trabajo'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push(AppRoutes.documents),
+                      onTap: () => context.push(AppRoutes.bolsa),
                     ),
-                    const Divider(height: 1, indent: 16, endIndent: 16),
                   ],
+                  if (user != null && user.esPropietario) ...[
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    ListTile(
+                      leading: const Icon(Icons.assignment_outlined),
+                      title: const Text('Mis vacantes'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(AppRoutes.misVacantes),
+                    ),
+                  ],
+                  const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
                     leading: const Icon(Icons.credit_card_outlined),
                     title: const Text('Métodos de cobro'),
@@ -265,13 +227,6 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
                     title: const Text('Historial de viajes'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push(AppRoutes.rideHistory),
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  ListTile(
-                    leading: const Icon(Icons.help_outline),
-                    title: const Text('Centro de ayuda'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {},
                   ),
                 ],
               ),
@@ -336,8 +291,10 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
         Text(value,
             style: text.titleLarge
                 ?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 2),
         Text(label,
-            style: const TextStyle(fontSize: 13, color: Colors.grey)),
+            style: text.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ],
     );
   }

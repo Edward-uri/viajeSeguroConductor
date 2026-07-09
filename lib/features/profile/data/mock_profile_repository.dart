@@ -78,4 +78,20 @@ class MockProfileRepository implements ProfileRepository {
 
   @override
   Future<void> deleteAccount() async {}
+
+  @override
+  Future<void> activarPropietario() async {
+    _currentUser = User(
+      idUsuario: _currentUser.idUsuario,
+      rol: _currentUser.rol,
+      roles: const ['propietario'],
+      estadoCuenta: _currentUser.estadoCuenta,
+      telefono: _currentUser.telefono,
+      correoElectronico: _currentUser.correoElectronico,
+      telefonoVerificado: _currentUser.telefonoVerificado,
+      idMunicipio: _currentUser.idMunicipio,
+      fotoPerfilUrl: _currentUser.fotoPerfilUrl,
+      fechaRegistro: _currentUser.fechaRegistro,
+    );
+  }
 }

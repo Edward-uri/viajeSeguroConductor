@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../theme/theme.dart';
 import '../provider/documents_viewmodel.dart';
 
 class DocumentsApprovedScreen extends ConsumerStatefulWidget {
@@ -26,6 +27,7 @@ class _DocumentsApprovedScreenState
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
@@ -40,21 +42,18 @@ class _DocumentsApprovedScreenState
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE6F4EA),
+                  color: JalaBrand.success.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFA8DCBE)),
+                  border: Border.all(color: JalaBrand.success.withValues(alpha: 0.4)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.check_circle, color: Color(0xFF1E8E5A), size: 28),
+                    const Icon(Icons.check_circle, color: JalaBrand.success, size: 28),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         '¡Documentos aprobados!',
-                        style: text.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF1A1410),
-                        ),
+                        style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
                   ],
@@ -66,27 +65,24 @@ class _DocumentsApprovedScreenState
                   width: 96,
                   height: 96,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF1E0),
+                    color: JalaBrand.amber.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.two_wheeler_rounded,
-                      color: Color(0xFFFF8F00), size: 48),
+                      color: JalaBrand.amber, size: 48),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Text(
                 'Registra tu primer vehículo',
                 textAlign: TextAlign.center,
-                style: text.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF1A1410),
-                ),
+                style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               Text(
                 'Necesitas al menos un vehículo aprobado para ponerte en línea y recibir viajes. Puedes registrarlo ahora u omitir y hacerlo después.',
                 textAlign: TextAlign.center,
-                style: text.bodyMedium?.copyWith(color: const Color(0xFF6B6661)),
+                style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
               ),
               const Spacer(),
               GradientButton(

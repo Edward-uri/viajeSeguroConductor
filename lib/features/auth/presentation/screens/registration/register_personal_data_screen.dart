@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../../core/widgets/gradient_button.dart';
 import '../../../../../routes/app_routes.dart';
 import '../../provider/register_viewmodel.dart';
+import 'paso_registro_scaffold.dart';
 
 class RegisterPersonalDataScreen extends ConsumerStatefulWidget {
   const RegisterPersonalDataScreen({super.key});
@@ -56,65 +56,41 @@ class _RegisterPersonalDataScreenState
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Registro')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Información adicional',
-                style: text.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Ayúdanos con algunos datos más.',
-                style: text.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 32),
-              Text(
-                'Sexo',
-                style: text.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ..._sexos.map((s) => RadioListTile<int>(
-                    title: Text(s.$2),
-                    value: s.$1,
-                    groupValue: _selectedSexo,
-                    onChanged: (v) => setState(() => _selectedSexo = v),
-                    contentPadding: EdgeInsets.zero,
-                  )),
-              const SizedBox(height: 24),
-              TextField(
-                controller: _bdayController,
-                readOnly: true,
-                decoration: InputDecoration(
-                  labelText: 'Fecha de nacimiento',
-                  hintText: 'Selecciona tu fecha',
-                  suffixIcon: Icon(Icons.calendar_today_outlined,
-                      color: scheme.onSurfaceVariant, size: 20),
-                ),
-                onTap: _pickDate,
-              ),
-              const SizedBox(height: 32),
-              GradientButton(
-                label: 'Continuar',
-                onPressed: _selectedSexo == null ? null : _onContinue,
-              ),
-            ],
+    return PasoRegistroScaffold(
+      paso: 4,
+      titulo: 'Información adicional',
+      caption: 'Ayúdanos con algunos datos más.',
+      ctaLabel: 'Continuar',
+      onCta: _selectedSexo == null ? null : _onContinue,
+      children: [
+        Text(
+          'Sexo',
+          style: text.labelSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: scheme.onSurfaceVariant,
           ),
         ),
-      ),
+        const SizedBox(height: 8),
+        ..._sexos.map((s) => RadioListTile<int>(
+              title: Text(s.$2),
+              value: s.$1,
+              groupValue: _selectedSexo,
+              onChanged: (v) => setState(() => _selectedSexo = v),
+              contentPadding: EdgeInsets.zero,
+            )),
+        const SizedBox(height: 24),
+        TextField(
+          controller: _bdayController,
+          readOnly: true,
+          decoration: InputDecoration(
+            labelText: 'Fecha de nacimiento',
+            hintText: 'Selecciona tu fecha',
+            suffixIcon: Icon(Icons.calendar_today_outlined,
+                color: scheme.onSurfaceVariant, size: 20),
+          ),
+          onTap: _pickDate,
+        ),
+      ],
     );
   }
 }

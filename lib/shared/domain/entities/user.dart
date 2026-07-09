@@ -3,6 +3,7 @@ class User {
     required this.idUsuario,
     required this.rol,
     required this.estadoCuenta,
+    this.roles = const [],
     this.telefono,
     this.correoElectronico,
     this.telefonoVerificado,
@@ -18,6 +19,7 @@ class User {
 
   final int idUsuario;
   final String rol;
+  final List<String> roles;
   final String estadoCuenta;
   final String? telefono;
   final String? correoElectronico;
@@ -36,6 +38,11 @@ class User {
       .where((p) => p.trim().isNotEmpty)
       .join(' ');
 
+  List<String> get rolesEfectivos => roles.isNotEmpty ? roles : [rol];
+  bool get esPropietario => rolesEfectivos.contains('propietario');
+  bool get esConductor => rolesEfectivos.contains('conductor');
+  bool get esPasajero => rolesEfectivos.contains('pasajero');
+
   User copyWith({
     String? fotoPerfilUrl,
     String? estadoCuenta,
@@ -47,6 +54,7 @@ class User {
     return User(
       idUsuario: idUsuario,
       rol: rol,
+      roles: roles,
       estadoCuenta: estadoCuenta ?? this.estadoCuenta,
       telefono: telefono ?? this.telefono,
       correoElectronico: correoElectronico ?? this.correoElectronico,

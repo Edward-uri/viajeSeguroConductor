@@ -58,6 +58,8 @@ class ApiEndpoints {
 
   // ───── Flotillas / Vehículos ─────
   static const String flotillasVehiculos = '/api/flotillas/vehiculos';
+  static const String flotillasVehiculoActivo =
+      '/api/flotillas/vehiculos/activo';
   static String flotillasVehiculo(String placa) =>
       '/api/flotillas/vehiculos/$placa';
   static String flotillasVehiculoDocumentos(String placa) =>
@@ -67,6 +69,27 @@ class ApiEndpoints {
   static String flotillasVehiculoDocumento(int idVehiculo, String tipo) =>
       '/api/flotillas/vehiculos/$idVehiculo/documentos/$tipo';
   static const String flotillasFacturacion = '/api/flotillas/facturacion';
+  static const String flotillasPropietariosActivar =
+      '/api/flotillas/propietarios/activar';
+
+  // ───── Bolsa de trabajo ─────
+  static String bolsaVacantes(int idMunicipio) =>
+      '/api/bolsa/vacantes?municipio=$idMunicipio';
+  static String bolsaPostular(int idVacante) =>
+      '/api/bolsa/vacantes/$idVacante/postular';
+  static const String bolsaMisPostulaciones = '/api/bolsa/mis-postulaciones';
+  static String bolsaPostulacion(int idPostulacion) =>
+      '/api/bolsa/postulaciones/$idPostulacion';
+
+  // ───── Bolsa de trabajo (dueño) ─────
+  static const String bolsaCrearVacante = '/api/bolsa/vacantes';
+  static const String bolsaMisVacantes = '/api/bolsa/mis-vacantes';
+  static String bolsaCerrarVacante(int idVacante) =>
+      '/api/bolsa/vacantes/$idVacante/cerrar';
+  static String bolsaPostulacionesDeVacante(int idVacante) =>
+      '/api/bolsa/vacantes/$idVacante/postulaciones';
+  static String bolsaAceptarPostulacion(int idPostulacion) =>
+      '/api/bolsa/postulaciones/$idPostulacion/aceptar';
 
   // ───── User / Profile ─────
   static const String usersMe = '/api/users/me';

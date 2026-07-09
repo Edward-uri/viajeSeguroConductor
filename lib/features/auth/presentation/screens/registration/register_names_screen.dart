@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../../core/widgets/gradient_button.dart';
 import '../../../../../routes/app_routes.dart';
 import '../../provider/register_viewmodel.dart';
+import 'paso_registro_scaffold.dart';
 
 class RegisterNamesScreen extends ConsumerStatefulWidget {
   const RegisterNamesScreen({super.key});
@@ -51,62 +51,34 @@ class _RegisterNamesScreenState extends ConsumerState<RegisterNamesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Registro')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 32),
-              Text(
-                '¿Cómo te llamas?',
-                style: text.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Ingresa tu nombre completo.',
-                style: text.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 32),
-              TextField(
-                controller: _nombreController,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre(s)',
-                  hintText: 'Jose Antonio',
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _apellidosController,
-                textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'Apellidos',
-                  hintText: 'Rodriguez Flores',
-                ),
-              ),
-              const SizedBox(height: 32),
-              GradientButton(
-                label: 'Continuar',
-                onPressed: _nombreController.text.trim().isEmpty ||
-                        _apellidosController.text.trim().isEmpty
-                    ? null
-                    : _onContinue,
-              ),
-            ],
+    return PasoRegistroScaffold(
+      paso: 3,
+      titulo: '¿Cómo te llamas?',
+      caption: 'Ingresa tu nombre completo.',
+      ctaLabel: 'Continuar',
+      onCta: _nombreController.text.trim().isEmpty ||
+              _apellidosController.text.trim().isEmpty
+          ? null
+          : _onContinue,
+      children: [
+        TextField(
+          controller: _nombreController,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(
+            labelText: 'Nombre(s)',
+            hintText: 'Jose Antonio',
           ),
         ),
-      ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _apellidosController,
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(
+            labelText: 'Apellidos',
+            hintText: 'Rodriguez Flores',
+          ),
+        ),
+      ],
     );
   }
 }

@@ -14,6 +14,9 @@ abstract class VehicleRepository {
   Future<void> actualizarVehiculo(Vehiculo vehiculo);
   Future<void> eliminarVehiculo(String placa);
 
+  /// Marca el vehículo como el activo del conductor.
+  Future<void> setVehiculoActivo(int idVehiculo);
+
   /// Sube un documento del vehículo. [tipo] kebab-case: 'tarjeta-circulacion' | 'foto-vehiculo'.
   Future<void> subirDocumento({
     required int idVehiculo,

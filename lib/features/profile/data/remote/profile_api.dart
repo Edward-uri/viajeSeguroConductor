@@ -33,4 +33,7 @@ class ProfileApi {
 
   Future<void> deleteAccount() =>
       _api.delete(ApiEndpoints.usersMe, auth: true);
+
+  Future<void> activarPropietario() =>
+      _api.post(ApiEndpoints.flotillasPropietariosActivar, auth: true);
 }

@@ -125,8 +125,12 @@ class HomeViewModel extends ChangeNotifier {
   List<Color> _heatZoneColors = [];
   bool _isLoadingZonas = false;
   int idMunicipio = 1;
+  User? _me;
 
   DriverStats? get stats => _stats;
+  // Default true mientras no se conoce (carga/offline): evita el flash del
+  // banner "Quiero manejar" para conductores reales en cada arranque.
+  bool get esConductor => _me?.esConductor ?? true;
   SolicitudViaje? get currentRequest => _currentRequest;
   List<SolicitudViaje> get pendientes => _pendientes;
   bool get isLoading => _isLoading;
@@ -266,6 +270,7 @@ class HomeViewModel extends ChangeNotifier {
       _pendientes = results[1] as List<SolicitudViaje>;
       _miVehiculo = results[2] as Vehiculo?;
       final user = results[3] as User?;
+      _me = user;
       if (user?.idMunicipio != null) idMunicipio = user!.idMunicipio!;
       debugPrint('[Home] pendientes=${_pendientes.length} municipio=$idMunicipio vehiculoAprobado=${_miVehiculo?.aprobado}');
     } catch (e) {

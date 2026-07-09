@@ -4,7 +4,6 @@ class AppRoutes {
   static const String splash = '/';
   static const String login = '/login';
   static const String register = '/register';
-  static const String profile = '/profile';
 
   static const String getstarted = '/getstarted';
   static const String registerEmail = '/register-email';
@@ -13,7 +12,6 @@ class AppRoutes {
   static const String registerPersonalData = '/register-personal-data';
   static const String registerMunicipio = '/register-municipio';
 
-  static const String license = '/license';
   static const String registerPhoto = '/register-photo';
   static const String documents = '/documents';
   static const String documentUpload = '/document-upload';
@@ -21,6 +19,7 @@ class AppRoutes {
   static const String documentsReview = '/documents-review';
   static const String documentsApproved = '/documents-approved';
 
+  static const String upgradePropietario = '/upgrade-propietario';
   static const String driverHome = '/driver-home';
   static const String rideRequest = '/ride-request';
 
@@ -31,6 +30,10 @@ class AppRoutes {
   static const String vehicleDetail = '/vehicle-detail';
   static const String vehicleEdit = '/vehicle-edit';
   static const String vehicleOwner = '/vehicle-owner';
+  static const String bolsa = '/bolsa';
+  static const String misVacantes = '/mis-vacantes';
+  static const String vacanteForm = '/vacante-form';
+  static const String vacantePostulaciones = '/vacante-postulaciones';
 
   static const String rideInProgress = '/ride-in-progress';
   static const String rideEvaluation = '/ride-evaluation';

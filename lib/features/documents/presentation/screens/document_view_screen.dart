@@ -27,17 +27,17 @@ class DocumentViewScreen extends ConsumerWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8),
+                    color: scheme.error.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline, color: Colors.red),
+                      Icon(Icons.error_outline, color: scheme.error),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           doc?.rejectionReason ?? 'Documento rechazado',
-                          style: text.bodySmall?.copyWith(color: Colors.red),
+                          style: text.bodySmall?.copyWith(color: scheme.error),
                         ),
                       ),
                     ],

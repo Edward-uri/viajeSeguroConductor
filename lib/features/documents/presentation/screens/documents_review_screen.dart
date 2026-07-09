@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../theme/theme.dart';
 import '../../domain/entities/documento.dart';
 import '../provider/documents_viewmodel.dart';
 
@@ -21,29 +22,29 @@ class _DocumentsReviewScreenState extends ConsumerState<DocumentsReviewScreen> {
     );
   }
 
-  Color _statusColor(DocumentStatus status) {
+  Color _statusColor(ColorScheme scheme, DocumentStatus status) {
     switch (status) {
       case DocumentStatus.approved:
-        return const Color(0xFF1E8E5A);
+        return JalaBrand.success;
       case DocumentStatus.reviewing:
-        return const Color(0xFFE8A317);
+        return scheme.onSecondaryContainer;
       case DocumentStatus.rejected:
-        return const Color(0xFFD84315);
+        return scheme.error;
       case DocumentStatus.pending:
-        return const Color(0xFFFF8F00);
+        return scheme.onSurfaceVariant;
     }
   }
 
-  Color _iconBgColor(DocumentStatus status) {
+  Color _iconBgColor(ColorScheme scheme, DocumentStatus status) {
     switch (status) {
       case DocumentStatus.approved:
-        return const Color(0xFFE6F4EA);
+        return JalaBrand.success.withValues(alpha: 0.12);
       case DocumentStatus.reviewing:
-        return const Color(0xFFFDF3DD);
+        return scheme.secondaryContainer;
       case DocumentStatus.rejected:
-        return const Color(0xFFFCEAE6);
+        return scheme.error.withValues(alpha: 0.12);
       case DocumentStatus.pending:
-        return const Color(0xFFFFF1E0);
+        return scheme.surfaceContainerHigh;
     }
   }
 
@@ -63,6 +64,7 @@ class _DocumentsReviewScreenState extends ConsumerState<DocumentsReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = ref.watch(documentsViewModelProvider);
+    final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
@@ -76,26 +78,20 @@ class _DocumentsReviewScreenState extends ConsumerState<DocumentsReviewScreen> {
               const SizedBox(height: 16),
               Text(
                 'Sube tus documentos',
-                style: text.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1410),
-                ),
+                style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
                 'Te habilitamos para conducir en cuanto los aprobemos.',
-                style: text.bodyMedium?.copyWith(
-                  color: const Color(0xFF6B6661),
-                ),
+                style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFDF3DD),
+                  color: scheme.secondaryContainer,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFF2D98A)),
                 ),
                 child: Row(
                   children: [
@@ -103,12 +99,12 @@ class _DocumentsReviewScreenState extends ConsumerState<DocumentsReviewScreen> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: scheme.surfaceContainerLowest,
                         borderRadius: BorderRadius.circular(22),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.hourglass_top,
-                        color: Color(0xFFE8A317),
+                        color: scheme.onSecondaryContainer,
                         size: 22,
                       ),
                     ),
@@ -117,19 +113,15 @@ class _DocumentsReviewScreenState extends ConsumerState<DocumentsReviewScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'En revisión',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1A1410),
-                            ),
+                            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             'Revisamos tus documentos (1-2 días).',
                             style: text.bodySmall?.copyWith(
-                              color: const Color(0xFF6B6661),
+                              color: scheme.onSurfaceVariant,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -140,10 +132,9 @@ class _DocumentsReviewScreenState extends ConsumerState<DocumentsReviewScreen> {
                                   ? vm.approvedCount / vm.totalCount
                                   : 0,
                               minHeight: 6,
-                              backgroundColor: Colors.white,
-                              valueColor:
-                                  const AlwaysStoppedAnimation<Color>(
-                                Color(0xFFE8A317),
+                              backgroundColor: scheme.surfaceContainerLowest,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                scheme.onSecondaryContainer,
                               ),
                             ),
                           ),
@@ -153,17 +144,17 @@ class _DocumentsReviewScreenState extends ConsumerState<DocumentsReviewScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Expanded(
                 child: ListView.separated(
                   itemCount: vm.documentos.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, i) {
                     final doc = vm.documentos[i];
                     return _DocCard(
                       doc: doc,
-                      statusColor: _statusColor(doc.status),
-                      iconBgColor: _iconBgColor(doc.status),
+                      statusColor: _statusColor(scheme, doc.status),
+                      iconBgColor: _iconBgColor(scheme, doc.status),
                       statusLabel: _statusLabel(doc.status),
                     );
                   },
@@ -192,55 +183,48 @@ class _DocCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFECECEC)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(
-              Icons.description_outlined,
-              color: statusColor,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              doc.nombre,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1410),
+    final text = Theme.of(context).textTheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(20),
               ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              statusLabel,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+              child: Icon(
+                Icons.description_outlined,
                 color: statusColor,
+                size: 20,
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                doc.nombre,
+                style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                statusLabel,
+                style: text.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: statusColor,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

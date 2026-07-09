@@ -10,7 +10,6 @@ class JalaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = View.of(context).platformDispatcher.platformBrightness;
     final textTheme =
         createTextTheme(context, 'Plus Jakarta Sans', 'Plus Jakarta Sans');
     final theme = MaterialTheme(textTheme);
@@ -23,8 +22,9 @@ class JalaApp extends StatelessWidget {
       builder: DevicePreview.appBuilder,
       theme: theme.light(),
       darkTheme: theme.dark(),
-      themeMode:
-          brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light,
+      // System = MediaQuery heredado: respeta el toggle claro/oscuro de
+      // DevicePreview y el modo del dispositivo real.
+      themeMode: ThemeMode.system,
     );
   }
 }

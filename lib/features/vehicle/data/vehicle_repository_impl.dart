@@ -25,8 +25,10 @@ class VehicleRepositoryImpl implements VehicleRepository {
   Future<Vehiculo?> getMiVehiculo() async {
     final vehiculos = await getVehiculos();
     if (vehiculos.isEmpty) return null;
-    // Prefiere un vehículo aprobado si lo hay (puede haber uno viejo incompleto).
-    return vehiculos.firstWhere((v) => v.aprobado, orElse: () => vehiculos.first);
+    return vehiculos.firstWhere(
+      (v) => v.activo,
+      orElse: () => vehiculos.firstWhere((v) => v.aprobado, orElse: () => vehiculos.first),
+    );
   }
 
   @override
@@ -43,6 +45,11 @@ class VehicleRepositoryImpl implements VehicleRepository {
   @override
   Future<void> eliminarVehiculo(String placa) async {
     await _api.eliminarVehiculo(placa);
+  }
+
+  @override
+  Future<void> setVehiculoActivo(int idVehiculo) async {
+    await _api.setVehiculoActivo(idVehiculo);
   }
 
   @override

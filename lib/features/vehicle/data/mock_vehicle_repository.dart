@@ -56,6 +56,11 @@ class MockVehicleRepository implements VehicleRepository {
   }
 
   @override
+  Future<void> setVehiculoActivo(int idVehiculo) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  @override
   Future<void> subirDocumento({
     required int idVehiculo,
     required String tipo,
