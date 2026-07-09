@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/widgets/gradient_button.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../theme/theme.dart';
 import '../../domain/entities/documento.dart';
 import '../provider/documents_viewmodel.dart';
 
@@ -23,29 +25,29 @@ class _DocumentsListScreenState extends ConsumerState<DocumentsListScreen> {
     );
   }
 
-  Color _statusColor(DocumentStatus status) {
+  Color _statusColor(ColorScheme scheme, DocumentStatus status) {
     switch (status) {
       case DocumentStatus.approved:
-        return const Color(0xFF1E8E5A);
+        return JalaBrand.success;
       case DocumentStatus.reviewing:
-        return const Color(0xFFE8A317);
+        return scheme.onSecondaryContainer;
       case DocumentStatus.rejected:
-        return const Color(0xFFD84315);
+        return scheme.error;
       case DocumentStatus.pending:
-        return const Color(0xFFFF8F00);
+        return scheme.onSurfaceVariant;
     }
   }
 
-  Color _iconBgColor(DocumentStatus status) {
+  Color _iconBgColor(ColorScheme scheme, DocumentStatus status) {
     switch (status) {
       case DocumentStatus.approved:
-        return const Color(0xFFE6F4EA);
+        return JalaBrand.success.withValues(alpha: 0.12);
       case DocumentStatus.reviewing:
-        return const Color(0xFFFDF3DD);
+        return scheme.secondaryContainer;
       case DocumentStatus.rejected:
-        return const Color(0xFFFCEAE6);
+        return scheme.error.withValues(alpha: 0.12);
       case DocumentStatus.pending:
-        return const Color(0xFFFFF1E0);
+        return scheme.surfaceContainerHigh;
     }
   }
 
@@ -65,6 +67,7 @@ class _DocumentsListScreenState extends ConsumerState<DocumentsListScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = ref.watch(documentsViewModelProvider);
+    final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
@@ -77,19 +80,14 @@ class _DocumentsListScreenState extends ConsumerState<DocumentsListScreen> {
               const SizedBox(height: 16),
               Text(
                 'Sube tus documentos',
-                style: text.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1410),
-                ),
+                style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
                 'Te habilitamos para conducir en cuanto los aprobemos.',
-                style: text.bodyMedium?.copyWith(
-                  color: const Color(0xFF6B6661),
-                ),
+                style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               _ProgressCard(
                 approvedCount: vm.approvedCount,
                 totalCount: vm.totalCount,
@@ -106,13 +104,13 @@ class _DocumentsListScreenState extends ConsumerState<DocumentsListScreen> {
                   child: ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: vm.documentos.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, i) {
                       final doc = vm.documentos[i];
                       return _DocumentCard(
                         doc: doc,
-                        statusColor: _statusColor(doc.status),
-                        iconBgColor: _iconBgColor(doc.status),
+                        statusColor: _statusColor(scheme, doc.status),
+                        iconBgColor: _iconBgColor(scheme, doc.status),
                         statusLabel: _statusLabel(doc.status),
                         onTap: doc.status == DocumentStatus.pending
                             ? () => context.push(AppRoutes.documentUpload, extra: doc)
@@ -131,23 +129,11 @@ class _DocumentsListScreenState extends ConsumerState<DocumentsListScreen> {
                 ),
               Padding(
                 padding: const EdgeInsets.only(top: 8, bottom: 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: vm.allApproved
-                        ? () => context.push(AppRoutes.documentsApproved)
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Continuar',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                    ),
-                  ),
+                child: GradientButton(
+                  label: 'Continuar',
+                  onPressed: vm.allApproved
+                      ? () => context.push(AppRoutes.documentsApproved)
+                      : null,
                 ),
               ),
             ],
@@ -164,7 +150,9 @@ class _StatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = approved ? const Color(0xFF1E8E5A) : const Color(0xFFD84315);
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final color = approved ? JalaBrand.success : scheme.error;
     final icon = approved ? Icons.check_circle_rounded : Icons.error_rounded;
     final msg = approved
         ? '¡Documentos aprobados! Toca Continuar para seguir.'
@@ -184,7 +172,7 @@ class _StatusBanner extends StatelessWidget {
           Expanded(
             child: Text(
               msg,
-              style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13),
+              style: text.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -204,67 +192,59 @@ class _ProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
     final progress = totalCount > 0 ? approvedCount / totalCount : 0.0;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFEFEF),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Icon(
+                Icons.description_outlined,
+                color: scheme.onSurfaceVariant,
+                size: 22,
+              ),
             ),
-            child: const Icon(
-              Icons.description_outlined,
-              color: Color(0xFF1A1410),
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Completa tus documentos',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1410),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Completa tus documentos',
+                    style: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$approvedCount de $totalCount aprobados',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF6B6661),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$approvedCount de $totalCount aprobados',
+                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                   ),
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 6,
-                    backgroundColor: const Color(0xFFDADADA),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFFFF8F00),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 6,
+                      backgroundColor: scheme.surfaceContainerHighest,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        JalaBrand.amber,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -287,76 +267,68 @@ class _DocumentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFECECEC)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: iconBgColor,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Icon(
-                Icons.description_outlined,
-                color: statusColor,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    doc.nombre,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1410),
-                    ),
-                  ),
-                  if (doc.status == DocumentStatus.rejected &&
-                      doc.rejectionReason != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      doc.rejectionReason!,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF9A3B1E),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                statusLabel,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  Icons.description_outlined,
                   color: statusColor,
+                  size: 20,
                 ),
               ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right, size: 20, color: Color(0xFFC4C4C4)),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      doc.nombre,
+                      style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    if (doc.status == DocumentStatus.rejected &&
+                        doc.rejectionReason != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        doc.rejectionReason!,
+                        style: text.bodySmall?.copyWith(color: scheme.error),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: text.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right, size: 20, color: scheme.outline),
+            ],
+          ),
         ),
       ),
     );

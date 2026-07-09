@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/env/api_config.dart';
 import '../../../../routes/app_routes.dart';
 import '../../../../shared/widgets/authed_image.dart';
+import '../../../../theme/theme.dart';
 import '../../domain/entities/solicitud_viaje.dart';
 import '../provider/home_viewmodel.dart';
 import '../provider/ride_progress_viewmodel.dart';
@@ -164,37 +165,36 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
   }
 
   Widget _buildHeader(RideProgressViewModel vm, SolicitudViaje ride, ColorScheme scheme) {
+    final text = Theme.of(context).textTheme;
+    final activo = vm.hasStarted;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      color: vm.hasStarted ? const Color(0xFF1E8E5A) : scheme.surface,
+      color: activo ? JalaBrand.success : scheme.surface,
       child: Row(
         children: [
           GestureDetector(
             onTap: () => _onBackTap(vm),
             child: Icon(
               Icons.arrow_back,
-              color: vm.hasStarted ? Colors.white : scheme.onSurface,
+              color: activo ? Colors.white : scheme.onSurface,
             ),
           ),
           const Spacer(),
           Column(
             children: [
               Text(
-                vm.hasStarted ? 'Viaje en curso' : 'Llegada al origen',
-                style: TextStyle(
-                  fontSize: 14,
+                activo ? 'Viaje en curso' : 'Llegada al origen',
+                style: text.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color:
-                      vm.hasStarted ? Colors.white : scheme.onSurface,
+                  color: activo ? Colors.white : scheme.onSurface,
                 ),
               ),
               if (_avanceTexto(vm) != null)
                 Text(
                   _avanceTexto(vm)!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: vm.hasStarted ? Colors.white70 : scheme.onSurfaceVariant,
+                  style: text.bodySmall?.copyWith(
+                    color: activo ? Colors.white70 : scheme.onSurfaceVariant,
                   ),
                 ),
             ],
@@ -350,12 +350,14 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
   }
 
   Widget _buildBottomSheet(RideProgressViewModel vm, SolicitudViaje ride, ColorScheme scheme) {
+    final text = Theme.of(context).textTheme;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        border: Border(top: BorderSide(color: scheme.outlineVariant)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -371,11 +373,8 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
                 color: scheme.primaryContainer,
                 child: Text(
                   ride.pasajeroIniciales.isNotEmpty ? ride.pasajeroIniciales : '?',
-                  style: TextStyle(
-                    color: scheme.primary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 18,
-                  ),
+                  style: text.titleMedium
+                      ?.copyWith(color: scheme.primary, fontWeight: FontWeight.w700),
                 ),
               ),
             ),
@@ -383,11 +382,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
           const SizedBox(height: 8),
           Text(
             ride.pasajeroNombre.isNotEmpty ? ride.pasajeroNombre : 'Pasajero',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: scheme.onSurface,
-            ),
+            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
           if (ride.pasajeroTelefono != null) ...[
             const SizedBox(height: 12),
@@ -401,10 +396,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
           const SizedBox(height: 4),
           Text(
             '${ride.origen} → ${ride.destino}',
-            style: TextStyle(
-              fontSize: 13,
-              color: scheme.onSurfaceVariant,
-            ),
+            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -424,10 +416,8 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
                 ),
                 child: Text(
                   vm.isLoading ? 'Iniciando…' : 'Iniciar viaje',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: text.titleMedium
+                      ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -436,7 +426,8 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
               onPressed: vm.isLoading ? null : () => _onSoltar(vm, ride),
               child: Text(
                 'Soltar viaje',
-                style: TextStyle(color: scheme.error, fontWeight: FontWeight.w600),
+                style: text.labelLarge
+                    ?.copyWith(color: scheme.error, fontWeight: FontWeight.w600),
               ),
             ),
           ]
@@ -463,7 +454,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
                         }
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E8E5A),
+                  backgroundColor: JalaBrand.success,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -472,10 +463,8 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
                 ),
                 child: Text(
                   vm.isLoading ? 'Completando…' : 'Completar viaje',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: text.titleMedium
+                      ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -484,7 +473,8 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
               onPressed: vm.isLoading ? null : () => _onSoltar(vm, ride),
               child: Text(
                 'Cancelar viaje',
-                style: TextStyle(color: scheme.error, fontWeight: FontWeight.w600),
+                style: text.labelLarge
+                    ?.copyWith(color: scheme.error, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -493,7 +483,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
               padding: const EdgeInsets.only(top: 12),
               child: Text(
                 vm.errorMessage!,
-                style: TextStyle(color: scheme.error, fontSize: 13),
+                style: text.bodySmall?.copyWith(color: scheme.error),
               ),
             ),
         ],

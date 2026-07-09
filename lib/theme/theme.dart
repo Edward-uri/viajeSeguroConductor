@@ -10,6 +10,9 @@ abstract final class JalaBrand {
   static const Color ink = Color(0xff231d17);
 
   static const Color cream = Color(0xfffbf7f2);
+
+  /// Verde semántico "en línea / activo" — único acento de estado en la app.
+  static const Color success = Color(0xff1e8e5a);
 }
 
 class MaterialTheme {

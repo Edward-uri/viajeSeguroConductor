@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/http/api_exception.dart';
 import '../../../../core/widgets/gradient_button.dart';
+import '../../../../theme/theme.dart';
 import '../../domain/entities/documento.dart';
 import '../provider/documents_viewmodel.dart';
 
@@ -234,17 +235,17 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFCEAE6),
+                    color: scheme.error.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline, size: 20, color: Color(0xFFD84315)),
+                      Icon(Icons.error_outline, size: 20, color: scheme.error),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           _formatError!,
-                          style: const TextStyle(fontSize: 13, color: Color(0xFFD84315)),
+                          style: text.bodySmall?.copyWith(color: scheme.error),
                         ),
                       ),
                     ],
@@ -284,13 +285,20 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
   }
 
   Widget _tipRow(String text) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Icon(Icons.check, size: 16, color: const Color(0xFF1E8E5A)),
+          const Icon(Icons.check, size: 16, color: JalaBrand.success),
           const SizedBox(width: 8),
-          Text(text, style: const TextStyle(fontSize: 13)),
+          Text(
+            text,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
         ],
       ),
     );

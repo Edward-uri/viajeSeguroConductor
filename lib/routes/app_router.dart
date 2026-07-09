@@ -22,7 +22,6 @@ import '../features/documents/presentation/screens/documents_list_screen.dart';
 import '../features/documents/presentation/screens/documents_review_screen.dart';
 import '../features/profile/presentation/screens/driver_profile_screen.dart';
 import '../features/profile/presentation/screens/edit_profile_screen.dart';
-import '../features/profile/presentation/screens/profile_screen.dart';
 import '../features/rides/presentation/screens/driver_home_screen.dart';
 import '../features/rides/presentation/screens/earnings_screen.dart';
 import '../features/rides/presentation/screens/payment_methods_screen.dart';
@@ -66,7 +65,6 @@ final GoRouter appRouter = GoRouter(
     _page(AppRoutes.documentView, (_) => const DocumentViewScreen()),
     _page(AppRoutes.documentsReview, (_) => const DocumentsReviewScreen()),
     _page(AppRoutes.documentsApproved, (_) => const DocumentsApprovedScreen()),
-    _page(AppRoutes.profile, (_) => const ProfileScreen()),
     _page(AppRoutes.editProfile, (_) => const EditProfileScreen()),
     _page(AppRoutes.rideRequest, (_) => const RideRequestScreen()),
     _page(AppRoutes.rideInProgress, (_) => const RideInProgressScreen()),
