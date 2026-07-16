@@ -166,7 +166,7 @@ class _RideEvaluationScreenState
                       const SizedBox(height: 24),
                       TextField(
                         maxLines: 3,
-                        maxLength: 200,
+                        maxLength: 160,
                         decoration: InputDecoration(
                           hintText: 'Agrega un comentario (opcional)',
                           border: OutlineInputBorder(

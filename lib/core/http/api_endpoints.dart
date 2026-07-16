@@ -105,6 +105,10 @@ class ApiEndpoints {
   static String zonasCalientes(int diaSemana, int hora) =>
       '/api/zonas/calientes?dia_semana=$diaSemana&hora=$hora&top=6';
 
+  // ───── Reputación (top-3 etiquetas inferidas por LLM-JALA) ─────
+  static String usuarioEtiquetas(int idUsuario, String rol) =>
+      '/api/usuarios/$idUsuario/etiquetas?rol=$rol';
+
   // ───── Dispositivos / FCM ─────
   static const String dispositivos = '/api/dispositivos';
 

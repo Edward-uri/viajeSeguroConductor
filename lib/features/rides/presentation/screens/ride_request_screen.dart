@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
+import '../../../../core/widgets/reputation_chips.dart';
 import '../../../../routes/app_routes.dart';
 import '../provider/home_viewmodel.dart';
 
@@ -188,6 +189,12 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                          Center(
+                            child: ReputationChips(
+                              idUsuario: request.idPasajero,
+                              rol: 'pasajero',
                             ),
                           ),
                         const SizedBox(height: 24),
