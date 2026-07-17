@@ -59,11 +59,23 @@ class SocketService {
   void _doConnect() {
     _setStatus(SocketStatus.connecting);
 
+    // Usa el token vigente de ApiClient si está disponible: puede haberse
+    // refrescado por otra vía (interceptor HTTP) desde la última conexión.
+    final fresh = _tokenProvider?.call();
+    if (fresh != null && fresh.isNotEmpty) _token = fresh;
+
+    // Socket SIEMPRE nuevo: la librería cachea el Manager/Socket por URI y
+    // reutilizaría el `auth` capturado en el primer handshake (token viejo),
+    // además de acumular los handlers de cada reconexión (eventos duplicados).
+    // dispose() mata el socket anterior (handlers y estado de reintentos
+    // incluidos) y enableForceNew() impide que la caché devuelva uno viejo.
+    _socket?.dispose();
     _socket = io.io(
       ApiConfig.baseUrl,
       OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
+          .enableForceNew()
           .setAuth(<String, dynamic>{'token': _token})
           .build(),
     );
@@ -172,19 +184,42 @@ class SocketService {
     }
   }
 
-  /// Intenta refrescar el token y reconectar el socket (máx. 5 intentos
-  /// entre conexiones exitosas, con debounce de 2 s).
+  /// Intenta refrescar el token y reconectar el socket (máx. 5 intentos por
+  /// ráfaga, con debounce de 2 s). Ningún camino de fallo termina sin
+  /// programar un reintento: si el refresh falla o ApiClient está en cooldown
+  /// se vuelve al ciclo de _scheduleReconnect, que reintentará más tarde.
   void _tryRefreshAndReconnect() {
-    if (_onTokenExpired == null || _tokenProvider == null) return;
-    if (_refreshAttempts >= 5) return;
+    if (_onTokenExpired == null || _tokenProvider == null) {
+      _scheduleReconnect();
+      return;
+    }
+    if (_refreshAttempts >= 5) {
+      // Ráfaga agotada: resetea el contador y deja que el ciclo normal
+      // reintente (el cooldown de ApiClient evita martillar /refresh).
+      _refreshAttempts = 0;
+      _scheduleReconnect();
+      return;
+    }
     _refreshAttempts++;
 
     _refreshTimer?.cancel();
     _refreshTimer = Timer(const Duration(seconds: 2), () async {
-      final refreshed = await _onTokenExpired();
-      if (!refreshed) return;
+      var refreshed = false;
+      try {
+        refreshed = await _onTokenExpired();
+      } catch (_) {
+        // Refresh lanzó (red caída, etc.): cae al reintento programado.
+      }
+      if (!_shouldReconnect) return;
+      if (!refreshed) {
+        _scheduleReconnect();
+        return;
+      }
       final token = _tokenProvider();
-      if (token.isEmpty) return;
+      if (token.isEmpty) {
+        _scheduleReconnect();
+        return;
+      }
       refreshToken(token);
     });
   }

@@ -110,6 +110,14 @@ class DriverAvailabilityViewModel
     await _ensurePosition();
   }
 
+  /// La UI ya mostró el error: se limpia para que el siguiente, aunque sea
+  /// idéntico, vuelva a ser un cambio para los listeners con select().
+  void clearError() {
+    if (state.errorMessage != null) {
+      state = state.copyWith(errorMessage: null);
+    }
+  }
+
   /// Devuelve la posición actual reutilizando la ya conocida; sólo pide
   /// permiso/GPS si todavía no la tenemos. Pone errorMessage y devuelve null
   /// si no se puede obtener.

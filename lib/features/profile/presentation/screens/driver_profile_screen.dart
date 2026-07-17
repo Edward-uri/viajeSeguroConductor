@@ -7,6 +7,7 @@ import '../../../../routes/app_routes.dart';
 import '../../../../shared/domain/entities/user.dart';
 import '../../../../shared/widgets/authed_image.dart';
 import '../../../../theme/jala_theme.dart';
+import '../../../../theme/theme_mode_provider.dart';
 import '../provider/driver_profile_viewmodel.dart';
 
 String _estadoLabel(String estado) {
@@ -248,6 +249,15 @@ class _ProfileContent extends ConsumerWidget {
                   () => context.push(AppRoutes.misVacantes),
                 ),
               ],
+              _divider(context),
+              // Mismo selector de tema que la app pasajero (hoja inferior
+              // con claro/oscuro/sistema).
+              _menuTile(
+                context,
+                Icons.dark_mode_outlined,
+                'Tema: ${_themeModeLabel(ref.watch(themeModeProvider))}',
+                () => _pickThemeMode(context, ref),
+              ),
             ],
           ),
         ),
@@ -314,6 +324,49 @@ class _ProfileContent extends ConsumerWidget {
         const SizedBox(height: 32),
       ],
     );
+  }
+
+  String _themeModeLabel(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'Claro';
+      case ThemeMode.dark:
+        return 'Oscuro';
+      case ThemeMode.system:
+        return 'Sistema';
+    }
+  }
+
+  Future<void> _pickThemeMode(BuildContext context, WidgetRef ref) async {
+    final current = ref.read(themeModeProvider);
+    final selected = await showModalBottomSheet<ThemeMode>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final entry in const [
+              (ThemeMode.light, Icons.light_mode_outlined, 'Claro'),
+              (ThemeMode.dark, Icons.dark_mode_outlined, 'Oscuro'),
+              (ThemeMode.system, Icons.brightness_auto_outlined, 'Sistema'),
+            ])
+              ListTile(
+                leading: Icon(entry.$2),
+                title: Text(entry.$3),
+                trailing: entry.$1 == current
+                    ? Icon(Icons.check_rounded, color: context.brand.success)
+                    : null,
+                onTap: () => Navigator.of(ctx).pop(entry.$1),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (selected != null) {
+      ref.read(themeModeProvider.notifier).setMode(selected);
+    }
   }
 
   String _initials(String name) {

@@ -496,6 +496,27 @@ void main() {
       expect(inbox.state.errorMessage, isNull);
     });
 
+    test('clearError limpia el mensaje y el mismo error vuelve a notificar',
+        () async {
+      inbox.setPendientes([_viaje(4)]);
+      inbox.seleccionarViaje(_viaje(4));
+      socket.accepted.add({'idViaje': 4});
+      await _pump();
+      expect(inbox.state.errorMessage, isNotNull);
+
+      // La UI mostró el snackbar y limpia; un segundo error idéntico vuelve
+      // a ser un cambio de estado (los listeners con select sólo ven cambios).
+      inbox.clearError();
+      expect(inbox.state.errorMessage, isNull);
+
+      inbox.setPendientes([_viaje(4)]);
+      inbox.seleccionarViaje(_viaje(4));
+      socket.accepted.add({'idViaje': 4});
+      await _pump();
+      expect(inbox.state.errorMessage,
+          'Este viaje fue tomado por otro conductor');
+    });
+
     test('retransmite cierres del viaje activo a viajesCerrados', () async {
       final cierres = <Map<String, dynamic>>[];
       inbox.viajesCerrados.listen(cierres.add);

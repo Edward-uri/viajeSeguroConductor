@@ -149,6 +149,14 @@ class RideInboxViewModel extends StateNotifier<RideInboxState> {
     );
   }
 
+  /// La UI ya mostró el error: se limpia para que el siguiente, aunque sea
+  /// idéntico, vuelva a ser un cambio para los listeners con select().
+  void clearError() {
+    if (state.errorMessage != null) {
+      state = state.copyWith(errorMessage: null);
+    }
+  }
+
   /// Al pasar a offline: se limpia lo aceptado y la solicitud seleccionada,
   /// y se dejan de admitir solicitudes entrantes.
   void onOffline() {

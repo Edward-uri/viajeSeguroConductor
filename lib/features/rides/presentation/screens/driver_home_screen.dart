@@ -46,19 +46,14 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           ref.read(driverAvailabilityViewModelProvider.notifier);
       disponibilidad.loadData();
 
-      final activo = await disponibilidad.getViajeActivoConductor();
-      if (activo != null) {
-        if (!mounted) return;
-        context.push(AppRoutes.rideInProgress, extra: activo);
-      }
-
-      await disponibilidad.initLocation();
-      _centerOnDriver();
-
+      // Socket y registro del dispositivo (FCM) van PRIMERO y protegidos:
+      // no dependen del GPS y no deben morir por un permiso de ubicación en
+      // disputa ni por un fallo de red del resto de la cadena.
       if (!_socketInitialized) {
         _socketInitialized = true;
         final storage = ref.read(authStorageProvider);
         final token = await storage.readAccessToken();
+        if (!mounted) return;
         if (token != null && token.isNotEmpty) {
           ref.read(rideInboxViewModelProvider.notifier).initSocket(token: token);
         }
@@ -67,7 +62,27 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           final deviceReg = ref.read(deviceRegistrationServiceProvider);
           await deviceReg.registerCurrentDevice();
         } catch (_) {}
+        if (!mounted) return;
       }
+
+      try {
+        final activo = await disponibilidad.getViajeActivoConductor();
+        if (!mounted) return;
+        if (activo != null) {
+          context.push(AppRoutes.rideInProgress, extra: activo);
+        }
+      } catch (_) {
+        // Sin red no hay viaje activo que restaurar; el home sigue vivo.
+      }
+
+      try {
+        await disponibilidad.initLocation();
+      } catch (_) {
+        // iOS lanza PermissionRequestInProgress si dos peticiones de permiso
+        // compiten; sin ubicación el mapa no centra, pero el resto funciona.
+      }
+      if (!mounted) return;
+      _centerOnDriver();
 
       if (ref.read(driverAvailabilityViewModelProvider).isOnline) {
         _onlineSince = DateTime.now();
@@ -225,13 +240,24 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
 
     // Los errores llegan de dos fuentes: disponibilidad (toggle/GPS/carga) y
     // bandeja de solicitudes (aceptar/rechazar/socket). Mismo snackbar.
+    // Tras mostrarlo se limpia el mensaje: este listener sólo dispara con
+    // CAMBIOS, así que sin limpiar, dos errores idénticos seguidos no
+    // mostrarían nada la segunda vez.
     ref.listen<String?>(
       driverAvailabilityViewModelProvider.select((s) => s.errorMessage),
-      (_, msg) => _mostrarError(msg),
+      (_, msg) {
+        if (msg == null) return;
+        _mostrarError(msg);
+        ref.read(driverAvailabilityViewModelProvider.notifier).clearError();
+      },
     );
     ref.listen<String?>(
       rideInboxViewModelProvider.select((s) => s.errorMessage),
-      (_, msg) => _mostrarError(msg),
+      (_, msg) {
+        if (msg == null) return;
+        _mostrarError(msg);
+        ref.read(rideInboxViewModelProvider.notifier).clearError();
+      },
     );
 
     ref.listen<SolicitudViaje?>(
@@ -282,6 +308,11 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                   JalaMapView(
                     onMapCreated: _onMapCreated,
                     showCurrentLocationPin: false,
+                    // La posición la resuelve el viewmodel de disponibilidad
+                    // (initLocation + listener de currentPosition centra la
+                    // cámara); autoLocate aquí duplicaría la petición de
+                    // permiso y en iOS revienta con PermissionRequestInProgress.
+                    autoLocate: false,
                   ),
                   Positioned(
                     right: 16,

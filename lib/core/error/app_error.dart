@@ -76,11 +76,26 @@ class ErrorHandler {
     return const UnknownAppError();
   }
 
+  /// Mensaje fabricado por ApiClient ('Error 502') cuando la respuesta no
+  /// trae cuerpo JSON (gateways, proxies): no le dice nada al usuario.
+  static final _mensajeFabricado = RegExp(r'^Error \d+$');
+
   /// Mensaje para la UI: si el error no se pudo clasificar, usa [fallback]
   /// (el texto específico del contexto) en vez del genérico.
   static String messageFor(Object error, {String? fallback}) {
     final appError = handle(error);
     if (fallback != null && appError is UnknownAppError) return fallback;
+    // 'Error 502' fabricado tampoco informa nada: mismo trato que Unknown.
+    // Sólo aplica a la ApiException base; Unauthorized/Validation/Network ya
+    // mapean a mensajes propios más útiles que el fallback contextual.
+    if (fallback != null &&
+        error is ApiException &&
+        error is! UnauthorizedException &&
+        error is! ValidationException &&
+        error is! NetworkException &&
+        _mensajeFabricado.hasMatch(error.message)) {
+      return fallback;
+    }
     return appError.message;
   }
 
@@ -97,7 +112,9 @@ class ErrorHandler {
   }
 
   static AppError _fromStatusCode(int? statusCode, String message) {
-    if (message.isEmpty) {
+    // Un mensaje fabricado ('Error 502') cuenta como vacío: mejor el texto
+    // amigable por status que mostrarle el código pelón al usuario.
+    if (message.isEmpty || _mensajeFabricado.hasMatch(message)) {
       return switch (statusCode) {
         400 => const ValidationAppError(
           message: 'Datos inválidos. Revisa la información ingresada.',
