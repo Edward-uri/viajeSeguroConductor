@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/widgets/reputation_chips.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../shared/domain/entities/user.dart';
 import '../../../../shared/widgets/authed_image.dart';
-import '../../../../theme/theme.dart';
+import '../../../../theme/jala_theme.dart';
 import '../provider/driver_profile_viewmodel.dart';
-
 
 String _estadoLabel(String estado) {
   switch (estado.toLowerCase()) {
@@ -21,19 +22,18 @@ String _estadoLabel(String estado) {
   }
 }
 
-Color _estadoColor(String estado) {
+Color _estadoColor(BuildContext context, String estado) {
   switch (estado.toLowerCase()) {
     case 'activo':
-      return JalaBrand.success;
+      return context.brand.success;
     case 'suspendido':
-      return const Color(0xFFD84315);
+      return context.brand.warning;
     case 'eliminado':
-      return const Color(0xFFB71C1C);
+      return context.brand.destructive;
     default:
-      return Colors.grey;
+      return context.colors.onSurfaceVariant;
   }
 }
-
 
 class DriverProfileScreen extends ConsumerStatefulWidget {
   const DriverProfileScreen({super.key});
@@ -55,224 +55,264 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = ref.watch(driverProfileViewModelProvider);
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-
-    if (vm.isLoading) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Perfil')),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final user = vm.user;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Perfil')),
+      backgroundColor: context.colors.surface,
+      appBar: AppBar(
+        backgroundColor: context.colors.surface,
+        title: const Text('Mi perfil'),
+        actions: [
+          IconButton(
+            tooltip: 'Recargar',
+            onPressed: vm.isLoading ? null : () => vm.loadData(),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
       body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.all(isLandscape ? 16 : 24),
-          children: [
-            // ─── Avatar ───
-            Center(
-              child: ClipOval(
-                child: Container(
-                  width: 88,
-                  height: 88,
-                  color: JalaBrand.amber,
-                  alignment: Alignment.center,
-                  child: AuthedImage(
-                    path: user?.fotoPerfilUrl,
-                    size: 88,
-                    fallback: Text(
-                      _initials(user?.nombreCompleto ?? vm.displayName),
-                      style: text.headlineMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // ─── Nombre ───
-            Center(
-              child: Text(
-                user?.nombreCompleto ?? vm.displayName,
-                style: text.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            // ─── Rol · estado ───
-            if (user != null)
-              Center(
-                child: Text.rich(
-                  TextSpan(
-                    text: '${user.rol.toUpperCase()} · ',
+        child: Builder(
+          builder: (context) {
+            if (vm.isLoading && vm.user == null) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final user = vm.user;
+            if (user == null) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextSpan(
-                        text: _estadoLabel(user.estadoCuenta),
-                        style: TextStyle(
-                          color: _estadoColor(user.estadoCuenta),
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Icon(Icons.error_outline,
+                          size: 48, color: context.colors.error),
+                      const SizedBox(height: 16),
+                      Text(
+                        vm.errorMessage ?? 'No se pudo cargar el perfil',
+                        textAlign: TextAlign.center,
+                        style: context.text.bodyMedium?.copyWith(
+                            color: context.colors.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton.tonal(
+                        onPressed: () => vm.loadData(),
+                        child: const Text('Reintentar'),
                       ),
                     ],
                   ),
-                  style: text.labelMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    letterSpacing: 0.5,
+                ),
+              );
+            }
+            return _ProfileContent(user: user);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileContent extends ConsumerWidget {
+  const _ProfileContent({required this.user});
+
+  final User user;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vm = ref.watch(driverProfileViewModelProvider);
+    final scheme = context.colors;
+    final text = context.text;
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      children: [
+        // ─── Avatar ───
+        Center(
+          child: ClipOval(
+            child: Container(
+              width: 96,
+              height: 96,
+              color: scheme.secondaryContainer,
+              alignment: Alignment.center,
+              child: AuthedImage(
+                path: user.fotoPerfilUrl,
+                size: 96,
+                fallback: Text(
+                  _initials(user.nombreCompleto),
+                  style: text.headlineMedium?.copyWith(
+                    color: scheme.onSecondaryContainer,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-            SizedBox(height: isLandscape ? 16 : 32),
-            // ─── Stats ───
-            Row(
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // ─── Nombre ───
+        Center(
+          child: Text(
+            user.nombreCompleto,
+            textAlign: TextAlign.center,
+            style: text.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurface,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        // ─── Rol · estado (badge de Conductor, estilo del pasajero) ───
+        Center(
+          child: Text.rich(
+            TextSpan(
+              text: 'CONDUCTOR · ',
               children: [
-                Expanded(
-                  child: _statItem(
-                    vm.stats?.calificacion?.toStringAsFixed(1) ?? '0',
-                    'Calificación',
-                    text,
-                  ),
-                ),
-                Expanded(
-                  child: _statItem('${vm.viajes}', 'Viajes', text),
-                ),
-                Expanded(
-                  child: _statItem(
-                    vm.stats?.tasaAceptacion?.toStringAsFixed(0) ?? '0',
-                    'Aceptación',
-                    text,
+                TextSpan(
+                  text: _estadoLabel(user.estadoCuenta).toUpperCase(),
+                  style: TextStyle(
+                    color: _estadoColor(context, user.estadoCuenta),
                   ),
                 ),
               ],
             ),
-            SizedBox(height: isLandscape ? 16 : 32),
-            // ─── CUENTA ───
-            Text('CUENTA',
-                style: text.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Card(
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.person_outline),
-                    title: const Text('Editar perfil'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(AppRoutes.editProfile),
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  ListTile(
-                    leading: const Icon(Icons.description_outlined),
-                    title: Text(user != null && user.esConductor
-                        ? 'Mis documentos'
-                        : 'Quiero manejar · Documentos'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(AppRoutes.documents),
-                  ),
-                  if (user != null && user.esConductor) ...[
-                    const Divider(height: 1, indent: 16, endIndent: 16),
-                    ListTile(
-                      leading: const Icon(Icons.work_outline),
-                      title: const Text('Bolsa de trabajo'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push(AppRoutes.bolsa),
-                    ),
-                  ],
-                  if (user != null && user.esPropietario) ...[
-                    const Divider(height: 1, indent: 16, endIndent: 16),
-                    ListTile(
-                      leading: const Icon(Icons.assignment_outlined),
-                      title: const Text('Mis vacantes'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push(AppRoutes.misVacantes),
-                    ),
-                  ],
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  ListTile(
-                    leading: const Icon(Icons.credit_card_outlined),
-                    title: const Text('Métodos de cobro'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(AppRoutes.paymentMethods),
-                  ),
-                ],
+            style: text.labelSmall?.copyWith(
+              color: scheme.secondary,
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        // ─── Etiquetas de reputación (top-3 inferidas por LLM-JALA) ───
+        // El propio widget resuelve carga/error/vacío: si no hay etiquetas
+        // no ocupa espacio y el perfil funciona igual sin ellas.
+        ReputationChips(idUsuario: user.idUsuario, rol: 'conductor'),
+        const SizedBox(height: 32),
+        // ─── Stats ───
+        Row(
+          children: [
+            Expanded(
+              child: _statItem(
+                context,
+                vm.stats?.calificacion?.toStringAsFixed(1) ?? '0',
+                'Calificación',
               ),
             ),
-            SizedBox(height: isLandscape ? 16 : 24),
-            // ─── ACTIVIDAD ───
-            Text('ACTIVIDAD',
-                style: text.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Card(
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.attach_money_outlined),
-                    title: const Text('Ganancias'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(AppRoutes.earnings),
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  ListTile(
-                    leading: const Icon(Icons.history_outlined),
-                    title: const Text('Historial de viajes'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(AppRoutes.rideHistory),
-                  ),
-                ],
+            Expanded(
+              child: _statItem(context, '${vm.viajes}', 'Viajes'),
+            ),
+            Expanded(
+              child: _statItem(
+                context,
+                vm.stats?.tasaAceptacion?.toStringAsFixed(0) ?? '0',
+                'Aceptación',
               ),
             ),
-            const SizedBox(height: 24),
-            // ─── Error ───
-            if (vm.errorMessage != null) ...[
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: scheme.errorContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.error_outline,
-                        size: 18, color: scheme.onErrorContainer),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        vm.errorMessage!,
-                        style: text.bodySmall
-                            ?.copyWith(color: scheme.onErrorContainer),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-            // ─── Logout ───
-            TextButton.icon(
-              onPressed: () async {
-                await vm.logout();
-                if (!context.mounted) return;
-                context.go(AppRoutes.getstarted);
-              },
-              icon: Icon(Icons.logout, color: scheme.error),
-              label: Text('Cerrar sesión',
-                  style: TextStyle(color: scheme.error)),
-            ),
-            const SizedBox(height: 32),
           ],
         ),
-      ),
+        const SizedBox(height: 32),
+        // ─── Cuenta ───
+        Text('Cuenta',
+            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(
+            children: [
+              _menuTile(
+                context,
+                Icons.person_outline,
+                'Editar perfil',
+                () => context.push(AppRoutes.editProfile),
+              ),
+              _divider(context),
+              _menuTile(
+                context,
+                Icons.description_outlined,
+                user.esConductor
+                    ? 'Mis documentos'
+                    : 'Quiero manejar · Documentos',
+                () => context.push(AppRoutes.documents),
+              ),
+              if (user.esConductor) ...[
+                _divider(context),
+                _menuTile(
+                  context,
+                  Icons.work_outline,
+                  'Bolsa de trabajo',
+                  () => context.push(AppRoutes.bolsa),
+                ),
+              ],
+              if (user.esPropietario) ...[
+                _divider(context),
+                _menuTile(
+                  context,
+                  Icons.assignment_outlined,
+                  'Mis vacantes',
+                  () => context.push(AppRoutes.misVacantes),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        // ─── Actividad ───
+        Text('Actividad',
+            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(
+            children: [
+              _menuTile(
+                context,
+                Icons.attach_money_outlined,
+                'Ganancias',
+                () => context.push(AppRoutes.earnings),
+              ),
+              _divider(context),
+              _menuTile(
+                context,
+                Icons.history_outlined,
+                'Historial de viajes',
+                () => context.push(AppRoutes.rideHistory),
+              ),
+            ],
+          ),
+        ),
+        // ─── Error (no bloqueante) ───
+        if (vm.errorMessage != null) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: scheme.errorContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline,
+                    size: 18, color: scheme.onErrorContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    vm.errorMessage!,
+                    style: text.bodySmall
+                        ?.copyWith(color: scheme.onErrorContainer),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 24),
+        // ─── Cerrar sesión ───
+        OutlinedButton.icon(
+          onPressed: () async {
+            await vm.logout();
+            if (!context.mounted) return;
+            context.go(AppRoutes.getstarted);
+          },
+          icon: const Icon(Icons.logout),
+          label: const Text('Cerrar sesión'),
+        ),
+        const SizedBox(height: 32),
+      ],
     );
   }
 
@@ -285,16 +325,38 @@ class _DriverProfileScreenState extends ConsumerState<DriverProfileScreen> {
     return name.substring(0, 1).toUpperCase();
   }
 
-  Widget _statItem(String value, String label, TextTheme text) {
+  Widget _menuTile(
+    BuildContext context,
+    IconData icon,
+    String title,
+    VoidCallback onTap,
+  ) {
+    return ListTile(
+      leading: Icon(icon, color: context.colors.onSurfaceVariant),
+      title: Text(title),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
+    );
+  }
+
+  Widget _divider(BuildContext context) {
+    return Divider(
+      height: 1,
+      indent: 16,
+      color: context.colors.outlineVariant.withValues(alpha: 0.3),
+    );
+  }
+
+  Widget _statItem(BuildContext context, String value, String label) {
     return Column(
       children: [
         Text(value,
-            style: text.titleLarge
+            style: context.text.titleLarge
                 ?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 2),
         Text(label,
-            style: text.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            style: context.text.bodySmall
+                ?.copyWith(color: context.colors.onSurfaceVariant)),
       ],
     );
   }

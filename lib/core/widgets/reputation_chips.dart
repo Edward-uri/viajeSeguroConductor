@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../theme/theme.dart';
+import '../../theme/jala_theme.dart';
 import '../di/core_module.dart';
 import '../http/api_endpoints.dart';
 
@@ -56,7 +56,7 @@ class ReputationChips extends ConsumerWidget {
         const <EtiquetaReputacion>[];
     if (etiquetas.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.only(top: 8),
       child: Wrap(
         alignment: WrapAlignment.center,
         spacing: 6,
@@ -67,18 +67,23 @@ class ReputationChips extends ConsumerWidget {
   }
 
   Widget _chip(BuildContext context, EtiquetaReputacion e) {
-    final color = e.polaridad == 'positiva'
-        ? JalaBrand.success
-        : Theme.of(context).colorScheme.onSurfaceVariant;
+    final positiva = e.polaridad == 'positiva';
+    final fondo =
+        positiva ? context.brand.successLight : context.brand.accentSurface;
+    final colorTexto =
+        positiva ? context.brand.success : context.brand.greyDark;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
+        color: fondo,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         e.texto,
-        style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13),
+        style: context.text.labelMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: colorTexto,
+        ),
       ),
     );
   }

@@ -30,8 +30,6 @@ class ApiEndpoints {
   static const String conductorStats = '/api/conductor/stats';
   static const String conductorDisponibilidad =
       '/api/conductor/disponibilidad';
-  static const String conductorMetodoCobro =
-      '/api/conductor/metodo-cobro';
 
   // ───── Rides ─────
   static const String viajesPendientes = '/api/viajes/pendientes';
