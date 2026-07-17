@@ -1,15 +1,17 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:latlong2/latlong.dart' show LatLng;
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' hide Size;
 
 import '../../../../core/di/core_module.dart';
-import '../../../../core/env/api_config.dart';
 import '../../../../features/auth/di/auth_module.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../shared/utils/svg_to_mapbox.dart';
+import '../../../../shared/widgets/jala_map_view.dart';
 import '../../../../theme/theme.dart';
 import '../../domain/entities/solicitud_viaje.dart';
 import '../provider/home_viewmodel.dart';
@@ -22,7 +24,13 @@ class DriverHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
-  final _mapController = MapController();
+  // ponytail: los viewmodels/servicios siguen en LatLng (latlong2); la
+  // conversión a Point de Mapbox se hace solo aquí, en la frontera de la UI.
+  MapboxMap? _mapboxMap;
+  PointAnnotationManager? _pointManager;
+  CircleAnnotationManager? _zonasManager;
+  PointAnnotation? _driverMarker;
+  bool _pinLoaded = false;
   bool _socketInitialized = false;
   DateTime? _onlineSince;
   Timer? _onlineTimer;
@@ -90,13 +98,105 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   void _centerOnDriver() {
     final pos = ref.read(homeViewModelProvider).currentPosition;
     if (pos != null) {
-      _mapController.move(pos, 15.0);
+      _mapboxMap?.flyTo(
+        CameraOptions(
+          center: Point(coordinates: Position(pos.longitude, pos.latitude)),
+          zoom: 16.0,
+        ),
+        MapAnimationOptions(duration: 1000, startDelay: 0),
+      );
     }
   }
 
-  // Naranja (baja) → rojo (alta intensidad).
-  Color _zonaColor(double intensidad) =>
-      Color.lerp(const Color(0xFFFFA000), const Color(0xFFD32F2F), intensidad)!;
+  void _onMapCreated(MapboxMap mapboxMap) async {
+    _mapboxMap = mapboxMap;
+    // El mapa puede recrearse (cambio de tema): el estilo nuevo no conserva
+    // imágenes ni anotaciones anteriores.
+    _driverMarker = null;
+    _pinLoaded = false;
+    try {
+      _pointManager =
+          await mapboxMap.annotations.createPointAnnotationManager();
+    } catch (e) {
+      debugPrint('[Home] PointAnnotation no disponible: $e');
+    }
+    try {
+      _zonasManager =
+          await mapboxMap.annotations.createCircleAnnotationManager();
+    } catch (e) {
+      debugPrint('[Home] CircleAnnotation no disponible: $e');
+    }
+
+    await addPngPinToMap(
+      mapboxMap,
+      'mototaxi-mapa',
+      'lib/shared/icons/map-icons/MototaxiMapa.png',
+      width: 40,
+      height: 40,
+    );
+    _pinLoaded = true;
+
+    final pos = ref.read(homeViewModelProvider).currentPosition;
+    if (pos != null) {
+      _updateDriverMarker(pos);
+      _centerOnDriver();
+    }
+    _drawZonas();
+  }
+
+  void _updateDriverMarker(LatLng pos) async {
+    final manager = _pointManager;
+    if (manager == null || !_pinLoaded) return;
+    final point = Point(coordinates: Position(pos.longitude, pos.latitude));
+    try {
+      if (_driverMarker == null) {
+        _driverMarker = await manager.create(PointAnnotationOptions(
+          geometry: point,
+          iconImage: 'mototaxi-mapa',
+          iconSize: 1.0,
+        ));
+      } else {
+        // Mover el marcador existente (no recrear: evita parpadeo).
+        _driverMarker!.geometry = point;
+        await manager.update(_driverMarker!);
+      }
+    } catch (e) {
+      debugPrint('[Home] Error actualizando marcador del conductor: $e');
+    }
+  }
+
+  Future<void> _drawZonas() async {
+    final manager = _zonasManager;
+    if (manager == null) return;
+    final vm = ref.read(homeViewModelProvider);
+    try {
+      await manager.deleteAll();
+      if (vm.zonasCalientes.isEmpty) return;
+
+      final zoom = (await _mapboxMap?.getCameraState())?.zoom ?? 14.0;
+      final options = <CircleAnnotationOptions>[];
+      for (var i = 0; i < vm.zonasCalientes.length; i++) {
+        final z = vm.zonasCalientes[i];
+        final base = vm.heatZoneColors[i];
+        // metros → píxeles al zoom actual (Web Mercator).
+        // ponytail: el radio no se re-escala al hacer zoom; si algún día
+        // importa la fidelidad, migrar a una capa GeoJSON con radio en metros.
+        final metersPerPixel =
+            156543.03392 * math.cos(z.lat * math.pi / 180) / math.pow(2, zoom);
+        options.add(CircleAnnotationOptions(
+          geometry: Point(coordinates: Position(z.lng, z.lat)),
+          circleColor: base.toARGB32(),
+          circleRadius: z.radioM / metersPerPixel,
+          circleOpacity: 0.18 + z.intensidad * 0.17,
+          circleStrokeColor: base.toARGB32(),
+          circleStrokeWidth: 2.0,
+        ));
+      }
+      await manager.createMulti(options);
+    } catch (e) {
+      debugPrint('[Home] zonas calientes no disponibles en el mapa: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,6 +230,22 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       (_, isOnline) => _onOnlineChanged(isOnline),
     );
 
+    // El mapa ya no se reconstruye con el estado: marcador y zonas se
+    // actualizan imperativamente sobre las anotaciones de Mapbox.
+    ref.listen<LatLng?>(
+      homeViewModelProvider.select((v) => v.currentPosition),
+      (prev, pos) {
+        if (pos == null) return;
+        _updateDriverMarker(pos);
+        if (prev == null) _centerOnDriver();
+      },
+    );
+
+    ref.listen(
+      homeViewModelProvider.select((v) => v.zonasCalientes),
+      (_, _) => _drawZonas(),
+    );
+
     final text = Theme.of(context).textTheme;
 
     final onlineElapsed = _onlineSince != null
@@ -143,69 +259,11 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             Expanded(
               child: Stack(
                 children: [
-                  FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: vm.currentPosition ?? const LatLng(19.4326, -99.1332),
-                      initialZoom: 14.0,
-                      onTap: (_, _) {},
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate: ApiConfig.mapboxTilesUrlFor(
-                            Theme.of(context).brightness),
-                        userAgentPackageName: 'com.uriel.viajeseguroapp',
-                      ),
-                      if (vm.currentPosition != null)
-                        MarkerLayer(
-                          markers: [
-                            Marker(
-                              point: vm.currentPosition!,
-                              width: 40,
-                              height: 40,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: JalaBrand.success,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 3,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.motorcycle_outlined,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      if (vm.zonasCalientes.isNotEmpty)
-                        CircleLayer(
-                          circles: vm.zonasCalientes.asMap().entries.map((e) {
-                            final i = e.key;
-                            final z = e.value;
-                            final base = vm.heatZoneColors[i];
-                            return CircleMarker(
-                              point: LatLng(z.lat, z.lng),
-                              radius: z.radioM,
-                              useRadiusInMeter: true,
-                              color: base.withValues(
-                                  alpha: 0.18 + z.intensidad * 0.17),
-                              borderColor: base,
-                              borderStrokeWidth: 2,
-                            );
-                          }).toList(),
-                        ),
-                    ],
+                  // El mototaxi del conductor se dibuja como anotación
+                  // (pin PNG de map-icons), no como pin de "mi ubicación".
+                  JalaMapView(
+                    onMapCreated: _onMapCreated,
+                    showCurrentLocationPin: false,
                   ),
                   Positioned(
                     right: 16,

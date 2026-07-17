@@ -6,6 +6,9 @@
         android:label="Jala Conductor"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <meta-data
+            android:name="MAPBOX_ACCESS_TOKEN"
+            android:value="${MAPBOX_ACCESS_TOKEN}" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -45,6 +45,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        val mapboxToken = project.findProperty("MAPBOX_ACCESS_TOKEN") ?: ""
+        manifestPlaceholders["MAPBOX_ACCESS_TOKEN"] = mapboxToken
     }
 
     buildTypes {

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:latlong2/latlong.dart' show LatLng;
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' hide Size;
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../../core/env/api_config.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../shared/utils/svg_to_mapbox.dart';
 import '../../../../shared/widgets/authed_image.dart';
+import '../../../../shared/widgets/jala_map_view.dart';
 import '../../../../theme/theme.dart';
 import '../../domain/entities/solicitud_viaje.dart';
 import '../provider/home_viewmodel.dart';
@@ -22,7 +23,16 @@ class RideInProgressScreen extends ConsumerStatefulWidget {
 }
 
 class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
-  final _mapController = MapController();
+  // ponytail: los viewmodels/servicios siguen en LatLng (latlong2); la
+  // conversión a Point de Mapbox se hace solo aquí, en la frontera de la UI.
+  MapboxMap? _mapboxMap;
+  PolylineAnnotationManager? _polylineManager;
+  PointAnnotationManager? _driverMarkerManager;
+  PointAnnotation? _driverMarker;
+  PointAnnotationManager? _pinMarkerManager;
+  CircleAnnotationManager? _pasajeroManager;
+  PolylineAnnotation? _routeLine;
+  bool _pinImagesLoaded = false;
 
   @override
   void initState() {
@@ -33,6 +43,184 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
         ref.read(rideProgressViewModelProvider).setRide(ride);
       }
     });
+  }
+
+  void _onMapCreated(MapboxMap mapboxMap) async {
+    _mapboxMap = mapboxMap;
+    // El mapa puede recrearse (cambio de tema): el estilo nuevo no conserva
+    // imágenes ni anotaciones anteriores.
+    _pinImagesLoaded = false;
+    _routeLine = null;
+    _driverMarker = null;
+    try {
+      _polylineManager =
+          await mapboxMap.annotations.createPolylineAnnotationManager();
+    } catch (e) {
+      debugPrint('[RideInProgress] PolylineAnnotation no disponible: $e');
+    }
+    try {
+      _driverMarkerManager =
+          await mapboxMap.annotations.createPointAnnotationManager();
+    } catch (e) {
+      debugPrint('[RideInProgress] DriverMarkerManager no disponible: $e');
+    }
+    try {
+      _pinMarkerManager =
+          await mapboxMap.annotations.createPointAnnotationManager();
+    } catch (e) {
+      debugPrint('[RideInProgress] PinMarkerManager no disponible: $e');
+    }
+    try {
+      _pasajeroManager =
+          await mapboxMap.annotations.createCircleAnnotationManager();
+    } catch (e) {
+      debugPrint('[RideInProgress] CircleAnnotation no disponible: $e');
+    }
+
+    await _loadPinImages();
+
+    // Dibujar de inmediato lo que ya conozca el viewmodel.
+    final vm = ref.read(rideProgressViewModelProvider);
+    _drawOriginDestinationPins();
+    _drawRoute(vm.routePoints);
+    if (vm.currentPosition != null) {
+      _updateDriverMarker(vm.currentPosition!);
+      _followDriver(vm.currentPosition!);
+    }
+    if (vm.pasajeroPosition != null) _updatePasajeroMarker(vm.pasajeroPosition!);
+  }
+
+  Future<void> _loadPinImages() async {
+    final map = _mapboxMap;
+    if (_pinImagesLoaded || map == null) return;
+    try {
+      await addPngPinToMap(
+        map,
+        'pin-verde',
+        'lib/shared/icons/map-icons/Pin-Verde.png',
+        width: 30,
+        height: 36,
+      );
+      await addPngPinToMap(
+        map,
+        'pin-naranja',
+        'lib/shared/icons/map-icons/Pin-Naranja.png',
+        width: 30,
+        height: 36,
+      );
+      await addPngPinToMap(
+        map,
+        'mototaxi-mapa',
+        'lib/shared/icons/map-icons/MototaxiMapa.png',
+        width: 40,
+        height: 40,
+      );
+      _pinImagesLoaded = true;
+    } catch (e) {
+      debugPrint('[RideInProgress] Error cargando pines PNG: $e');
+    }
+  }
+
+  void _drawOriginDestinationPins() {
+    final ride = ref.read(rideProgressViewModelProvider).ride;
+    final manager = _pinMarkerManager;
+    if (ride == null || manager == null || !_pinImagesLoaded) return;
+    try {
+      manager.deleteAll();
+      if (ride.origenLat != null && ride.origenLng != null) {
+        manager.create(PointAnnotationOptions(
+          geometry: Point(
+            coordinates: Position(ride.origenLng!, ride.origenLat!),
+          ),
+          iconImage: 'pin-verde',
+          iconSize: 1.0,
+        ));
+      }
+      if (ride.destinoLat != null && ride.destinoLng != null) {
+        manager.create(PointAnnotationOptions(
+          geometry: Point(
+            coordinates: Position(ride.destinoLng!, ride.destinoLat!),
+          ),
+          iconImage: 'pin-naranja',
+          iconSize: 1.0,
+        ));
+      }
+    } catch (e) {
+      debugPrint('[RideInProgress] Error dibujando pines: $e');
+    }
+  }
+
+  void _updateDriverMarker(LatLng pos) async {
+    final manager = _driverMarkerManager;
+    // Si el icono aún no está cargado, el siguiente tick de posición lo dibuja.
+    if (manager == null || !_pinImagesLoaded) return;
+    final point = Point(coordinates: Position(pos.longitude, pos.latitude));
+    try {
+      if (_driverMarker == null) {
+        // Mototaxi del conductor (mismo icono de map-icons que la app pasajero).
+        _driverMarker = await manager.create(PointAnnotationOptions(
+          geometry: point,
+          iconImage: 'mototaxi-mapa',
+          iconSize: 1.0,
+        ));
+      } else {
+        // Mover el marcador existente (no recrear: evita parpadeo).
+        _driverMarker!.geometry = point;
+        await manager.update(_driverMarker!);
+      }
+    } catch (e) {
+      debugPrint('[RideInProgress] Error actualizando marcador: $e');
+    }
+  }
+
+  /// Punto ámbar con borde blanco (mismo estilo de "ubicación" del pasajero).
+  void _updatePasajeroMarker(LatLng pos) async {
+    final manager = _pasajeroManager;
+    if (manager == null) return;
+    try {
+      await manager.deleteAll();
+      await manager.create(CircleAnnotationOptions(
+        geometry: Point(coordinates: Position(pos.longitude, pos.latitude)),
+        circleColor: JalaBrand.amber.toARGB32(),
+        circleRadius: 10.0,
+        circleOpacity: 0.9,
+        circleStrokeColor: Colors.white.toARGB32(),
+        circleStrokeWidth: 3.0,
+      ));
+    } catch (e) {
+      debugPrint('[RideInProgress] Error con marcador del pasajero: $e');
+    }
+  }
+
+  void _drawRoute(List<LatLng> points) async {
+    final manager = _polylineManager;
+    if (manager == null || points.length < 2) return;
+    final coords =
+        points.map((p) => Position(p.longitude, p.latitude)).toList();
+    try {
+      if (_routeLine == null) {
+        _routeLine = await manager.create(PolylineAnnotationOptions(
+          geometry: LineString(coordinates: coords),
+          lineColor: JalaBrand.amber.toARGB32(),
+          lineWidth: 5.0,
+          lineOpacity: 0.9,
+        ));
+      } else {
+        _routeLine!.geometry = LineString(coordinates: coords);
+        await manager.update(_routeLine!);
+      }
+    } catch (e) {
+      debugPrint('[RideInProgress] No se pudo dibujar la ruta: $e');
+    }
+  }
+
+  void _followDriver(LatLng pos) {
+    _mapboxMap?.flyTo(
+      CameraOptions(
+        center: Point(coordinates: Position(pos.longitude, pos.latitude)),
+      ),
+      MapAnimationOptions(duration: 800, startDelay: 0),
+    );
   }
 
   @override
@@ -48,12 +236,33 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       },
     );
 
-    // La cámara sigue al conductor conforme avanza.
+    // La cámara sigue al conductor conforme avanza; el marcador se actualiza
+    // imperativamente (el mapa ya no se reconstruye con el estado).
     ref.listen<LatLng?>(
       rideProgressViewModelProvider.select((v) => v.currentPosition),
       (_, pos) {
-        if (pos != null) _mapController.move(pos, _mapController.camera.zoom);
+        if (pos == null) return;
+        _updateDriverMarker(pos);
+        _followDriver(pos);
       },
+    );
+
+    ref.listen<LatLng?>(
+      rideProgressViewModelProvider.select((v) => v.pasajeroPosition),
+      (_, pos) {
+        if (pos != null) _updatePasajeroMarker(pos);
+      },
+    );
+
+    ref.listen<List<LatLng>>(
+      rideProgressViewModelProvider.select((v) => v.routePoints),
+      (_, points) => _drawRoute(points),
+    );
+
+    // El detalle enriquecido puede traer coordenadas que el listado no tenía.
+    ref.listen<SolicitudViaje?>(
+      rideProgressViewModelProvider.select((v) => v.ride),
+      (_, _) => _drawOriginDestinationPins(),
     );
 
     if (ride == null) {
@@ -205,136 +414,15 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
     );
   }
 
-  /// Pin de origen/destino con el mismo look que la app del pasajero:
-  /// teardrop relleno del color del brand + punto central crema.
-  Widget _tripPin(Color color) {
-    return Stack(
-      alignment: Alignment.topCenter,
-      children: [
-        Icon(Icons.location_pin, color: color, size: 44),
-        Positioned(
-          top: 9,
-          child: Container(
-            width: 13,
-            height: 13,
-            decoration: const BoxDecoration(
-              color: Color(0xFFFBF7F2),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildMap(RideProgressViewModel vm, SolicitudViaje ride, ColorScheme scheme) {
-    final markers = <Marker>[];
-
-    if (vm.currentPosition != null) {
-      markers.add(
-        Marker(
-          point: vm.currentPosition!,
-          width: 40,
-          height: 40,
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E8E5A),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.motorcycle_outlined,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Ubicación del pasajero en vivo (se mueve conforme camina/espera).
-    if (vm.pasajeroPosition != null) {
-      markers.add(
-        Marker(
-          point: vm.pasajeroPosition!,
-          width: 40,
-          height: 40,
-          child: Container(
-            decoration: BoxDecoration(
-              color: scheme.tertiary,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Icon(Icons.person, color: Colors.white, size: 20),
-          ),
-        ),
-      );
-    }
-
-    if (ride.origenLat != null && ride.origenLng != null) {
-      markers.add(
-        Marker(
-          point: LatLng(ride.origenLat!, ride.origenLng!),
-          width: 44,
-          height: 44,
-          child: _tripPin(const Color(0xFF1E8E5A)),
-        ),
-      );
-    }
-
-    if (ride.destinoLat != null && ride.destinoLng != null) {
-      markers.add(
-        Marker(
-          point: LatLng(ride.destinoLat!, ride.destinoLng!),
-          width: 44,
-          height: 44,
-          child: _tripPin(const Color(0xFFFF8F00)),
-        ),
-      );
-    }
-
-    return FlutterMap(
-      mapController: _mapController,
-      options: MapOptions(
-        initialCenter: vm.currentPosition ??
-            LatLng(
-              ride.origenLat ?? 19.4326,
-              ride.origenLng ?? -99.1332,
-            ),
-        initialZoom: 14.0,
-      ),
-      children: [
-        TileLayer(
-          urlTemplate: ApiConfig.mapboxTilesUrlFor(
-              Theme.of(context).brightness),
-          userAgentPackageName: 'com.uriel.viajeseguroapp',
-        ),
-        if (vm.routePoints.length >= 2)
-          PolylineLayer(
-            polylines: [
-              Polyline(
-                points: vm.routePoints,
-                strokeWidth: 5,
-                color: const Color(0xFF1E8E5A),
-              ),
-            ],
-          ),
-        if (markers.isNotEmpty) MarkerLayer(markers: markers),
-      ],
+    final initial = vm.currentPosition ??
+        LatLng(ride.origenLat ?? 19.4326, ride.origenLng ?? -99.1332);
+    return JalaMapView(
+      onMapCreated: _onMapCreated,
+      initialLatitude: initial.latitude,
+      initialLongitude: initial.longitude,
+      autoLocate: false,
+      showCurrentLocationPin: false,
     );
   }
 

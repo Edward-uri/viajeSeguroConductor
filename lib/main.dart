@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'app.dart';
 import 'core/di/core_module.dart';
@@ -34,6 +35,16 @@ Future<void> main() async {
     debugPrint('[App] .env cargado');
   } catch (e) {
     debugPrint('[App] Advertencia: .env no cargado: $e');
+  }
+
+  try {
+    // Acepta ambas claves: MAPBOX_ACCESS_TOKEN (app pasajero) o MAPBOX_TOKEN (histórica).
+    MapboxOptions.setAccessToken(
+      dotenv.env['MAPBOX_ACCESS_TOKEN'] ?? dotenv.env['MAPBOX_TOKEN'] ?? '',
+    );
+    debugPrint('[App] Mapbox token configurado');
+  } catch (e) {
+    debugPrint('[App] Error configurando Mapbox: $e');
   }
 
   try {
