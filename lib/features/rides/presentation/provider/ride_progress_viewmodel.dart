@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../../core/socket/socket_module.dart';
 import '../../../../core/socket/socket_service.dart';
+import '../../../../core/error/error.dart';
 import '../../data/services/location_service.dart';
 import '../../data/services/route_service.dart';
 import '../../di/rides_module.dart';
@@ -108,7 +109,6 @@ class RideProgressViewModel extends ChangeNotifier {
       final lat = (data['lat'] as num?)?.toDouble();
       final lng = (data['lng'] as num?)?.toDouble();
       if (lat == null || lng == null) return;
-      debugPrint('[Tracking] ubicación del pasajero: $lat,$lng');
       _pasajeroPosition = LatLng(lat, lng);
       notifyListeners();
     });
@@ -129,7 +129,6 @@ class RideProgressViewModel extends ChangeNotifier {
 
       // Comparte la posición desde que va por el pasajero (aceptado) hasta el destino.
       if (_ride != null) {
-        debugPrint('[Tracking] comparto mi ubicación: ${latLng.latitude},${latLng.longitude}');
         _socketService.emitLocation(
           idViaje: _ride!.idViaje,
           lat: latLng.latitude,
@@ -187,7 +186,8 @@ class RideProgressViewModel extends ChangeNotifier {
       _errorMessage = null;
       return true;
     } catch (e) {
-      _errorMessage = 'No pudimos soltar el viaje. Intenta de nuevo.';
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No pudimos soltar el viaje. Intenta de nuevo.');
       return false;
     } finally {
       _isLoading = false;
@@ -205,7 +205,8 @@ class RideProgressViewModel extends ChangeNotifier {
       _errorMessage = null;
       _refreshRoute(force: true);
     } catch (e) {
-      _errorMessage = 'Error al iniciar viaje';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'Error al iniciar viaje');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -220,7 +221,8 @@ class RideProgressViewModel extends ChangeNotifier {
       await _repository.completeRide(_ride!.id);
       _errorMessage = null;
     } catch (e) {
-      _errorMessage = 'Error al completar viaje';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'Error al completar viaje');
     } finally {
       _isLoading = false;
       notifyListeners();

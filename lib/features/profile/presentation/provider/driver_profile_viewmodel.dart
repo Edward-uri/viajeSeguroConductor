@@ -2,10 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_module.dart';
+import '../../../../core/error/error.dart';
 import '../../../../core/http/api_exception.dart';
 import '../../../../core/session/session_service.dart';
 import '../../../../core/storage/sensitive_data_storage.dart';
 import '../../../../shared/domain/entities/user.dart';
+import '../../../auth/di/auth_module.dart';
 import '../../di/profile_module.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../../../rides/domain/entities/solicitud_viaje.dart';
@@ -68,14 +70,12 @@ class DriverProfileViewModel extends ChangeNotifier {
       _user = await _profileRepo.getMe();
     } on UnauthorizedException {
       await _sessionService.logout();
-      _errorMessage = 'Tu sesion expiro. Inicia sesion de nuevo.';
+      _errorMessage = 'Tu sesión expiró. Inicia sesión de nuevo.';
       _isLoading = false;
       notifyListeners();
       return;
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (_) {
-      _errorMessage = 'Ocurrio un error inesperado';
+    } catch (e) {
+      _errorMessage = ErrorHandler.handle(e).message;
     }
 
     try {
@@ -112,8 +112,9 @@ class DriverProfileViewModel extends ChangeNotifier {
         _errorMessage = e.message;
       }
       notifyListeners();
-    } catch (_) {
-      _errorMessage = 'Error al actualizar perfil';
+    } catch (e) {
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'Error al actualizar perfil');
       notifyListeners();
     }
   }
@@ -128,8 +129,9 @@ class DriverProfileViewModel extends ChangeNotifier {
     try {
       _user = await _profileRepo.uploadPhoto(bytes: bytes, fileName: fileName);
       return true;
-    } catch (_) {
-      _errorMessage = 'No pudimos actualizar tu foto. Intenta de nuevo.';
+    } catch (e) {
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No pudimos actualizar tu foto. Intenta de nuevo.');
       return false;
     } finally {
       _isUploadingPhoto = false;

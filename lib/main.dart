@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'app.dart';
-import 'core/di/core_module.dart';
 import 'core/env/api_config.dart';
 import 'core/messaging/background_message_handler.dart';
 import 'core/messaging/firebase_push_messaging_service.dart';
@@ -27,14 +26,11 @@ import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  debugPrint('[App] Iniciando secuencia de arranque...');
 
   try {
     await dotenv.load(fileName: ".env");
-    debugPrint('[App] .env cargado');
   } catch (e) {
-    debugPrint('[App] Advertencia: .env no cargado: $e');
+    if (kDebugMode) debugPrint('[App] Advertencia: .env no cargado: $e');
   }
 
   try {
@@ -42,26 +38,22 @@ Future<void> main() async {
     MapboxOptions.setAccessToken(
       dotenv.env['MAPBOX_ACCESS_TOKEN'] ?? dotenv.env['MAPBOX_TOKEN'] ?? '',
     );
-    debugPrint('[App] Mapbox token configurado');
   } catch (e) {
-    debugPrint('[App] Error configurando Mapbox: $e');
+    if (kDebugMode) debugPrint('[App] Error configurando Mapbox: $e');
   }
 
   try {
-
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     ).timeout(const Duration(seconds: 5));
-    debugPrint('[App] Firebase inicializado');
   } catch (e) {
-    debugPrint('[App] Error o Timeout en Firebase: $e');
+    if (kDebugMode) debugPrint('[App] Error o Timeout en Firebase: $e');
   }
 
   try {
     await _initSecureDataAndRemoteWipe();
-    debugPrint('[App] Servicios de seguridad inicializados');
   } catch (e) {
-    debugPrint('[App] Error en servicios de seguridad: $e');
+    if (kDebugMode) debugPrint('[App] Error en servicios de seguridad: $e');
   }
 
   if (kDebugMode) {
@@ -71,7 +63,6 @@ Future<void> main() async {
   runApp(
     ProviderScope(
       overrides: [
-        sessionServiceProvider.overrideWith((ref) => ref.watch(authSessionServiceProvider)),
         deviceRegistrationServiceProvider.overrideWith((ref) {
           final messaging = MessagingGlobals.messaging!;
           final repository = ref.watch(ridesRepositoryProvider);
@@ -98,7 +89,7 @@ Future<void> _initSecureDataAndRemoteWipe() async {
   try {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   } catch (e) {
-    debugPrint('[App] No se pudo registrar el background handler: $e');
+    if (kDebugMode) debugPrint('[App] No se pudo registrar el background handler: $e');
   }
 
   final wipeHandler = RemoteWipeHandler(sensitiveStorage, SecureAuthStorage());
@@ -112,7 +103,7 @@ Future<void> _initSecureDataAndRemoteWipe() async {
   // No esperamos (await) a que termine la inicialización de mensajería para no bloquear el UI
   // si el servicio de tokens de Google está caído.
   messaging.initialize().catchError((e) {
-    debugPrint('[App] Error asíncrono en messaging.initialize: $e');
+    if (kDebugMode) debugPrint('[App] Error asíncrono en messaging.initialize: $e');
   });
 }
 

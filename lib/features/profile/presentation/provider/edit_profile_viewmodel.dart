@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/http/api_exception.dart';
+import '../../../../core/error/error.dart';
 import '../../di/profile_module.dart';
 import '../../domain/entities/update_profile_params.dart';
 import '../../domain/repositories/profile_repository.dart';
@@ -76,10 +76,9 @@ class EditProfileViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (_) {
-      _errorMessage = 'Ocurrió un error al guardar los cambios';
+    } catch (e) {
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'Ocurrió un error al guardar los cambios');
     }
 
     _isLoading = false;

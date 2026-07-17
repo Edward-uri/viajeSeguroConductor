@@ -7,22 +7,36 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 import '../env/api_config.dart';
-import '../navigation/app_navigator.dart';
 import '../storage/auth_storage.dart';
 import 'api_endpoints.dart';
 import 'api_exception.dart';
 
+typedef OnAuthFailure = void Function();
+
 class ApiClient {
-  ApiClient(this._client, this._authStorage, {String? baseUrl})
+  ApiClient(this._client, this._authStorage, {String? baseUrl, this.onAuthFailure})
       : baseUrl = baseUrl ?? ApiConfig.baseUrl;
 
   final http.Client _client;
   final AuthStorage _authStorage;
   final String baseUrl;
 
+  /// Se invoca cuando la sesión muere (refresh imposible). La navegación al
+  /// login se inyecta desde el DI para no acoplar HTTP con navegación.
+  final OnAuthFailure? onAuthFailure;
+
   Future<bool>? _refreshing;
   DateTime? _refreshBlockedUntil;
   bool _sessionDead = false;
+
+  String? _cachedToken;
+
+  /// Último access token leído (para el socket, sin tocar storage).
+  String? get currentToken => _cachedToken;
+
+  /// Fuerza un refresh de sesión (p. ej. cuando el socket recibe unauthorized).
+  /// Comparte los guards de single-flight, cooldown y sesión muerta.
+  Future<bool> refreshSession() => _tryRefresh();
 
   Future<Map<String, dynamic>> get(String path, {bool auth = true}) async {
     return _send(auth: auth, send: (headers) => _client.get(_uri(path), headers: headers));
@@ -35,9 +49,6 @@ class ApiClient {
     Map<String, String>? extraHeaders,
   }) async {
     final headers = extraHeaders ?? {};
-    if (path.contains('register/complete') && body is Map) {
-      debugPrint('[ApiClient] registerComplete body contains rol=${body.containsKey('rol')}');
-    }
     return _send(auth: auth, send: (h) => _client.post(
       _uri(path),
       headers: {...h, ...headers},
@@ -56,12 +67,13 @@ class ApiClient {
   }) async {
     final url = _uri(path);
     final timeout = ApiConfig.uploadTimeout;
-    debugPrint('[ApiClient] multipartPost $path auth=$auth timeout=${timeout.inSeconds}s size=${bytes.length}');
+    if (kDebugMode) {
+      debugPrint('[ApiClient] multipartPost $path auth=$auth timeout=${timeout.inSeconds}s size=${bytes.length}');
+    }
 
     var token = auth ? await _authStorage.readAccessToken() : null;
-    if (token != null) {
-      debugPrint('[ApiClient] Token: $token');
-    } else if (auth) {
+    if (token != null) _cachedToken = token;
+    if (token == null && auth && kDebugMode) {
       debugPrint('[ApiClient] WARNING: auth=true but readAccessToken() returned null');
     }
 
@@ -70,7 +82,6 @@ class ApiClient {
       req.headers['Accept'] = 'application/json';
       if (token != null) {
         req.headers['Authorization'] = 'Bearer $token';
-        debugPrint('[ApiClient] Token presente (${token.length} chars)');
       }
       req.files.add(http.MultipartFile.fromBytes(
         fieldName,
@@ -86,18 +97,18 @@ class ApiClient {
       var streamed = await request.send().timeout(timeout);
       var response = await http.Response.fromStream(streamed).timeout(timeout);
 
-      debugPrint('[ApiClient] multipart response ${response.statusCode}');
+      if (kDebugMode) debugPrint('[ApiClient] multipart response ${response.statusCode}');
 
       if (response.statusCode == 401 && auth && token != null) {
-        debugPrint('[ApiClient] 401 — intentando refresh...');
         final refreshed = await _tryRefresh();
         if (refreshed) {
-          debugPrint('[ApiClient] Refresh OK, reintentando multipart...');
           token = await _authStorage.readAccessToken();
           request = buildRequest();
           streamed = await request.send().timeout(timeout);
           response = await http.Response.fromStream(streamed).timeout(timeout);
-          debugPrint('[ApiClient] multipart retry response ${response.statusCode}');
+          if (kDebugMode) {
+            debugPrint('[ApiClient] multipart retry response ${response.statusCode}');
+          }
         }
       }
 
@@ -107,16 +118,12 @@ class ApiClient {
       if (decoded is Map<String, dynamic>) return decoded;
       throw ApiException('Respuesta del servidor en formato inesperado', statusCode: response.statusCode);
     } on TimeoutException {
-      debugPrint('[ApiClient] multipart TIMEOUT');
       throw NetworkException('La solicitud tardó demasiado. Revisa tu conexión.');
     } on SocketException {
-      debugPrint('[ApiClient] multipart SOCKET EXCEPTION');
       throw NetworkException('Sin conexión. Revisa internet e intenta de nuevo.');
     } on http.ClientException catch (e) {
-      debugPrint('[ApiClient] multipart CLIENT EXCEPTION: ${e.message}');
       throw NetworkException('Error de red: ${e.message}');
     } on FormatException {
-      debugPrint('[ApiClient] multipart FORMAT EXCEPTION');
       throw ApiException('Respuesta del servidor en formato inválido');
     }
   }
@@ -193,7 +200,7 @@ class ApiClient {
   }) async {
     try {
       var token = auth ? await _authStorage.readAccessToken() : null;
-      if (token != null) debugPrint('[ApiClient] Token: $token');
+      if (token != null) _cachedToken = token;
       var headers = _buildHeaders(auth: auth, token: token, hasBody: true);
       var response = await send(headers).timeout(ApiConfig.requestTimeout);
 
@@ -257,6 +264,7 @@ class ApiClient {
           return false;
         }
         await _authStorage.writeTokens(accessToken: accessToken, refreshToken: newRefreshToken);
+        _cachedToken = accessToken;
         _refreshBlockedUntil = null;
         return true;
       }
@@ -277,8 +285,10 @@ class ApiClient {
   void _killSession() {
     if (_sessionDead) return;
     _sessionDead = true;
+    _cachedToken = null;
     _authStorage.clear();
-    AppNavigator.goToLogin();
+    final callback = onAuthFailure;
+    if (callback != null) Future.microtask(callback);
   }
 
   void _throwIfError(http.Response response) {

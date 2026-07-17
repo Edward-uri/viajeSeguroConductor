@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/error/error.dart';
 import '../../di/rides_module.dart';
 import '../../domain/repositories/rides_repository.dart';
 
@@ -48,7 +49,8 @@ class RideEvaluationViewModel extends ChangeNotifier {
       );
       _isSubmitted = true;
     } catch (e) {
-      _errorMessage = 'Error al enviar evaluación';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'Error al enviar evaluación');
     } finally {
       _isSubmitting = false;
       notifyListeners();

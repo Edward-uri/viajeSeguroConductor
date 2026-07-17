@@ -22,7 +22,9 @@ class DeviceRegistrationService {
       );
 
       if (kDebugMode) {
-        debugPrint('[DeviceRegistration] Token FCM registrado: $token');
+        // Enmascarado: nunca loguear el token FCM completo.
+        final masked = '${token.length > 8 ? token.substring(0, 8) : token}…';
+        debugPrint('[DeviceRegistration] Token FCM registrado: $masked');
       }
     } catch (e) {
       if (kDebugMode) {

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/error/error.dart';
 import '../../domain/entities/metodo_cobro.dart';
 import '../../domain/repositories/metodo_cobro_repository.dart';
 import '../../di/rides_module.dart';
@@ -39,7 +40,8 @@ class MetodoCobroViewModel extends ChangeNotifier {
             'Método de cobro no disponible. Próximamente podrás configurarlo.';
       }
     } catch (e) {
-      _errorMessage = 'Error al cargar método de cobro';
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'Error al cargar método de cobro');
     }
 
     _isLoading = false;
@@ -58,8 +60,9 @@ class MetodoCobroViewModel extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage =
-          'Método de cobro no disponible. Próximamente podrás configurarlo.';
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback:
+              'Método de cobro no disponible. Próximamente podrás configurarlo.');
       _isSaving = false;
       notifyListeners();
       return false;

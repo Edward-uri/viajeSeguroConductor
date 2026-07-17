@@ -90,7 +90,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
     if (image != null) {
       return (img.encodeJpg(image, quality: 85), 'jpg');
     }
-    debugPrint('[Upload] decodeImage falló — conservando formato $ext');
+    if (kDebugMode) debugPrint('[Upload] decodeImage falló — conservando formato $ext');
     return (bytes, ext);
   }
 
@@ -102,7 +102,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
       final bytes = await picked.readAsBytes();
 
       if (_isHeic(bytes)) {
-        debugPrint('[Upload] HEIC/HEIF detectado — no se puede convertir a JPEG');
+        if (kDebugMode) debugPrint('[Upload] HEIC/HEIF detectado — no se puede convertir a JPEG');
         setState(() {
           _formatError = 'Formato HEIC no compatible. iOS convierte automáticamente a JPEG al usar la cámara. Intenta de nuevo o elige de la galería.';
         });
@@ -111,9 +111,9 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
 
       final origExt = _detectExtension(bytes);
       final label = _formatLabel(bytes);
-      debugPrint('[Upload] Origen: $label (.$origExt, ${bytes.length} bytes)');
+      if (kDebugMode) debugPrint('[Upload] Origen: $label (.$origExt, ${bytes.length} bytes)');
       final (converted, finalExt) = _toJpeg(bytes, origExt);
-      debugPrint('[Upload] Salida: .$finalExt (${converted.length} bytes)');
+      if (kDebugMode) debugPrint('[Upload] Salida: .$finalExt (${converted.length} bytes)');
       setState(() {
         _selectedFile = picked;
         _fileBytes = converted;
@@ -128,7 +128,7 @@ class _DocumentUploadScreenState extends ConsumerState<DocumentUploadScreen> {
     if (doc == null) return;
 
     final format = _formatLabel(_fileBytes!);
-    debugPrint('[Upload] Subiendo ${doc.id}.$_detectedExt — formato real: $format (${_fileBytes!.length} bytes)');
+    if (kDebugMode) debugPrint('[Upload] Subiendo ${doc.id}.$_detectedExt — formato real: $format (${_fileBytes!.length} bytes)');
 
     setState(() => _isUploading = true);
     try {

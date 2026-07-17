@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -118,13 +119,13 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       _pointManager =
           await mapboxMap.annotations.createPointAnnotationManager();
     } catch (e) {
-      debugPrint('[Home] PointAnnotation no disponible: $e');
+      if (kDebugMode) debugPrint('[Home] PointAnnotation no disponible: $e');
     }
     try {
       _zonasManager =
           await mapboxMap.annotations.createCircleAnnotationManager();
     } catch (e) {
-      debugPrint('[Home] CircleAnnotation no disponible: $e');
+      if (kDebugMode) debugPrint('[Home] CircleAnnotation no disponible: $e');
     }
 
     await addPngPinToMap(
@@ -161,7 +162,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         await manager.update(_driverMarker!);
       }
     } catch (e) {
-      debugPrint('[Home] Error actualizando marcador del conductor: $e');
+      if (kDebugMode) debugPrint('[Home] Error actualizando marcador del conductor: $e');
     }
   }
 
@@ -194,7 +195,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       }
       await manager.createMulti(options);
     } catch (e) {
-      debugPrint('[Home] zonas calientes no disponibles en el mapa: $e');
+      if (kDebugMode) debugPrint('[Home] zonas calientes no disponibles en el mapa: $e');
     }
   }
 

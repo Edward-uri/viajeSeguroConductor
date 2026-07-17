@@ -1,19 +1,14 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:ui' show Color;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
-import '../../../../core/di/core_module.dart';
-import '../../../../core/env/api_config.dart';
-import '../../../../core/http/api_endpoints.dart';
+import '../../../../core/error/error.dart';
 import '../../../../core/http/api_exception.dart';
 import '../../../../core/socket/socket_module.dart';
 import '../../../../core/socket/socket_service.dart';
-import '../../../../core/storage/auth_storage.dart';
 import '../../../../features/documents/domain/entities/documento.dart';
 import '../../../../features/documents/domain/repositories/documento_repository.dart';
 import '../../../../features/heatmap/data/models/heat_zone.dart';
@@ -40,7 +35,6 @@ final homeViewModelProvider =
     ref.watch(socketServiceProvider),
     ref.watch(documentoRepositoryProvider),
     ref.watch(heatmapRepositoryProvider),
-    ref.watch(authStorageProvider),
     ref.watch(vehicleRepositoryProvider),
     ref.watch(profileRepositoryProvider),
   );
@@ -83,7 +77,6 @@ class HomeViewModel extends ChangeNotifier {
     this._socketService,
     this._documentoRepository,
     this._heatmapRepository,
-    this._authStorage,
     this._vehicleRepository,
     this._profileRepository,
   );
@@ -93,7 +86,6 @@ class HomeViewModel extends ChangeNotifier {
   final SocketService _socketService;
   final DocumentoRepository _documentoRepository;
   final HeatmapRepository _heatmapRepository;
-  final AuthStorage _authStorage;
   final VehicleRepository _vehicleRepository;
   final ProfileRepository _profileRepository;
 
@@ -146,11 +138,10 @@ class HomeViewModel extends ChangeNotifier {
     _socketService.connect(token: token);
 
     _socketStatusSub?.cancel();
+    // El refresh de token ante `unauthorized` lo maneja el propio
+    // SocketService (vía ApiClient.refreshSession); aquí sólo se refleja el estado.
     _socketStatusSub = _socketService.statusStream.listen((status) {
       _socketStatus = status;
-      if (status == SocketStatus.unauthorized) {
-        _refreshSocketToken();
-      }
       notifyListeners();
     });
 
@@ -210,35 +201,6 @@ class HomeViewModel extends ChangeNotifier {
     });
   }
 
-  Future<void> _refreshSocketToken() async {
-    try {
-      final refreshToken = await _authStorage.readRefreshToken();
-      if (refreshToken == null) return;
-      final client = http.Client();
-      try {
-        final response = await client
-            .post(
-              Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.refresh}'),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({'refreshToken': refreshToken}),
-            )
-            .timeout(ApiConfig.requestTimeout);
-        if (response.statusCode != 200) return;
-        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-        final accessToken = decoded['accessToken'] as String?;
-        final newRefreshToken = decoded['refreshToken'] as String?;
-        if (accessToken == null || newRefreshToken == null) return;
-        await _authStorage.writeTokens(
-          accessToken: accessToken,
-          refreshToken: newRefreshToken,
-        );
-        _socketService.refreshToken(accessToken);
-      } finally {
-        client.close();
-      }
-    } catch (_) {}
-  }
-
   Future<bool> goOnline(int idMunicipio) => _socketService.emitOnline(idMunicipio);
 
   Future<SolicitudViaje?> getViajeActivoConductor() =>
@@ -272,9 +234,12 @@ class HomeViewModel extends ChangeNotifier {
       final user = results[3] as User?;
       _me = user;
       if (user?.idMunicipio != null) idMunicipio = user!.idMunicipio!;
-      debugPrint('[Home] pendientes=${_pendientes.length} municipio=$idMunicipio vehiculoAprobado=${_miVehiculo?.aprobado}');
+      if (kDebugMode) {
+        debugPrint('[Home] pendientes=${_pendientes.length} municipio=$idMunicipio vehiculoAprobado=${_miVehiculo?.aprobado}');
+      }
     } catch (e) {
-      _errorMessage = 'No pudimos cargar tu información. Revisa tu internet e intenta de nuevo.';
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No pudimos cargar tu información. Revisa tu internet e intenta de nuevo.');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -347,8 +312,9 @@ class HomeViewModel extends ChangeNotifier {
         notifyListeners();
         return;
       }
-    } catch (_) {
-      _errorMessage = 'No pudimos revisar tu estado. Intenta de nuevo en un momento.';
+    } catch (e) {
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No pudimos revisar tu estado. Intenta de nuevo en un momento.');
       notifyListeners();
       return;
     }
@@ -364,8 +330,9 @@ class HomeViewModel extends ChangeNotifier {
         lat: pos.latitude,
         lng: pos.longitude,
       );
-    } catch (_) {
-      _errorMessage = 'No pudimos cambiar tu estado. Intenta de nuevo en un momento.';
+    } catch (e) {
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No pudimos cambiar tu estado. Intenta de nuevo en un momento.');
       notifyListeners();
       return;
     }
@@ -434,11 +401,13 @@ class HomeViewModel extends ChangeNotifier {
           .map((m) => Color((m['color'] as num).toInt()))
           .toList();
 
-      debugPrint('[Home] zonas calientes: ${_zonasCalientes.length} (municipio $idMunicipio)');
+      if (kDebugMode) {
+        debugPrint('[Home] zonas calientes: ${_zonasCalientes.length} (municipio $idMunicipio)');
+      }
     } catch (e) {
       _zonasCalientes = [];
       _heatZoneColors = [];
-      debugPrint('[Home] zonas calientes no disponibles: $e');
+      if (kDebugMode) debugPrint('[Home] zonas calientes no disponibles: $e');
     } finally {
       _isLoadingZonas = false;
       notifyListeners();
@@ -482,7 +451,8 @@ class HomeViewModel extends ChangeNotifier {
             ? e.message
             : 'Este viaje ya fue tomado por otro conductor';
       } else {
-        _errorMessage = 'No pudimos aceptar el viaje. Intenta de nuevo.';
+        _errorMessage = ErrorHandler.messageFor(e,
+            fallback: 'No pudimos aceptar el viaje. Intenta de nuevo.');
       }
       notifyListeners();
       return null;
@@ -519,7 +489,8 @@ class HomeViewModel extends ChangeNotifier {
     try {
       await _repository.startRide(rideId);
     } catch (e) {
-      _errorMessage = 'No pudimos iniciar el viaje. Intenta de nuevo.';
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No pudimos iniciar el viaje. Intenta de nuevo.');
       notifyListeners();
     }
   }
@@ -530,7 +501,8 @@ class HomeViewModel extends ChangeNotifier {
       _aceptadosPorMi.remove(rideId);
       _viajeAceptado = null;
     } catch (e) {
-      _errorMessage = 'No pudimos terminar el viaje. Intenta de nuevo.';
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No pudimos terminar el viaje. Intenta de nuevo.');
       notifyListeners();
     }
   }
@@ -539,7 +511,8 @@ class HomeViewModel extends ChangeNotifier {
     try {
       await _repository.cancelRide(rideId, motivo: motivo);
     } catch (e) {
-      _errorMessage = 'No pudimos cancelar el viaje. Intenta de nuevo.';
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No pudimos cancelar el viaje. Intenta de nuevo.');
       notifyListeners();
     }
   }

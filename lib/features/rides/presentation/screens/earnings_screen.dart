@@ -1,50 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../di/rides_module.dart';
-import '../../domain/entities/ride_history_item.dart';
 import '../../domain/entities/solicitud_viaje.dart';
-import '../../domain/repositories/rides_repository.dart';
-
-final _earningsProvider =
-    ChangeNotifierProvider.autoDispose<_EarningsViewModel>((ref) {
-  return _EarningsViewModel(ref.watch(ridesRepositoryProvider));
-});
-
-class _EarningsViewModel extends ChangeNotifier {
-  _EarningsViewModel(this._repository);
-
-  final RidesRepository _repository;
-
-  DriverStats? _stats;
-  List<RideHistoryItem> _recentRides = [];
-  bool _isLoading = true;
-  String? _errorMessage;
-
-  DriverStats? get stats => _stats;
-  List<RideHistoryItem> get recentRides => _recentRides;
-  bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
-
-  Future<void> load() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-    try {
-      final results = await Future.wait([
-        _repository.getStats(),
-        _repository.getAssignedRides(),
-      ]);
-      _stats = results[0] as DriverStats;
-      _recentRides = results[1] as List<RideHistoryItem>;
-    } catch (e) {
-      _errorMessage = 'Error al cargar tus ganancias';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-}
+import '../provider/earnings_viewmodel.dart';
 
 class EarningsScreen extends ConsumerStatefulWidget {
   const EarningsScreen({super.key});
@@ -58,13 +16,13 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => ref.read(_earningsProvider).load(),
+      (_) => ref.read(earningsViewModelProvider).load(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final vm = ref.watch(_earningsProvider);
+    final vm = ref.watch(earningsViewModelProvider);
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
@@ -86,7 +44,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
                                 ?.copyWith(color: scheme.onSurfaceVariant)),
                         const SizedBox(height: 16),
                         TextButton(
-                          onPressed: () => ref.read(_earningsProvider).load(),
+                          onPressed: () => ref.read(earningsViewModelProvider).load(),
                           child: const Text('Reintentar'),
                         ),
                       ],

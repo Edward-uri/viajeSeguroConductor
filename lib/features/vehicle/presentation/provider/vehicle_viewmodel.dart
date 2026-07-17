@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/error/error.dart';
 import '../../di/vehicle_module.dart';
 import '../../domain/entities/vehiculo.dart';
 import '../../domain/repositories/vehicle_repository.dart';
@@ -45,7 +46,8 @@ class VehicleViewModel extends ChangeNotifier {
       _rfc = facturacion['rfc']?.toString();
       _razonSocial = facturacion['razonSocial']?.toString();
     } catch (e) {
-      _errorMessage = 'Error al cargar vehículos';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'Error al cargar vehículos');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -68,7 +70,8 @@ class VehicleViewModel extends ChangeNotifier {
       _rfc = rfc;
       _razonSocial = razonSocial;
     } catch (e) {
-      _errorMessage = 'No se pudieron guardar los datos de facturación';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'No se pudieron guardar los datos de facturación');
     } finally {
       _isSaving = false;
       notifyListeners();
@@ -85,7 +88,8 @@ class VehicleViewModel extends ChangeNotifier {
       await loadVehiculos();
       return id;
     } catch (e) {
-      _errorMessage = 'No se pudo registrar el vehículo. Verifica los datos.';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'No se pudo registrar el vehículo. Verifica los datos.');
       return 0;
     } finally {
       _isSaving = false;
@@ -112,7 +116,8 @@ class VehicleViewModel extends ChangeNotifier {
       await loadVehiculos();
       return true;
     } catch (e) {
-      _errorMessage = 'No se pudo subir el documento. Intenta de nuevo.';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'No se pudo subir el documento. Intenta de nuevo.');
       return false;
     } finally {
       _isSaving = false;
@@ -133,7 +138,8 @@ class VehicleViewModel extends ChangeNotifier {
       await _repository.setVehiculoActivo(idVehiculo);
       await loadVehiculos();
     } catch (e) {
-      _errorMessage = 'No se pudo seleccionar el vehículo. Intenta de nuevo.';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'No se pudo seleccionar el vehículo. Intenta de nuevo.');
     } finally {
       _isSaving = false;
       notifyListeners();

@@ -20,12 +20,12 @@ class DocumentoRepositoryImpl implements DocumentoRepository {
         try {
           await _api.crearConductor();
         } catch (_) {
-          debugPrint('[DocumentoRepo] crearConductor falló, retornando defaults');
+          if (kDebugMode) debugPrint('[DocumentoRepo] crearConductor falló, retornando defaults');
         }
         return _fetchDocumentos();
       }
       if (e.statusCode == 403) {
-        debugPrint('[DocumentoRepo] 403 en conductor endpoints — el token no tiene permisos de conductor');
+        if (kDebugMode) debugPrint('[DocumentoRepo] 403 en conductor endpoints — el token no tiene permisos de conductor');
       }
       rethrow;
     }
@@ -39,7 +39,7 @@ class DocumentoRepositoryImpl implements DocumentoRepository {
 
   @override
   Future<void> subirDocumento(String documentoId, Uint8List bytes, String fileName) async {
-    debugPrint('[DocumentoRepo] subirDocumento("$documentoId")');
+    if (kDebugMode) debugPrint('[DocumentoRepo] subirDocumento("$documentoId")');
     await _api.subirDocumento(
       tipo: documentoId,
       bytes: bytes,

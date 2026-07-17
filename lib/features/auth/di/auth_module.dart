@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/core_module.dart';
 import '../../../core/messaging/messaging_globals.dart';
+import '../../../core/session/session_service.dart';
 import '../../../core/socket/socket_module.dart';
 import '../../rides/di/rides_module.dart';
 import '../data/auth_repository_impl.dart';
@@ -23,7 +24,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepositoryI
       ref.watch(authStorageProvider),
     ));
 
-final authSessionServiceProvider = Provider<AuthSessionService>((ref) => AuthSessionService(
+final sessionServiceProvider = Provider<SessionService>((ref) => AuthSessionService(
       ref.watch(authApiProvider),
       ref.watch(authStorageProvider),
       ref.watch(socketServiceProvider),

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/http/api_exception.dart';
+import '../../../../core/error/error.dart';
 import '../../di/auth_module.dart';
 import '../../domain/entities/register_params.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -133,8 +134,8 @@ class RegisterViewModel extends ChangeNotifier {
     } on ApiException catch (e) {
       _errorMessage = e.message;
       return false;
-    } catch (_) {
-      _errorMessage = 'Ocurrió un error inesperado';
+    } catch (e) {
+      _errorMessage = ErrorHandler.handle(e).message;
       return false;
     } finally {
       _isLoading = false;
@@ -157,8 +158,8 @@ class RegisterViewModel extends ChangeNotifier {
     } on ApiException catch (e) {
       _errorMessage = e.message;
       return false;
-    } catch (_) {
-      _errorMessage = 'Ocurrió un error inesperado';
+    } catch (e) {
+      _errorMessage = ErrorHandler.handle(e).message;
       return false;
     } finally {
       _isLoading = false;
@@ -191,8 +192,8 @@ class RegisterViewModel extends ChangeNotifier {
     } on ApiException catch (e) {
       _errorMessage = e.message;
       return false;
-    } catch (_) {
-      _errorMessage = 'Ocurrió un error inesperado';
+    } catch (e) {
+      _errorMessage = ErrorHandler.handle(e).message;
       return false;
     } finally {
       _isLoading = false;

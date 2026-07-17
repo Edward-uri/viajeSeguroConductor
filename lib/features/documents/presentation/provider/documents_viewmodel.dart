@@ -72,7 +72,7 @@ class DocumentsViewModel extends ChangeNotifier {
   }
 
   Future<void> subirDocumento(String id, Uint8List bytes, String fileName) async {
-    debugPrint('[DocumentsVM] subirDocumento id="$id" fileName="$fileName"');
+    if (kDebugMode) debugPrint('[DocumentsVM] subirDocumento id="$id" fileName="$fileName"');
     await _repository.subirDocumento(id, bytes, fileName);
     await loadDocumentos();
   }

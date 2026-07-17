@@ -1,6 +1,6 @@
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
@@ -29,7 +29,7 @@ Future<void> addSvgPinToMap(
 
     final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
     if (byteData == null) {
-      debugPrint('[SvgToMapbox] toByteData returned null for $imageId');
+      if (kDebugMode) debugPrint('[SvgToMapbox] toByteData returned null for $imageId');
       return;
     }
 
@@ -46,7 +46,7 @@ Future<void> addSvgPinToMap(
       null,
     );
   } catch (e) {
-    debugPrint('[SvgToMapbox] Error cargando $imageId: $e');
+    if (kDebugMode) debugPrint('[SvgToMapbox] Error cargando $imageId: $e');
   }
 }
 
@@ -75,6 +75,6 @@ Future<void> addPngPinToMap(
       null,
     );
   } catch (e) {
-    debugPrint('[PngToMapbox] Error cargando $imageId: $e');
+    if (kDebugMode) debugPrint('[PngToMapbox] Error cargando $imageId: $e');
   }
 }

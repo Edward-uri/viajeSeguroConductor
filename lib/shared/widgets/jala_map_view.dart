@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' hide Size;
@@ -179,7 +180,7 @@ class _JalaMapViewState extends State<JalaMapView>
       _flyToCurrent(position.latitude, position.longitude);
       _tryAddCurrentLocationPin();
     } catch (e) {
-      debugPrint('[JalaMapView] Error obteniendo ubicacion: $e');
+      if (kDebugMode) debugPrint('[JalaMapView] Error obteniendo ubicacion: $e');
     }
   }
 
@@ -224,7 +225,7 @@ class _JalaMapViewState extends State<JalaMapView>
         ),
       ]);
     } catch (e) {
-      debugPrint('[JalaMapView] CircleAnnotation no disponible: $e');
+      if (kDebugMode) debugPrint('[JalaMapView] CircleAnnotation no disponible: $e');
       _circleManager = null;
     }
   }

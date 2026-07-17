@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -56,25 +57,25 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       _polylineManager =
           await mapboxMap.annotations.createPolylineAnnotationManager();
     } catch (e) {
-      debugPrint('[RideInProgress] PolylineAnnotation no disponible: $e');
+      if (kDebugMode) debugPrint('[RideInProgress] PolylineAnnotation no disponible: $e');
     }
     try {
       _driverMarkerManager =
           await mapboxMap.annotations.createPointAnnotationManager();
     } catch (e) {
-      debugPrint('[RideInProgress] DriverMarkerManager no disponible: $e');
+      if (kDebugMode) debugPrint('[RideInProgress] DriverMarkerManager no disponible: $e');
     }
     try {
       _pinMarkerManager =
           await mapboxMap.annotations.createPointAnnotationManager();
     } catch (e) {
-      debugPrint('[RideInProgress] PinMarkerManager no disponible: $e');
+      if (kDebugMode) debugPrint('[RideInProgress] PinMarkerManager no disponible: $e');
     }
     try {
       _pasajeroManager =
           await mapboxMap.annotations.createCircleAnnotationManager();
     } catch (e) {
-      debugPrint('[RideInProgress] CircleAnnotation no disponible: $e');
+      if (kDebugMode) debugPrint('[RideInProgress] CircleAnnotation no disponible: $e');
     }
 
     await _loadPinImages();
@@ -117,7 +118,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
       );
       _pinImagesLoaded = true;
     } catch (e) {
-      debugPrint('[RideInProgress] Error cargando pines PNG: $e');
+      if (kDebugMode) debugPrint('[RideInProgress] Error cargando pines PNG: $e');
     }
   }
 
@@ -146,7 +147,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
         ));
       }
     } catch (e) {
-      debugPrint('[RideInProgress] Error dibujando pines: $e');
+      if (kDebugMode) debugPrint('[RideInProgress] Error dibujando pines: $e');
     }
   }
 
@@ -169,7 +170,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
         await manager.update(_driverMarker!);
       }
     } catch (e) {
-      debugPrint('[RideInProgress] Error actualizando marcador: $e');
+      if (kDebugMode) debugPrint('[RideInProgress] Error actualizando marcador: $e');
     }
   }
 
@@ -188,7 +189,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
         circleStrokeWidth: 3.0,
       ));
     } catch (e) {
-      debugPrint('[RideInProgress] Error con marcador del pasajero: $e');
+      if (kDebugMode) debugPrint('[RideInProgress] Error con marcador del pasajero: $e');
     }
   }
 
@@ -210,7 +211,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
         await manager.update(_routeLine!);
       }
     } catch (e) {
-      debugPrint('[RideInProgress] No se pudo dibujar la ruta: $e');
+      if (kDebugMode) debugPrint('[RideInProgress] No se pudo dibujar la ruta: $e');
     }
   }
 
