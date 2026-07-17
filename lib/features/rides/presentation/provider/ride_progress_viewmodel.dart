@@ -12,6 +12,7 @@ import '../../data/services/route_service.dart';
 import '../../di/rides_module.dart';
 import '../../domain/entities/solicitud_viaje.dart';
 import '../../domain/repositories/rides_repository.dart';
+import 'ride_inbox_viewmodel.dart';
 
 final rideProgressViewModelProvider =
     ChangeNotifierProvider.autoDispose<RideProgressViewModel>((ref) {
@@ -20,6 +21,9 @@ final rideProgressViewModelProvider =
     ref.watch(locationServiceProvider),
     ref.watch(socketServiceProvider),
     ref.watch(routeServiceProvider),
+    // El inbox es el dueño único de los eventos de viaje del socket; aquí solo
+    // se consume su retransmisión de cierres del viaje activo.
+    ref.watch(rideInboxViewModelProvider.notifier).viajesCerrados,
   );
   ref.onDispose(() => vm.dispose());
   return vm;
@@ -31,12 +35,16 @@ class RideProgressViewModel extends ChangeNotifier {
     this._locationService,
     this._socketService,
     this._routeService,
+    this._viajesCerrados,
   );
 
   final RidesRepository _repository;
   final LocationService _locationService;
   final SocketService _socketService;
   final RouteService _routeService;
+
+  /// Cancelaciones / "no disponible" retransmitidas por RideInboxViewModel.
+  final Stream<Map<String, dynamic>> _viajesCerrados;
 
   SolicitudViaje? _ride;
   bool _hasStarted = false;
@@ -45,8 +53,7 @@ class RideProgressViewModel extends ChangeNotifier {
   LatLng? _currentPosition;
   LatLng? _pasajeroPosition;
   StreamSubscription? _positionSub;
-  StreamSubscription? _stateChangedSub;
-  StreamSubscription? _notAvailableSub;
+  StreamSubscription? _cierreSub;
   StreamSubscription? _pasajeroLocationSub;
   bool _canceladoPorPasajero = false;
 
@@ -93,14 +100,10 @@ class RideProgressViewModel extends ChangeNotifier {
   }
 
   void _listenSocket() {
-    _stateChangedSub?.cancel();
-    _stateChangedSub = _socketService.onRideStateChanged.listen((data) {
-      if (data['estado']?.toString() == 'cancelado') {
-        _marcarCancelado(data['idViaje']?.toString());
-      }
-    });
-    _notAvailableSub?.cancel();
-    _notAvailableSub = _socketService.onRideNotAvailable.listen((data) {
+    // Cierres (cancelado / no disponible) llegan retransmitidos por el inbox;
+    // la ubicación del pasajero es exclusiva de este viewmodel.
+    _cierreSub?.cancel();
+    _cierreSub = _viajesCerrados.listen((data) {
       _marcarCancelado(data['idViaje']?.toString());
     });
     _pasajeroLocationSub?.cancel();
@@ -232,8 +235,7 @@ class RideProgressViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _positionSub?.cancel();
-    _stateChangedSub?.cancel();
-    _notAvailableSub?.cancel();
+    _cierreSub?.cancel();
     _pasajeroLocationSub?.cancel();
     _locationService.stopTracking();
     super.dispose();

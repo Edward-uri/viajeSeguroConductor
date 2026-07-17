@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../core/widgets/reputation_chips.dart';
 import '../../../../routes/app_routes.dart';
-import '../provider/home_viewmodel.dart';
+import '../provider/ride_inbox_viewmodel.dart';
 
 class RideRequestScreen extends ConsumerStatefulWidget {
   const RideRequestScreen({super.key});
@@ -33,7 +33,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
         setState(() => _countdown--);
       }
       if (_countdown <= 0 && !_aceptando) {
-        await ref.read(homeViewModelProvider).rejectRide();
+        await ref.read(rideInboxViewModelProvider.notifier).rejectRide();
         if (mounted) context.pop();
         return false;
       }
@@ -43,10 +43,11 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final vm = ref.watch(homeViewModelProvider);
+    final inbox = ref.read(rideInboxViewModelProvider.notifier);
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final request = vm.currentRequest;
+    final request =
+        ref.watch(rideInboxViewModelProvider.select((s) => s.currentRequest));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Solicitud de viaje')),
@@ -234,7 +235,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                       onPressed: _aceptando
                           ? null
                           : () async {
-                        await vm.rejectRide();
+                        await inbox.rejectRide();
                         if (!context.mounted) return;
                         context.pop();
                       },
@@ -260,7 +261,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                             ? null
                             : () async {
                                 setState(() => _aceptando = true);
-                                final viaje = await vm.acceptRide();
+                                final viaje = await inbox.acceptRide();
                                 if (!context.mounted) return;
                                 if (viaje != null) {
                                   context.pushReplacement(

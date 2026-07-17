@@ -1,15 +1,37 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:viajeseguroconductor/core/http/api_exception.dart';
+import 'package:viajeseguroconductor/core/socket/socket_service.dart';
+import 'package:viajeseguroconductor/features/documents/domain/entities/documento.dart';
+import 'package:viajeseguroconductor/features/documents/domain/repositories/documento_repository.dart';
+import 'package:viajeseguroconductor/features/heatmap/data/models/heat_zone.dart';
+import 'package:viajeseguroconductor/features/heatmap/domain/repositories/heatmap_repository.dart';
+import 'package:viajeseguroconductor/features/heatmap/presentation/provider/heatmap_viewmodel.dart';
+import 'package:viajeseguroconductor/features/profile/domain/repositories/profile_repository.dart';
+import 'package:viajeseguroconductor/features/rides/data/services/location_service.dart';
 import 'package:viajeseguroconductor/features/rides/domain/entities/ride_history_item.dart';
 import 'package:viajeseguroconductor/features/rides/domain/entities/solicitud_viaje.dart';
 import 'package:viajeseguroconductor/features/rides/domain/repositories/rides_repository.dart';
+import 'package:viajeseguroconductor/features/rides/presentation/provider/driver_availability_viewmodel.dart';
 import 'package:viajeseguroconductor/features/rides/presentation/provider/ride_history_viewmodel.dart';
 import 'package:viajeseguroconductor/features/rides/presentation/provider/ride_evaluation_viewmodel.dart';
+import 'package:viajeseguroconductor/features/rides/presentation/provider/ride_inbox_viewmodel.dart';
 import 'package:viajeseguroconductor/features/rides/di/rides_module.dart';
+import 'package:viajeseguroconductor/features/vehicle/domain/entities/vehiculo.dart';
+import 'package:viajeseguroconductor/features/vehicle/domain/repositories/vehicle_repository.dart';
+import 'package:viajeseguroconductor/shared/domain/entities/user.dart';
 
 class _MockRidesRepository implements RidesRepository {
   List<RideHistoryItem> assignedRides = [];
   bool shouldThrow = false;
+  List<SolicitudViaje> pendingTrips = [];
+  Object? acceptError;
+  final acceptedIds = <String>[];
+  final rejectedIds = <String>[];
 
   @override
   Future<DriverStats> getStats() async => const DriverStats(
@@ -28,7 +50,7 @@ class _MockRidesRepository implements RidesRepository {
   Future<SolicitudViaje?> getCurrentRequest() async => null;
 
   @override
-  Future<List<SolicitudViaje>> getPendingTrips() async => [];
+  Future<List<SolicitudViaje>> getPendingTrips() async => pendingTrips;
 
   @override
   Future<SolicitudViaje?> getViajeActivoConductor() async => null;
@@ -39,10 +61,15 @@ class _MockRidesRepository implements RidesRepository {
   }
 
   @override
-  Future<void> acceptRide(String rideId, {required int idVehiculo}) async {}
+  Future<void> acceptRide(String rideId, {required int idVehiculo}) async {
+    if (acceptError != null) throw acceptError!;
+    acceptedIds.add(rideId);
+  }
 
   @override
-  Future<void> rejectRide(String rideId) async {}
+  Future<void> rejectRide(String rideId) async {
+    rejectedIds.add(rideId);
+  }
 
   @override
   Future<void> soltarViaje(String rideId) async {}
@@ -78,6 +105,141 @@ class _MockRidesRepository implements RidesRepository {
     required String plataforma,
   }) async {}
 }
+
+/// Socket falso: expone los mismos streams con controllers propios y registra
+/// las emisiones, sin tocar la red.
+class _FakeSocketService extends SocketService {
+  final statusCtrl = StreamController<SocketStatus>.broadcast();
+  final requested = StreamController<Map<String, dynamic>>.broadcast();
+  final accepted = StreamController<Map<String, dynamic>>.broadcast();
+  final notAvailable = StreamController<Map<String, dynamic>>.broadcast();
+  final stateChanged = StreamController<Map<String, dynamic>>.broadcast();
+
+  int? municipioOnline;
+  bool offlineEmitido = false;
+
+  @override
+  Stream<SocketStatus> get statusStream => statusCtrl.stream;
+  @override
+  Stream<Map<String, dynamic>> get onRideRequested => requested.stream;
+  @override
+  Stream<Map<String, dynamic>> get onRideAccepted => accepted.stream;
+  @override
+  Stream<Map<String, dynamic>> get onRideNotAvailable => notAvailable.stream;
+  @override
+  Stream<Map<String, dynamic>> get onRideStateChanged => stateChanged.stream;
+
+  @override
+  Future<void> connect({required String token}) async {}
+  @override
+  Future<bool> emitOnline(int idMunicipio) async {
+    municipioOnline = idMunicipio;
+    return true;
+  }
+
+  @override
+  void emitOffline() => offlineEmitido = true;
+  @override
+  void disconnect() {}
+}
+
+class _FakeLocationService extends LocationService {
+  final posiciones = StreamController<LatLng>.broadcast();
+  bool tracking = false;
+
+  @override
+  Stream<LatLng> get positionStream => posiciones.stream;
+  @override
+  Future<bool> requestPermission() async => true;
+  @override
+  Future<bool> isServiceEnabled() async => true;
+  @override
+  Future<LatLng> getCurrentPosition() async => LatLng(19.43, -99.13);
+  @override
+  void startTracking({
+    Duration interval = const Duration(seconds: 10),
+    bool immediate = true,
+  }) {
+    tracking = true;
+  }
+
+  @override
+  void stopTracking() => tracking = false;
+}
+
+class _FakeDocumentoRepository implements DocumentoRepository {
+  List<Documento> documentos = [];
+
+  @override
+  Future<List<Documento>> getDocumentos() async => documentos;
+  @override
+  Future<void> subirDocumento(
+          String documentoId, Uint8List bytes, String fileName) =>
+      throw UnimplementedError();
+}
+
+class _FakeVehicleRepository implements VehicleRepository {
+  Vehiculo? miVehiculo;
+
+  @override
+  Future<Vehiculo?> getMiVehiculo() async => miVehiculo;
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+}
+
+class _FakeProfileRepository implements ProfileRepository {
+  User? me;
+
+  @override
+  Future<User> getMe() async {
+    final user = me;
+    if (user == null) throw Exception('sin usuario');
+    return user;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+}
+
+class _FakeHeatmapRepository implements HeatmapRepository {
+  List<Map<String, dynamic>> raw = [];
+  bool shouldThrow = false;
+
+  @override
+  Future<List<HeatZone>> getZonasCalientes(int municipio) async => [];
+  @override
+  Future<List<Map<String, dynamic>>> getZonasCalientesRaw(
+      int municipio) async {
+    if (shouldThrow) throw Exception('Error');
+    return raw;
+  }
+}
+
+SolicitudViaje _viaje(int id) => SolicitudViaje(
+      idViaje: id,
+      idPasajero: 1,
+      idMunicipio: 1,
+      tipoServicio: 'viaje',
+      distanciaKm: 1,
+      tarifa: 50,
+      tarifaEstimada: false,
+      estado: 'solicitado',
+      fechaSolicitud: '',
+    );
+
+const _vehiculoAprobado = Vehiculo(
+  idVehiculo: 7,
+  placa: 'ABC123',
+  modelo: 'Italika',
+  color: 'Rojo',
+  anio: 2022,
+  status: VehicleStatus.active,
+);
+
+/// Deja correr microtasks y timers de duración cero (entrega de streams broadcast).
+Future<void> _pump() => Future<void>.delayed(Duration.zero);
 
 void main() {
   group('RideHistoryViewModel', () {
@@ -222,6 +384,285 @@ void main() {
 
       expect(vm.rides.length, 1);
       expect(vm.rides.first.id, '1');
+    });
+  });
+
+  group('RideInboxViewModel', () {
+    late _MockRidesRepository mockRepo;
+    late _FakeSocketService socket;
+    late RideInboxViewModel inbox;
+
+    setUp(() {
+      mockRepo = _MockRidesRepository();
+      socket = _FakeSocketService();
+      inbox = RideInboxViewModel(mockRepo, socket);
+      inbox.initSocket(token: 't');
+    });
+
+    tearDown(() => inbox.dispose());
+
+    test('viaje:solicitado agrega pendiente solo cuando está online', () async {
+      socket.requested.add({'idViaje': 1});
+      await _pump();
+      expect(inbox.state.pendientes, isEmpty, reason: 'offline: se ignora');
+
+      inbox.setOnline(true);
+      socket.requested.add({'idViaje': 1});
+      await _pump();
+      expect(inbox.state.pendientes.length, 1);
+
+      // Duplicado: no se reinyecta.
+      socket.requested.add({'idViaje': 1});
+      await _pump();
+      expect(inbox.state.pendientes.length, 1);
+    });
+
+    test('acceptRide sin vehículo aprobado marca error', () async {
+      inbox.seleccionarViaje(_viaje(3));
+      final result = await inbox.acceptRide();
+      expect(result, isNull);
+      expect(inbox.state.errorMessage, isNotNull);
+      expect(mockRepo.acceptedIds, isEmpty);
+    });
+
+    test('acceptRide feliz limpia la solicitud y regresa el viaje', () async {
+      inbox.setVehiculo(_vehiculoAprobado);
+      inbox.setPendientes([_viaje(3)]);
+      inbox.seleccionarViaje(_viaje(3));
+
+      final result = await inbox.acceptRide();
+
+      expect(result?.id, '3');
+      expect(mockRepo.acceptedIds, ['3']);
+      expect(inbox.state.currentRequest, isNull);
+      expect(inbox.state.pendientes, isEmpty);
+      expect(inbox.state.errorMessage, isNull);
+    });
+
+    test('acceptRide con 409 avisa que el viaje ya fue tomado', () async {
+      inbox.setVehiculo(_vehiculoAprobado);
+      inbox.seleccionarViaje(_viaje(3));
+      mockRepo.acceptError = ApiException('', statusCode: 409);
+
+      final result = await inbox.acceptRide();
+
+      expect(result, isNull);
+      expect(inbox.state.currentRequest, isNull);
+      expect(inbox.state.errorMessage,
+          'Este viaje ya fue tomado por otro conductor');
+    });
+
+    test('rejectRide no reinyecta el viaje (refresh ni socket)', () async {
+      inbox.setOnline(true);
+      inbox.setPendientes([_viaje(5)]);
+      inbox.seleccionarViaje(_viaje(5));
+
+      await inbox.rejectRide();
+      expect(mockRepo.rejectedIds, ['5']);
+      expect(inbox.state.currentRequest, isNull);
+      expect(inbox.state.pendientes, isEmpty);
+
+      mockRepo.pendingTrips = [_viaje(5)];
+      await inbox.refrescarPendientes();
+      expect(inbox.state.pendientes, isEmpty);
+
+      socket.requested.add({'idViaje': 5});
+      await _pump();
+      expect(inbox.state.pendientes, isEmpty);
+    });
+
+    test('viaje:aceptado por otro conductor quita el pendiente y avisa',
+        () async {
+      inbox.setPendientes([_viaje(4)]);
+      inbox.seleccionarViaje(_viaje(4));
+
+      socket.accepted.add({'idViaje': 4});
+      await _pump();
+
+      expect(inbox.state.pendientes, isEmpty);
+      expect(inbox.state.currentRequest, isNull);
+      expect(inbox.state.errorMessage,
+          'Este viaje fue tomado por otro conductor');
+    });
+
+    test('viaje:aceptado por MÍ no genera aviso', () async {
+      inbox.setVehiculo(_vehiculoAprobado);
+      inbox.seleccionarViaje(_viaje(4));
+      await inbox.acceptRide();
+
+      socket.accepted.add({'idViaje': 4});
+      await _pump();
+
+      expect(inbox.state.errorMessage, isNull);
+    });
+
+    test('retransmite cierres del viaje activo a viajesCerrados', () async {
+      final cierres = <Map<String, dynamic>>[];
+      inbox.viajesCerrados.listen(cierres.add);
+
+      socket.stateChanged.add({'idViaje': 9, 'estado': 'cancelado'});
+      socket.stateChanged.add({'idViaje': 9, 'estado': 'en_curso'});
+      socket.notAvailable.add({'idViaje': 8});
+      await _pump();
+
+      expect(cierres.length, 2);
+      expect(cierres[0]['estado'], 'cancelado');
+      expect(cierres[1]['idViaje'], 8);
+    });
+  });
+
+  group('DriverAvailabilityViewModel', () {
+    late _MockRidesRepository mockRepo;
+    late _FakeSocketService socket;
+    late _FakeLocationService location;
+    late _FakeDocumentoRepository docs;
+    late _FakeVehicleRepository vehicles;
+    late _FakeProfileRepository profile;
+    late _FakeHeatmapRepository heatmapRepo;
+    late RideInboxViewModel inbox;
+    late HeatmapViewModel heatmap;
+    late DriverAvailabilityViewModel vm;
+
+    setUp(() {
+      mockRepo = _MockRidesRepository();
+      socket = _FakeSocketService();
+      location = _FakeLocationService();
+      docs = _FakeDocumentoRepository()
+        ..documentos = [
+          const Documento(
+              id: '1', nombre: 'Licencia', status: DocumentStatus.approved),
+        ];
+      vehicles = _FakeVehicleRepository()..miVehiculo = _vehiculoAprobado;
+      profile = _FakeProfileRepository()
+        ..me = const User(
+          idUsuario: 1,
+          rol: 'conductor',
+          roles: ['conductor'],
+          estadoCuenta: 'activa',
+          idMunicipio: 2,
+        );
+      heatmapRepo = _FakeHeatmapRepository();
+      inbox = RideInboxViewModel(mockRepo, socket);
+      heatmap = HeatmapViewModel(heatmapRepo);
+      vm = DriverAvailabilityViewModel(
+        mockRepo, location, socket, docs, vehicles, profile, inbox, heatmap);
+    });
+
+    tearDown(() {
+      vm.dispose();
+      inbox.dispose();
+      heatmap.dispose();
+    });
+
+    test('loadData llena stats/municipio y pasa pendientes al inbox', () async {
+      mockRepo.pendingTrips = [_viaje(1), _viaje(2)];
+      await vm.loadData();
+
+      expect(vm.state.isLoading, false);
+      expect(vm.state.stats, isNotNull);
+      expect(vm.state.idMunicipio, 2);
+      expect(vm.state.esConductor, true);
+      expect(inbox.state.pendientes.length, 2);
+    });
+
+    test('toggleOnline bloqueado por documentos pendientes', () async {
+      docs.documentos = [
+        const Documento(
+            id: '1', nombre: 'Licencia', status: DocumentStatus.reviewing),
+      ];
+
+      await vm.toggleOnline();
+
+      expect(vm.state.isOnline, false);
+      expect(vm.state.errorMessage, contains('Licencia'));
+      expect(socket.municipioOnline, isNull);
+    });
+
+    test('toggleOnline bloqueado sin vehículo aprobado', () async {
+      vehicles.miVehiculo = null;
+
+      await vm.toggleOnline();
+
+      expect(vm.state.isOnline, false);
+      expect(vm.state.errorMessage,
+          'Registra tu vehículo para poder recibir viajes.');
+    });
+
+    test('toggleOnline feliz: en línea, tracking y room del municipio',
+        () async {
+      await vm.loadData(); // municipio 2 del perfil
+      inbox.initSocket(token: 't');
+
+      await vm.toggleOnline();
+      await _pump(); // emitOnline + refresh en segundo plano
+
+      expect(vm.state.isOnline, true);
+      expect(vm.state.errorMessage, isNull);
+      expect(location.tracking, true);
+      expect(socket.municipioOnline, 2);
+
+      // Ya en línea: las solicitudes del socket entran al inbox.
+      socket.requested.add({'idViaje': 11});
+      await _pump();
+      expect(inbox.state.pendientes.any((t) => t.id == '11'), true);
+    });
+
+    test('volver a offline limpia inbox y zonas', () async {
+      inbox.initSocket(token: 't');
+      await vm.toggleOnline();
+      await _pump();
+      inbox.seleccionarViaje(_viaje(6));
+
+      await vm.toggleOnline(); // apaga
+
+      expect(vm.state.isOnline, false);
+      expect(socket.offlineEmitido, true);
+      expect(location.tracking, false);
+      expect(inbox.state.currentRequest, isNull);
+      expect(heatmap.state.zonas, isEmpty);
+
+      // Offline: se ignoran solicitudes entrantes.
+      socket.requested.add({'idViaje': 12});
+      await _pump();
+      expect(inbox.state.pendientes.any((t) => t.id == '12'), false);
+    });
+  });
+
+  group('HeatmapViewModel', () {
+    test('fetchZonas procesa zonas y colores', () async {
+      final repo = _FakeHeatmapRepository()
+        ..raw = [
+          {
+            'lat': 19.0,
+            'lng': -99.0,
+            'intensidad': 0.5,
+            'demand_density': 1.0,
+            'supply_demand_ratio': 0.5,
+            'n_requests': 3,
+            'radio_m': 200.0,
+          },
+        ];
+      final vm = HeatmapViewModel(repo);
+      addTearDown(vm.dispose);
+
+      await vm.fetchZonas(1);
+
+      expect(vm.state.isLoading, false);
+      expect(vm.state.zonas.length, 1);
+      expect(vm.state.colores.length, 1);
+      expect(vm.state.zonas.first.radioM, 200.0);
+    });
+
+    test('fetchZonas con error deja el mapa despejado', () async {
+      final repo = _FakeHeatmapRepository()..shouldThrow = true;
+      final vm = HeatmapViewModel(repo);
+      addTearDown(vm.dispose);
+
+      await vm.fetchZonas(1);
+
+      expect(vm.state.isLoading, false);
+      expect(vm.state.zonas, isEmpty);
+      expect(vm.state.colores, isEmpty);
     });
   });
 }

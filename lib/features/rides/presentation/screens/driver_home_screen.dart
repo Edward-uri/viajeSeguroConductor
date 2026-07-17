@@ -14,8 +14,10 @@ import '../../../../routes/app_routes.dart';
 import '../../../../shared/utils/svg_to_mapbox.dart';
 import '../../../../shared/widgets/jala_map_view.dart';
 import '../../../../theme/theme.dart';
+import '../../../heatmap/presentation/provider/heatmap_viewmodel.dart';
 import '../../domain/entities/solicitud_viaje.dart';
-import '../provider/home_viewmodel.dart';
+import '../provider/driver_availability_viewmodel.dart';
+import '../provider/ride_inbox_viewmodel.dart';
 
 class DriverHomeScreen extends ConsumerStatefulWidget {
   const DriverHomeScreen({super.key});
@@ -40,16 +42,17 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final vm = ref.read(homeViewModelProvider);
-      vm.loadData();
+      final disponibilidad =
+          ref.read(driverAvailabilityViewModelProvider.notifier);
+      disponibilidad.loadData();
 
-      final activo = await vm.getViajeActivoConductor();
+      final activo = await disponibilidad.getViajeActivoConductor();
       if (activo != null) {
         if (!mounted) return;
         context.push(AppRoutes.rideInProgress, extra: activo);
       }
 
-      await vm.initLocation();
+      await disponibilidad.initLocation();
       _centerOnDriver();
 
       if (!_socketInitialized) {
@@ -57,7 +60,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         final storage = ref.read(authStorageProvider);
         final token = await storage.readAccessToken();
         if (token != null && token.isNotEmpty) {
-          vm.initSocket(token: token);
+          ref.read(rideInboxViewModelProvider.notifier).initSocket(token: token);
         }
 
         try {
@@ -66,7 +69,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         } catch (_) {}
       }
 
-      if (vm.isOnline) {
+      if (ref.read(driverAvailabilityViewModelProvider).isOnline) {
         _onlineSince = DateTime.now();
         _onlineTimer = Timer.periodic(const Duration(seconds: 30), (_) {
           if (mounted) setState(() {});
@@ -97,7 +100,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   }
 
   void _centerOnDriver() {
-    final pos = ref.read(homeViewModelProvider).currentPosition;
+    final pos =
+        ref.read(driverAvailabilityViewModelProvider).currentPosition;
     if (pos != null) {
       _mapboxMap?.flyTo(
         CameraOptions(
@@ -137,7 +141,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     );
     _pinLoaded = true;
 
-    final pos = ref.read(homeViewModelProvider).currentPosition;
+    final pos =
+        ref.read(driverAvailabilityViewModelProvider).currentPosition;
     if (pos != null) {
       _updateDriverMarker(pos);
       _centerOnDriver();
@@ -169,16 +174,16 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   Future<void> _drawZonas() async {
     final manager = _zonasManager;
     if (manager == null) return;
-    final vm = ref.read(homeViewModelProvider);
+    final zonas = ref.read(heatmapViewModelProvider);
     try {
       await manager.deleteAll();
-      if (vm.zonasCalientes.isEmpty) return;
+      if (zonas.zonas.isEmpty) return;
 
       final zoom = (await _mapboxMap?.getCameraState())?.zoom ?? 14.0;
       final options = <CircleAnnotationOptions>[];
-      for (var i = 0; i < vm.zonasCalientes.length; i++) {
-        final z = vm.zonasCalientes[i];
-        final base = vm.heatZoneColors[i];
+      for (var i = 0; i < zonas.zonas.length; i++) {
+        final z = zonas.zonas[i];
+        final base = zonas.colores[i];
         // metros → píxeles al zoom actual (Web Mercator).
         // ponytail: el radio no se re-escala al hacer zoom; si algún día
         // importa la fidelidad, migrar a una capa GeoJSON con radio en metros.
@@ -199,26 +204,38 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     }
   }
 
+  void _mostrarError(String? msg) {
+    if (msg != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final vm = ref.watch(homeViewModelProvider);
+    final disponibilidad = ref.watch(driverAvailabilityViewModelProvider);
+    final inbox = ref.watch(rideInboxViewModelProvider);
     final scheme = Theme.of(context).colorScheme;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
-    ref.listen<String?>(homeViewModelProvider.select((v) => v.errorMessage), (_, msg) {
-      if (msg != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    });
+    // Los errores llegan de dos fuentes: disponibilidad (toggle/GPS/carga) y
+    // bandeja de solicitudes (aceptar/rechazar/socket). Mismo snackbar.
+    ref.listen<String?>(
+      driverAvailabilityViewModelProvider.select((s) => s.errorMessage),
+      (_, msg) => _mostrarError(msg),
+    );
+    ref.listen<String?>(
+      rideInboxViewModelProvider.select((s) => s.errorMessage),
+      (_, msg) => _mostrarError(msg),
+    );
 
     ref.listen<SolicitudViaje?>(
-      homeViewModelProvider.select((v) => v.currentRequest),
+      rideInboxViewModelProvider.select((s) => s.currentRequest),
       (_, request) {
         if (request != null && context.mounted) {
           context.push(AppRoutes.rideRequest);
@@ -227,14 +244,14 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     );
 
     ref.listen<bool>(
-      homeViewModelProvider.select((v) => v.isOnline),
+      driverAvailabilityViewModelProvider.select((s) => s.isOnline),
       (_, isOnline) => _onOnlineChanged(isOnline),
     );
 
     // El mapa ya no se reconstruye con el estado: marcador y zonas se
     // actualizan imperativamente sobre las anotaciones de Mapbox.
     ref.listen<LatLng?>(
-      homeViewModelProvider.select((v) => v.currentPosition),
+      driverAvailabilityViewModelProvider.select((s) => s.currentPosition),
       (prev, pos) {
         if (pos == null) return;
         _updateDriverMarker(pos);
@@ -243,7 +260,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     );
 
     ref.listen(
-      homeViewModelProvider.select((v) => v.zonasCalientes),
+      heatmapViewModelProvider.select((s) => s.zonas),
       (_, _) => _drawZonas(),
     );
 
@@ -279,13 +296,18 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                     ),
                   ),
                   if (isLandscape)
-                    vm.esConductor
+                    disponibilidad.esConductor
                         ? _LandscapeBottomBar(
-                            stats: vm.stats,
-                            pendientes: vm.pendientes,
-                            onSelect: vm.seleccionarViaje,
-                            isOnline: vm.isOnline,
-                            onToggle: (_) => vm.toggleOnline(),
+                            stats: disponibilidad.stats,
+                            pendientes: inbox.pendientes,
+                            onSelect: ref
+                                .read(rideInboxViewModelProvider.notifier)
+                                .seleccionarViaje,
+                            isOnline: disponibilidad.isOnline,
+                            onToggle: (_) => ref
+                                .read(driverAvailabilityViewModelProvider
+                                    .notifier)
+                                .toggleOnline(),
                             onlineElapsed: onlineElapsed,
                             text: text,
                             scheme: scheme,
@@ -313,13 +335,17 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               ),
             ),
             if (!isLandscape)
-              vm.esConductor
+              disponibilidad.esConductor
                   ? _BottomSheet(
-                      pendientes: vm.pendientes,
-                      onSelect: vm.seleccionarViaje,
-                      isOnline: vm.isOnline,
-                      onToggle: (_) => vm.toggleOnline(),
-                      stats: vm.stats,
+                      pendientes: inbox.pendientes,
+                      onSelect: ref
+                          .read(rideInboxViewModelProvider.notifier)
+                          .seleccionarViaje,
+                      isOnline: disponibilidad.isOnline,
+                      onToggle: (_) => ref
+                          .read(driverAvailabilityViewModelProvider.notifier)
+                          .toggleOnline(),
+                      stats: disponibilidad.stats,
                       onlineElapsed: onlineElapsed,
                       text: text,
                       scheme: scheme,

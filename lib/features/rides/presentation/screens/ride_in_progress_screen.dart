@@ -12,7 +12,7 @@ import '../../../../shared/widgets/authed_image.dart';
 import '../../../../shared/widgets/jala_map_view.dart';
 import '../../../../theme/theme.dart';
 import '../../domain/entities/solicitud_viaje.dart';
-import '../provider/home_viewmodel.dart';
+import '../provider/ride_inbox_viewmodel.dart';
 import '../provider/ride_progress_viewmodel.dart';
 
 class RideInProgressScreen extends ConsumerStatefulWidget {
@@ -328,7 +328,7 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
     final ok = await vm.soltarViaje();
     if (!mounted) return;
     if (ok) {
-      ref.read(homeViewModelProvider).ignorarViaje(ride.id);
+      ref.read(rideInboxViewModelProvider.notifier).ignorarViaje(ride.id);
       context.go(AppRoutes.driverHome);
     }
   }
