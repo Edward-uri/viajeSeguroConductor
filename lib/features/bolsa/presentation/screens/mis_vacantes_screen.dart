@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../routes/app_routes.dart';
+import '../../../../theme/jala_theme.dart';
 import '../../domain/entities/vacante.dart';
 import '../provider/dueno_vacantes_viewmodel.dart';
 
@@ -94,7 +95,8 @@ class _VacanteCardState extends ConsumerState<_VacanteCard> {
     final vm = ref.watch(duenoVacantesViewModelProvider);
     final vacante = widget.vacante;
     final abierta = vacante.abierta;
-    final color = abierta ? const Color(0xFF1E8E5A) : const Color(0xFF9E9E9E);
+    final color =
+        abierta ? context.brand.success : context.brand.greyLight;
 
     return Card(
       child: ListTile(
@@ -113,7 +115,7 @@ class _VacanteCardState extends ConsumerState<_VacanteCard> {
               const SizedBox(width: 8),
               _EstadoChip(
                 label: '${vacante.postulacionesPendientes} pendientes',
-                color: const Color(0xFFE8A317),
+                color: context.brand.warning,
               ),
             ],
           ],

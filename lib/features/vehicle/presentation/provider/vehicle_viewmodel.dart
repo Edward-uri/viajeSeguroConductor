@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/error.dart';
+import '../../../../theme/jala_theme.dart';
 import '../../di/vehicle_module.dart';
 import '../../domain/entities/vehiculo.dart';
 import '../../domain/repositories/vehicle_repository.dart';
@@ -157,14 +158,15 @@ class VehicleViewModel extends ChangeNotifier {
     }
   }
 
+  // ponytail: sin BuildContext aquí; se usan las constantes estáticas de marca.
   Color statusColor(VehicleStatus status) {
     switch (status) {
       case VehicleStatus.active:
-        return const Color(0xFF1E8E5A);
+        return JalaBrand.success;
       case VehicleStatus.incomplete:
-        return const Color(0xFFE8A317);
+        return JalaBrand.warning;
       case VehicleStatus.reviewing:
-        return const Color(0xFFE8A317);
+        return JalaBrand.warning;
     }
   }
 }

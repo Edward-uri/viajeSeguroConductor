@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../theme/jala_theme.dart';
 import '../../domain/entities/vehiculo.dart';
 
 class VehicleDetailScreen extends ConsumerWidget {
@@ -20,7 +21,7 @@ class VehicleDetailScreen extends ConsumerWidget {
       );
     }
 
-    final statusColor = _statusColor(v.status);
+    final statusColor = _statusColor(context, v.status);
     final statusLabel = _statusLabel(v.status);
     final progressValue = _progressValue(v.status);
 
@@ -101,8 +102,8 @@ class VehicleDetailScreen extends ConsumerWidget {
                 'Tarjeta de circulación',
                 v.status == VehicleStatus.active ? 'Aprobado' : 'En revisión',
                 v.status == VehicleStatus.active
-                    ? const Color(0xFF1E8E5A)
-                    : const Color(0xFFE8A317),
+                    ? context.brand.success
+                    : context.brand.warning,
                 text,
               ),
               const Divider(),
@@ -113,15 +114,15 @@ class VehicleDetailScreen extends ConsumerWidget {
                     ? 'Aprobado'
                     : 'Pendiente',
                 v.status == VehicleStatus.active
-                    ? const Color(0xFF1E8E5A)
-                    : const Color(0xFFE8A317),
+                    ? context.brand.success
+                    : context.brand.warning,
                 text,
               ),
               const Divider(),
               _docItem(
                 'Permiso/concesión municipal',
                 'Opcional — Toca para subir',
-                Colors.grey,
+                context.brand.greyLight,
                 text,
               ),
               const SizedBox(height: 16),
@@ -138,14 +139,14 @@ class VehicleDetailScreen extends ConsumerWidget {
     );
   }
 
-  Color _statusColor(VehicleStatus status) {
+  Color _statusColor(BuildContext context, VehicleStatus status) {
     switch (status) {
       case VehicleStatus.active:
-        return const Color(0xFF1E8E5A);
+        return context.brand.success;
       case VehicleStatus.reviewing:
-        return const Color(0xFFE8A317);
+        return context.brand.warning;
       case VehicleStatus.incomplete:
-        return const Color(0xFF9A9A9A);
+        return context.brand.greyLight;
     }
   }
 

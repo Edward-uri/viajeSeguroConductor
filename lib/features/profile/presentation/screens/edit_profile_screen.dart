@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/authed_image.dart';
+import '../../../../theme/jala_theme.dart';
 import '../provider/driver_profile_viewmodel.dart';
 import '../provider/edit_profile_viewmodel.dart';
 
@@ -94,7 +95,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           return Container(
                             width: 96,
                             height: 96,
-                            color: const Color(0xFFFF8F00),
+                            color: JalaBrand.amber,
                             alignment: Alignment.center,
                             child: AuthedImage(
                               path: user?.fotoPerfilUrl,
@@ -163,7 +164,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           ? _guardar
                           : null,
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF8F00),
+                        backgroundColor: JalaBrand.amber,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),

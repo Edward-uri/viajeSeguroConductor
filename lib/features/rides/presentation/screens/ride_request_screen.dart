@@ -100,7 +100,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                                   const SizedBox(width: 4),
                                   Text(
                                     request.metodoPago,
-                                    style: TextStyle(
+                                    style: text.bodyMedium?.copyWith(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       color: scheme.primary,
@@ -183,8 +183,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                                 const SizedBox(width: 4),
                                 Text(
                                   '${request.pasajeroCalificacion.toStringAsFixed(1)} · Pasajera',
-                                  style: TextStyle(
-                                    fontSize: 14,
+                                  style: text.bodyMedium?.copyWith(
                                     color: scheme.onSurfaceVariant,
                                   ),
                                 ),
@@ -286,6 +285,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
 
   Widget _locationRow(
       IconData icon, String title, String subtitle, Color color, ColorScheme scheme) {
+    final text = Theme.of(context).textTheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -296,14 +296,14 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title,
-                  style: TextStyle(
+                  style: text.bodyMedium?.copyWith(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: scheme.onSurface,
                   )),
               const SizedBox(height: 2),
               Text(subtitle,
-                  style: TextStyle(
+                  style: text.bodyMedium?.copyWith(
                     fontSize: 13,
                     color: scheme.onSurfaceVariant,
                   )),

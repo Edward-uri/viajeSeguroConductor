@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../routes/app_routes.dart';
+import '../../../../theme/jala_theme.dart';
 import '../provider/ride_evaluation_viewmodel.dart';
 
 class RideEvaluationScreen extends ConsumerStatefulWidget {
@@ -44,12 +45,12 @@ class _RideEvaluationScreenState
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E8E5A).withValues(alpha: 0.12),
+                      color: context.brand.success.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.check_circle_rounded,
-                      color: Color(0xFF1E8E5A),
+                      color: context.brand.success,
                       size: 48,
                     ),
                   ),
@@ -58,14 +59,14 @@ class _RideEvaluationScreenState
                     '¡Evaluación enviada!',
                     style: text.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1A1410),
+                      color: context.colors.onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Gracias por tu retroalimentación',
                     style: text.bodyMedium?.copyWith(
-                      color: const Color(0xFF6B6661),
+                      color: context.brand.greyDark,
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -75,7 +76,7 @@ class _RideEvaluationScreenState
                     child: ElevatedButton(
                       onPressed: () => context.go(AppRoutes.driverHome),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF8F00),
+                        backgroundColor: JalaBrand.amber,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -117,12 +118,12 @@ class _RideEvaluationScreenState
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF1E0),
+                          color: context.brand.accentSurface,
                           borderRadius: BorderRadius.circular(40),
                         ),
                         child: const Icon(
                           Icons.person_outline,
-                          color: Color(0xFFFF8F00),
+                          color: JalaBrand.amber,
                           size: 40,
                         ),
                       ),
@@ -131,7 +132,7 @@ class _RideEvaluationScreenState
                         '¿Cómo fue tu pasajero?',
                         style: text.titleLarge?.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFF1A1410),
+                          color: context.colors.onSurface,
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -149,8 +150,8 @@ class _RideEvaluationScreenState
                                     : Icons.star_outline_rounded,
                                 size: 44,
                                 color: starValue <= vm.calificacion
-                                    ? const Color(0xFFFF8F00)
-                                    : const Color(0xFFE2E2E2),
+                                    ? JalaBrand.amber
+                                    : context.brand.greyBorder,
                               ),
                             ),
                           );
@@ -160,7 +161,7 @@ class _RideEvaluationScreenState
                       Text(
                         _starLabel(vm.calificacion),
                         style: text.bodyMedium?.copyWith(
-                          color: const Color(0xFF6B6661),
+                          color: context.brand.greyDark,
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -171,15 +172,15 @@ class _RideEvaluationScreenState
                           hintText: 'Agrega un comentario (opcional)',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE2E2E2)),
+                            borderSide: BorderSide(color: context.brand.greyBorder),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE2E2E2)),
+                            borderSide: BorderSide(color: context.brand.greyBorder),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFFF8F00)),
+                            borderSide: const BorderSide(color: JalaBrand.amber),
                           ),
                         ),
                         onChanged: vm.setComentario,
@@ -188,7 +189,8 @@ class _RideEvaluationScreenState
                         const SizedBox(height: 12),
                         Text(
                           vm.errorMessage!,
-                          style: const TextStyle(color: Colors.red, fontSize: 13),
+                          style: TextStyle(
+                              color: context.colors.error, fontSize: 13),
                         ),
                       ],
                       const SizedBox(height: 16),
@@ -205,7 +207,7 @@ class _RideEvaluationScreenState
                       ? null
                       : () => vm.submit(_rideId!),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF8F00),
+                    backgroundColor: JalaBrand.amber,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),

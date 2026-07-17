@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../../core/error/error.dart';
 import '../../../../core/http/api_exception.dart';
+import '../../../../theme/jala_theme.dart';
 import '../../../../core/socket/socket_module.dart';
 import '../../../../core/socket/socket_service.dart';
 import '../../../../features/documents/domain/entities/documento.dart';
@@ -65,7 +66,9 @@ List<Map<String, dynamic>> _processHeatZoneMaps(List<Map<String, dynamic>> raw) 
       'supply_demand_ratio': (z['supply_demand_ratio'] as num).toDouble(),
       'n_requests': (z['n_requests'] as num).toInt(),
       'radio_m': (z['radio_m'] as num).toDouble(),
-      'color': lerpColor(0xFFFFA000, 0xFFD32F2F, intensidad),
+      'color': lerpColor(
+          JalaBrand.warning.toARGB32(), JalaBrand.destructive.toARGB32(),
+          intensidad),
     };
   }).toList();
 }

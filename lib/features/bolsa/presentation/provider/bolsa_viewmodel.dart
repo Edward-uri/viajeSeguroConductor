@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -114,32 +112,4 @@ class BolsaViewModel extends ChangeNotifier {
     }
   }
 
-  String estadoLabel(EstadoPostulacion estado) {
-    switch (estado) {
-      case EstadoPostulacion.pendiente:
-        return 'Pendiente';
-      case EstadoPostulacion.aceptada:
-        return 'Aceptada';
-      case EstadoPostulacion.rechazada:
-        return 'Rechazada';
-      case EstadoPostulacion.retirada:
-        return 'Retirada';
-      case EstadoPostulacion.desconocido:
-        return 'N/A';
-    }
-  }
-
-  Color estadoColor(EstadoPostulacion estado) {
-    switch (estado) {
-      case EstadoPostulacion.pendiente:
-        return const Color(0xFFE8A317);
-      case EstadoPostulacion.aceptada:
-        return const Color(0xFF1E8E5A);
-      case EstadoPostulacion.rechazada:
-        return const Color(0xFFD84315);
-      case EstadoPostulacion.retirada:
-      case EstadoPostulacion.desconocido:
-        return const Color(0xFF9E9E9E);
-    }
-  }
 }
