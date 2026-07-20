@@ -66,6 +66,15 @@ class DriverAvailabilityViewModel
 
   StreamSubscription? _positionSub;
 
+  // Serialización del switch online/offline: una operación en vuelo a la vez.
+  // Cada tap durante una operación invierte el último deseo registrado y el
+  // bucle de toggleOnline reconcilia hasta que el estado real coincida con él.
+  bool _toggleEnCurso = false;
+  bool? _objetivoDeseado;
+  // Último aviso de offline al backend: _goOnline lo espera antes de mandar
+  // disponible=true para que el servidor nunca procese true→false invertidos.
+  Future<void>? _offlinePendiente;
+
   Future<SolicitudViaje?> getViajeActivoConductor() =>
       _repository.getViajeActivoConductor();
 
@@ -154,11 +163,38 @@ class DriverAvailabilityViewModel
   }
 
   Future<void> toggleOnline() async {
-    if (state.isOnline) {
-      _goOfflineLocal();
+    if (_toggleEnCurso) {
+      // Hay una operación en vuelo: solo se registra el nuevo deseo. El bucle
+      // de abajo lo aplicará al terminar (el último deseo siempre gana).
+      _objetivoDeseado = !(_objetivoDeseado ?? state.isOnline);
       return;
     }
+    _toggleEnCurso = true;
+    _objetivoDeseado = !state.isOnline;
+    state = state.copyWith(isToggling: true);
+    try {
+      while (mounted) {
+        final objetivo = _objetivoDeseado!;
+        if (state.isOnline != objetivo) {
+          if (objetivo) {
+            await _goOnline();
+          } else {
+            _goOfflineLocal();
+          }
+        }
+        // Si nadie movió el switch durante la operación, terminamos (aunque
+        // _goOnline haya fallado: el error ya quedó en el estado y reintentar
+        // solo repetiría el mismo fallo). Si lo movieron, reconciliamos.
+        if (_objetivoDeseado == objetivo) break;
+      }
+    } finally {
+      _toggleEnCurso = false;
+      _objetivoDeseado = null;
+      if (mounted) state = state.copyWith(isToggling: false);
+    }
+  }
 
+  Future<void> _goOnline() async {
     // 1) Verificaciones en paralelo: documentos aprobados + vehículo aprobado.
     try {
       final results = await Future.wait<Object?>([
@@ -207,7 +243,11 @@ class DriverAvailabilityViewModel
     if (pos == null) return; // _ensurePosition ya mostró el mensaje.
 
     // 3) Marcar disponible en el backend (única llamada que bloquea el switch).
+    // Si hay un "no disponible" en vuelo, esperarlo: el servidor debe ver
+    // false→true en ese orden, nunca al revés.
     try {
+      await _offlinePendiente;
+      _offlinePendiente = null;
       await _repository.toggleAvailability(
         disponible: true,
         lat: pos.latitude,
@@ -235,7 +275,9 @@ class DriverAvailabilityViewModel
 
     // 5) Resto del trabajo en segundo plano (no bloquea la UI).
     _socketService.emitOnline(state.idMunicipio).then((joined) {
-      if (!joined && mounted) {
+      // state.isOnline: si el usuario ya volvió a offline, el aviso "ya estás
+      // disponible" sería falso y confuso.
+      if (!joined && mounted && state.isOnline) {
         state = state.copyWith(
           errorMessage:
               'Ya estás disponible, pero aún no podemos enviarte viajes. Asegúrate de haber terminado tu registro (licencia y vehículo).',
@@ -253,10 +295,11 @@ class DriverAvailabilityViewModel
     _inbox.onOffline();
     _heatmap.clear();
     state = state.copyWith(isOnline: false);
-    // Avisar al backend en segundo plano: no es crítico para la UI.
+    // Avisar al backend en segundo plano: no es crítico para la UI. Se guarda
+    // el future para que un _goOnline posterior lo espere (orden en el server).
     final pos = state.currentPosition;
     if (pos != null) {
-      _repository
+      _offlinePendiente = _repository
           .toggleAvailability(
               disponible: false, lat: pos.latitude, lng: pos.longitude)
           .catchError((_) {});
@@ -279,6 +322,7 @@ class DriverAvailabilityState extends Equatable {
   const DriverAvailabilityState({
     this.isLoading = false,
     this.isOnline = false,
+    this.isToggling = false,
     this.errorMessage,
     this.currentPosition,
     this.stats,
@@ -289,6 +333,10 @@ class DriverAvailabilityState extends Equatable {
 
   final bool isLoading;
   final bool isOnline;
+
+  /// Hay un cambio online/offline en vuelo: la UI puede atenuar o deshabilitar
+  /// el switch mientras tanto (los taps igual se registran y reconcilian).
+  final bool isToggling;
   final String? errorMessage;
   final LatLng? currentPosition;
   final DriverStats? stats;
@@ -303,6 +351,7 @@ class DriverAvailabilityState extends Equatable {
   DriverAvailabilityState copyWith({
     bool? isLoading,
     bool? isOnline,
+    bool? isToggling,
     Object? errorMessage = _sentinel,
     LatLng? currentPosition,
     DriverStats? stats,
@@ -313,6 +362,7 @@ class DriverAvailabilityState extends Equatable {
     return DriverAvailabilityState(
       isLoading: isLoading ?? this.isLoading,
       isOnline: isOnline ?? this.isOnline,
+      isToggling: isToggling ?? this.isToggling,
       errorMessage: identical(errorMessage, _sentinel)
           ? this.errorMessage
           : errorMessage as String?,
@@ -330,6 +380,7 @@ class DriverAvailabilityState extends Equatable {
   List<Object?> get props => [
         isLoading,
         isOnline,
+        isToggling,
         errorMessage,
         currentPosition,
         stats,

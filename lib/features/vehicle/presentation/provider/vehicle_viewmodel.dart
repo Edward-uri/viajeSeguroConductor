@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/error.dart';
+import '../../../../features/rides/presentation/provider/driver_availability_viewmodel.dart';
 import '../../../../theme/jala_theme.dart';
 import '../../di/vehicle_module.dart';
 import '../../domain/entities/vehiculo.dart';
@@ -11,13 +12,20 @@ import '../../domain/repositories/vehicle_repository.dart';
 
 final vehicleViewModelProvider =
     ChangeNotifierProvider.autoDispose<VehicleViewModel>((ref) {
-  return VehicleViewModel(ref.watch(vehicleRepositoryProvider));
+  return VehicleViewModel(
+    ref.watch(vehicleRepositoryProvider),
+    // ref.read puntual (sin dependencia): el shell del home mantiene vivo el
+    // provider de disponibilidad mientras el conductor puede estar en línea.
+    isOnline: () => ref.read(driverAvailabilityViewModelProvider).isOnline,
+  );
 });
 
 class VehicleViewModel extends ChangeNotifier {
-  VehicleViewModel(this._repository);
+  VehicleViewModel(this._repository, {bool Function()? isOnline})
+      : _isOnline = isOnline ?? (() => false);
 
   final VehicleRepository _repository;
+  final bool Function() _isOnline;
 
   List<Vehiculo> _vehiculos = [];
   String? _rfc;
@@ -132,6 +140,14 @@ class VehicleViewModel extends ChangeNotifier {
   }
 
   Future<void> usarVehiculo(int idVehiculo) async {
+    // El backend no lo valida: cambiar de vehículo en línea dejaría viajes
+    // asignados con un vehículo distinto al aprobado para recibirlos.
+    if (_isOnline()) {
+      _errorMessage =
+          'No puedes cambiar de vehículo estando en línea. Pasa a offline primero.';
+      notifyListeners();
+      return;
+    }
     _isSaving = true;
     _errorMessage = null;
     notifyListeners();

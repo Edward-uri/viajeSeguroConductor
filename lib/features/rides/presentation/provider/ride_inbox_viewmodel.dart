@@ -143,7 +143,9 @@ class RideInboxViewModel extends StateNotifier<RideInboxState> {
 
   Future<void> refrescarPendientes() async {
     final lista = await _repository.getPendingTrips();
-    if (!mounted) return;
+    // !_online: refresh disparado por un pase a online que ya fue revertido;
+    // aplicar la lista repoblaría pendientes con el conductor offline.
+    if (!mounted || !_online) return;
     state = state.copyWith(
       pendientes: lista.where((t) => !_rechazados.contains(t.id)).toList(),
     );
@@ -157,12 +159,12 @@ class RideInboxViewModel extends StateNotifier<RideInboxState> {
     }
   }
 
-  /// Al pasar a offline: se limpia lo aceptado y la solicitud seleccionada,
-  /// y se dejan de admitir solicitudes entrantes.
+  /// Al pasar a offline: se limpia lo aceptado, la solicitud seleccionada y
+  /// las pendientes, y se dejan de admitir solicitudes entrantes.
   void onOffline() {
     _online = false;
     _aceptadosPorMi.clear();
-    state = state.copyWith(currentRequest: null);
+    state = state.copyWith(currentRequest: null, pendientes: const []);
   }
 
   /// Selecciona un viaje de la lista para abrir su detalle (pantalla de solicitud).
@@ -174,6 +176,15 @@ class RideInboxViewModel extends StateNotifier<RideInboxState> {
   Future<SolicitudViaje?> acceptRide() async {
     final viaje = state.currentRequest;
     if (viaje == null) return null;
+    // Defensa en profundidad: si el conductor está offline (aunque la lista
+    // muestre pendientes), no se puede aceptar. El viaje activo no pasa por
+    // aquí, así que un viaje en curso no se ve afectado.
+    if (!_online) {
+      state = state.copyWith(
+        errorMessage: 'Ponte en línea para aceptar viajes.',
+      );
+      return null;
+    }
     final vehiculo = _vehiculo;
     if (vehiculo == null || !vehiculo.aprobado) {
       state = state.copyWith(

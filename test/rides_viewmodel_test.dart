@@ -23,6 +23,7 @@ import 'package:viajeseguroconductor/features/rides/presentation/provider/ride_i
 import 'package:viajeseguroconductor/features/rides/di/rides_module.dart';
 import 'package:viajeseguroconductor/features/vehicle/domain/entities/vehiculo.dart';
 import 'package:viajeseguroconductor/features/vehicle/domain/repositories/vehicle_repository.dart';
+import 'package:viajeseguroconductor/features/vehicle/presentation/provider/vehicle_viewmodel.dart';
 import 'package:viajeseguroconductor/shared/domain/entities/user.dart';
 
 class _MockRidesRepository implements RidesRepository {
@@ -92,12 +93,17 @@ class _MockRidesRepository implements RidesRepository {
     if (shouldThrow) throw Exception('Error');
   }
 
+  /// Historial de llamadas a toggleAvailability, en orden de despacho.
+  final disponibles = <bool>[];
+
   @override
   Future<void> toggleAvailability({
     required bool disponible,
     required double lat,
     required double lng,
-  }) async {}
+  }) async {
+    disponibles.add(disponible);
+  }
 
   @override
   Future<void> registerDevice({
@@ -180,9 +186,19 @@ class _FakeDocumentoRepository implements DocumentoRepository {
 
 class _FakeVehicleRepository implements VehicleRepository {
   Vehiculo? miVehiculo;
+  final activados = <int>[];
 
   @override
   Future<Vehiculo?> getMiVehiculo() async => miVehiculo;
+  @override
+  Future<List<Vehiculo>> getVehiculos() async => [?miVehiculo];
+  @override
+  Future<void> setVehiculoActivo(int idVehiculo) async {
+    activados.add(idVehiculo);
+  }
+
+  @override
+  Future<Map<String, dynamic>> getDatosFacturacion() async => {};
   @override
   dynamic noSuchMethod(Invocation invocation) =>
       super.noSuchMethod(invocation);
@@ -417,7 +433,20 @@ void main() {
       expect(inbox.state.pendientes.length, 1);
     });
 
+    test('acceptRide estando offline se rehúsa', () async {
+      inbox.setVehiculo(_vehiculoAprobado);
+      inbox.setPendientes([_viaje(3)]);
+      inbox.seleccionarViaje(_viaje(3));
+
+      final result = await inbox.acceptRide();
+
+      expect(result, isNull);
+      expect(inbox.state.errorMessage, 'Ponte en línea para aceptar viajes.');
+      expect(mockRepo.acceptedIds, isEmpty);
+    });
+
     test('acceptRide sin vehículo aprobado marca error', () async {
+      inbox.setOnline(true);
       inbox.seleccionarViaje(_viaje(3));
       final result = await inbox.acceptRide();
       expect(result, isNull);
@@ -426,6 +455,7 @@ void main() {
     });
 
     test('acceptRide feliz limpia la solicitud y regresa el viaje', () async {
+      inbox.setOnline(true);
       inbox.setVehiculo(_vehiculoAprobado);
       inbox.setPendientes([_viaje(3)]);
       inbox.seleccionarViaje(_viaje(3));
@@ -440,6 +470,7 @@ void main() {
     });
 
     test('acceptRide con 409 avisa que el viaje ya fue tomado', () async {
+      inbox.setOnline(true);
       inbox.setVehiculo(_vehiculoAprobado);
       inbox.seleccionarViaje(_viaje(3));
       mockRepo.acceptError = ApiException('', statusCode: 409);
@@ -486,6 +517,7 @@ void main() {
     });
 
     test('viaje:aceptado por MÍ no genera aviso', () async {
+      inbox.setOnline(true);
       inbox.setVehiculo(_vehiculoAprobado);
       inbox.seleccionarViaje(_viaje(4));
       await inbox.acceptRide();
@@ -628,6 +660,38 @@ void main() {
       expect(inbox.state.pendientes.any((t) => t.id == '11'), true);
     });
 
+    test('toggle rápido on→off termina offline en todas partes', () async {
+      await vm.loadData(); // municipio 2, pendientes vacías
+      inbox.initSocket(token: 't');
+      // Solo el refresh en segundo plano del pase a online podría traerlas.
+      mockRepo.pendingTrips = [_viaje(1)];
+
+      // Primer tap: pasa a online (queda en vuelo en sus awaits).
+      final enVuelo = vm.toggleOnline();
+      expect(vm.state.isToggling, true);
+      // Segundo tap mientras la operación corre: el deseo final es offline.
+      await vm.toggleOnline();
+      await enVuelo;
+      await _pump();
+      await _pump(); // emitOnline/refresh en segundo plano
+
+      // El último deseo gana: offline en UI, backend, socket e inbox.
+      expect(vm.state.isOnline, false);
+      expect(vm.state.isToggling, false);
+      expect(location.tracking, false);
+      expect(socket.offlineEmitido, true);
+      expect(mockRepo.disponibles, [true, false],
+          reason: 'el backend debe recibir disponible=false al final');
+      expect(inbox.state.pendientes, isEmpty,
+          reason: 'el refresh del pase a online no debe repoblar offline');
+      expect(inbox.state.currentRequest, isNull);
+
+      // El espejo _online del inbox quedó en false: se ignoran solicitudes.
+      socket.requested.add({'idViaje': 13});
+      await _pump();
+      expect(inbox.state.pendientes, isEmpty);
+    });
+
     test('volver a offline limpia inbox y zonas', () async {
       inbox.initSocket(token: 't');
       await vm.toggleOnline();
@@ -646,6 +710,30 @@ void main() {
       socket.requested.add({'idViaje': 12});
       await _pump();
       expect(inbox.state.pendientes.any((t) => t.id == '12'), false);
+    });
+  });
+
+  group('VehicleViewModel.usarVehiculo', () {
+    test('bloqueado estando en línea: no toca el repositorio', () async {
+      final repo = _FakeVehicleRepository();
+      final vm = VehicleViewModel(repo, isOnline: () => true);
+
+      await vm.usarVehiculo(7);
+
+      expect(vm.errorMessage,
+          'No puedes cambiar de vehículo estando en línea. Pasa a offline primero.');
+      expect(repo.activados, isEmpty);
+      expect(vm.isSaving, false);
+    });
+
+    test('offline sí cambia el vehículo activo', () async {
+      final repo = _FakeVehicleRepository()..miVehiculo = _vehiculoAprobado;
+      final vm = VehicleViewModel(repo, isOnline: () => false);
+
+      await vm.usarVehiculo(7);
+
+      expect(repo.activados, [7]);
+      expect(vm.errorMessage, isNull);
     });
   });
 
