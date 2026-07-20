@@ -1,0 +1,14 @@
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/INTEGRACION_APPS_VIAJES.md
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/README.md
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/analysis_options.yaml
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/devtools_options.yaml
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/docs/figma-designs.md
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/linux/CMakeLists.txt
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/linux/flutter/CMakeLists.txt
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/linux/runner/CMakeLists.txt
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/pubspec.yaml
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/web/index.html
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/windows/CMakeLists.txt
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/windows/flutter/CMakeLists.txt
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/windows/runner/CMakeLists.txt

@@ -26,8 +26,8 @@ class VehicleRepositoryImpl implements VehicleRepository {
     final vehiculos = await getVehiculos();
     if (vehiculos.isEmpty) return null;
     return vehiculos.firstWhere(
-      (v) => v.activo,
-      orElse: () => vehiculos.firstWhere((v) => v.aprobado, orElse: () => vehiculos.first),
+      (v) => v.aprobado,
+      orElse: () => vehiculos.firstWhere((v) => v.activo, orElse: () => vehiculos.first),
     );
   }
 

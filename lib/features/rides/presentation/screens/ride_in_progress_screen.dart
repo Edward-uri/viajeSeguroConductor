@@ -495,30 +495,36 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
             SizedBox(
               width: double.infinity,
               height: 56,
-              child: ElevatedButton(
-                onPressed: vm.isLoading ? null : () => vm.startRide(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: scheme.primary,
-                  foregroundColor: scheme.onPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              child: AbsorbPointer(
+                absorbing: vm.isLoading,
+                child: ElevatedButton(
+                  onPressed: () => vm.startRide(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: scheme.primary,
+                    foregroundColor: scheme.onPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  vm.isLoading ? 'Iniciando…' : 'Iniciar viaje',
-                  style: text.titleMedium
-                      ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
+                  child: Text(
+                    vm.isLoading ? 'Iniciando…' : 'Iniciar viaje',
+                    style: text.titleMedium
+                        ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 8),
-            TextButton(
-              onPressed: vm.isLoading ? null : () => _onSoltar(vm, ride),
-              child: Text(
-                'Soltar viaje',
-                style: text.labelLarge
-                    ?.copyWith(color: scheme.error, fontWeight: FontWeight.w600),
+            AbsorbPointer(
+              absorbing: vm.isLoading,
+              child: TextButton(
+                onPressed: () => _onSoltar(vm, ride),
+                child: Text(
+                  'Soltar viaje',
+                  style: text.labelLarge
+                      ?.copyWith(color: scheme.error, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ]
@@ -526,46 +532,50 @@ class _RideInProgressScreenState extends ConsumerState<RideInProgressScreen> {
             SizedBox(
               width: double.infinity,
               height: 56,
-              child: ElevatedButton(
-                onPressed: vm.isLoading
-                    ? null
-                    : () async {
-                        final rideId = vm.ride?.id;
-                        await vm.completeRide();
-                        if (!mounted) return;
-                        if (vm.errorMessage == null) {
-                          if (rideId != null) {
-                            context.pushReplacement(
-                              AppRoutes.rideEvaluation,
-                              extra: rideId,
-                            );
-                          } else {
-                            context.pop();
-                          }
-                        }
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: JalaBrand.success,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              child: AbsorbPointer(
+                absorbing: vm.isLoading,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final rideId = vm.ride?.id;
+                    await vm.completeRide();
+                    if (!mounted) return;
+                    if (vm.errorMessage == null) {
+                      if (rideId != null) {
+                        context.pushReplacement(
+                          AppRoutes.rideEvaluation,
+                          extra: rideId,
+                        );
+                      } else {
+                        context.pop();
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: JalaBrand.success,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  vm.isLoading ? 'Completando…' : 'Completar viaje',
-                  style: text.titleMedium
-                      ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
+                  child: Text(
+                    vm.isLoading ? 'Completando…' : 'Completar viaje',
+                    style: text.titleMedium
+                        ?.copyWith(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 8),
-            TextButton(
-              onPressed: vm.isLoading ? null : () => _onSoltar(vm, ride),
-              child: Text(
-                'Cancelar viaje',
-                style: text.labelLarge
-                    ?.copyWith(color: scheme.error, fontWeight: FontWeight.w600),
+            AbsorbPointer(
+              absorbing: vm.isLoading,
+              child: TextButton(
+                onPressed: () => _onSoltar(vm, ride),
+                child: Text(
+                  'Cancelar viaje',
+                  style: text.labelLarge
+                      ?.copyWith(color: scheme.error, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],

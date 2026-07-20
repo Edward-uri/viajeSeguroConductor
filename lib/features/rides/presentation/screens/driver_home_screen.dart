@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
@@ -26,7 +27,7 @@ class DriverHomeScreen extends ConsumerStatefulWidget {
   ConsumerState<DriverHomeScreen> createState() => _DriverHomeScreenState();
 }
 
-class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
+class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with TickerProviderStateMixin {
   // ponytail: los viewmodels/servicios siguen en LatLng (latlong2); la
   // conversión a Point de Mapbox se hace solo aquí, en la frontera de la UI.
   MapboxMap? _mapboxMap;
@@ -37,10 +38,22 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   bool _socketInitialized = false;
   DateTime? _onlineSince;
   Timer? _onlineTimer;
+  Ticker? _zoomTicker;
+  double _lastZoom = -1;
 
   @override
   void initState() {
     super.initState();
+    _zoomTicker = createTicker((_) async {
+      if (_mapboxMap == null) return;
+      final cameraState = await _mapboxMap!.getCameraState();
+      final currentZoom = cameraState.zoom;
+      if ((currentZoom - _lastZoom).abs() > 0.01) {
+        _lastZoom = currentZoom;
+        _drawZonas();
+      }
+    });
+    _zoomTicker!.start();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final disponibilidad =
           ref.read(driverAvailabilityViewModelProvider.notifier);
@@ -95,6 +108,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
 
   @override
   void dispose() {
+    _zoomTicker?.dispose();
     _onlineTimer?.cancel();
     super.dispose();
   }

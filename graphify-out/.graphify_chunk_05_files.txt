@@ -1,0 +1,10 @@
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@2x.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/lib/shared/icons/MototaxiMapa.svg
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/lib/shared/icons/map-icons/MototaxiMapa.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/lib/shared/icons/map-icons/Pin-Naranja.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/lib/shared/icons/map-icons/Pin-Verde.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_128.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_16.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_256.png

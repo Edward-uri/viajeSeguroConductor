@@ -43,6 +43,8 @@ class RideInboxViewModel extends StateNotifier<RideInboxState> {
   Vehiculo? _vehiculo;
   bool _online = false;
 
+  Timer? _pollingTimer;
+
   StreamSubscription? _rideRequestedSub;
   StreamSubscription? _rideAcceptedSub;
   StreamSubscription? _rideNotAvailableSub;
@@ -56,7 +58,28 @@ class RideInboxViewModel extends StateNotifier<RideInboxState> {
   Stream<Map<String, dynamic>> get viajesCerrados =>
       _viajesCerradosController.stream;
 
-  void setOnline(bool online) => _online = online;
+  void setOnline(bool online) {
+    _online = online;
+    if (online) {
+      _startPolling();
+    } else {
+      _stopPolling();
+    }
+  }
+
+  void _startPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (_online && mounted) {
+        refrescarPendientes();
+      }
+    });
+  }
+
+  void _stopPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
+  }
 
   void setVehiculo(Vehiculo? vehiculo) => _vehiculo = vehiculo;
 
@@ -163,6 +186,7 @@ class RideInboxViewModel extends StateNotifier<RideInboxState> {
   /// las pendientes, y se dejan de admitir solicitudes entrantes.
   void onOffline() {
     _online = false;
+    _stopPolling();
     _aceptadosPorMi.clear();
     state = state.copyWith(currentRequest: null, pendientes: const []);
   }
@@ -261,6 +285,7 @@ class RideInboxViewModel extends StateNotifier<RideInboxState> {
 
   @override
   void dispose() {
+    _stopPolling();
     _rideRequestedSub?.cancel();
     _rideAcceptedSub?.cancel();
     _rideNotAvailableSub?.cancel();

@@ -274,16 +274,7 @@ class DriverAvailabilityViewModel
     _inbox.setOnline(true);
 
     // 5) Resto del trabajo en segundo plano (no bloquea la UI).
-    _socketService.emitOnline(state.idMunicipio).then((joined) {
-      // state.isOnline: si el usuario ya volvió a offline, el aviso "ya estás
-      // disponible" sería falso y confuso.
-      if (!joined && mounted && state.isOnline) {
-        state = state.copyWith(
-          errorMessage:
-              'Ya estás disponible, pero aún no podemos enviarte viajes. Asegúrate de haber terminado tu registro (licencia y vehículo).',
-        );
-      }
-    });
+    _socketService.emitOnline(state.idMunicipio);
     _inbox.refrescarPendientes();
     _heatmap.fetchZonas(state.idMunicipio);
   }

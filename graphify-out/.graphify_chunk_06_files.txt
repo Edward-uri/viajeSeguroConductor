@@ -1,0 +1,8 @@
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_32.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_64.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/web/favicon.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/web/icons/Icon-192.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/web/icons/Icon-512.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/web/icons/Icon-maskable-192.png
+/Users/joseantoniorodriguezflores/Universidad/viajeSeguroConductor/web/icons/Icon-maskable-512.png
