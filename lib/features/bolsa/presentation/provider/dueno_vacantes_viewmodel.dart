@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/http/api_exception.dart';
+import '../../../../core/error/error.dart';
 import '../../../vehicle/di/vehicle_module.dart';
 import '../../../vehicle/domain/entities/vehiculo.dart';
 import '../../../vehicle/domain/repositories/vehicle_repository.dart';
@@ -61,10 +61,9 @@ class DuenoVacantesViewModel extends ChangeNotifier {
       ]);
       _vacantes = results[0] as List<Vacante>;
       _vehiculos = results[1] as List<Vehiculo>;
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (_) {
-      _errorMessage = 'No pudimos cargar tus vacantes. Intenta de nuevo.';
+    } catch (e) {
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No pudimos cargar tus vacantes. Intenta de nuevo.');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -77,10 +76,9 @@ class DuenoVacantesViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       _postulaciones = await _repository.postulacionesDe(idVacante);
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (_) {
-      _errorMessage = 'No pudimos cargar las postulaciones. Intenta de nuevo.';
+    } catch (e) {
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No pudimos cargar las postulaciones. Intenta de nuevo.');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -95,10 +93,9 @@ class DuenoVacantesViewModel extends ChangeNotifier {
     try {
       await _repository.crearVacante(idVehiculo, condiciones);
       ok = true;
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (_) {
-      _errorMessage = 'No se pudo publicar la vacante. Intenta de nuevo.';
+    } catch (e) {
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No se pudo publicar la vacante. Intenta de nuevo.');
     } finally {
       _isWorking = false;
       notifyListeners();
@@ -113,10 +110,9 @@ class DuenoVacantesViewModel extends ChangeNotifier {
     try {
       await _repository.cerrarVacante(idVacante);
       await load();
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (_) {
-      _errorMessage = 'No se pudo cerrar la vacante. Intenta de nuevo.';
+    } catch (e) {
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No se pudo cerrar la vacante. Intenta de nuevo.');
     } finally {
       _isWorking = false;
       notifyListeners();
@@ -131,10 +127,9 @@ class DuenoVacantesViewModel extends ChangeNotifier {
       await _repository.aceptarPostulacion(idPostulacion);
       _successMessage = 'Conductor asignado';
       await loadPostulaciones(idVacante);
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (_) {
-      _errorMessage = 'No se pudo aceptar la postulación. Intenta de nuevo.';
+    } catch (e) {
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No se pudo aceptar la postulación. Intenta de nuevo.');
     } finally {
       _isWorking = false;
       notifyListeners();

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/http/api_exception.dart';
+import '../../../../core/error/error.dart';
 import '../../di/profile_module.dart';
 import '../../domain/entities/update_profile_params.dart';
 import '../../domain/repositories/profile_repository.dart';
@@ -19,21 +19,17 @@ class EditProfileViewModel extends ChangeNotifier {
   String _nombre = '';
   String _apellidoPaterno = '';
   String _apellidoMaterno = '';
-  String _correoElectronico = '';
   bool _isLoading = false;
   String? _errorMessage;
 
   String get nombre => _nombre;
   String get apellidoPaterno => _apellidoPaterno;
   String get apellidoMaterno => _apellidoMaterno;
-  String get correoElectronico => _correoElectronico;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
   bool get canSubmit =>
-      _nombre.trim().isNotEmpty &&
-      _apellidoPaterno.trim().isNotEmpty &&
-      _correoElectronico.trim().contains('@');
+      _nombre.trim().isNotEmpty && _apellidoPaterno.trim().isNotEmpty;
 
   void setNombre(String v) {
     _nombre = v;
@@ -47,11 +43,6 @@ class EditProfileViewModel extends ChangeNotifier {
 
   void setApellidoMaterno(String v) {
     _apellidoMaterno = v;
-    notifyListeners();
-  }
-
-  void setCorreo(String v) {
-    _correoElectronico = v;
     notifyListeners();
   }
 
@@ -70,16 +61,14 @@ class EditProfileViewModel extends ChangeNotifier {
           apellidoMaterno: _apellidoMaterno.trim().isEmpty
               ? null
               : _apellidoMaterno.trim(),
-          correoElectronico: _correoElectronico.trim(),
         ),
       );
       _isLoading = false;
       notifyListeners();
       return true;
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (_) {
-      _errorMessage = 'Ocurrió un error al guardar los cambios';
+    } catch (e) {
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'Ocurrió un error al guardar los cambios');
     }
 
     _isLoading = false;

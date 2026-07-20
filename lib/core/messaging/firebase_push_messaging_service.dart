@@ -53,13 +53,14 @@ class FirebasePushMessagingService implements PushMessagingService {
       if (kDebugMode) {
         try {
           final token = await messaging.getToken();
-          debugPrint('[FCM] token del dispositivo: $token');
+          // Enmascarado: nunca loguear el token FCM completo.
+          debugPrint('[FCM] token del dispositivo: ${_maskToken(token)}');
         } catch (e) {
           debugPrint('[FCM] No se pudo obtener el token: $e');
         }
       }
     } catch (e) {
-      debugPrint('[FCM] Error inicializando mensajería: $e');
+      if (kDebugMode) debugPrint('[FCM] Error inicializando mensajería: $e');
     }
 
     FirebaseMessaging.onMessage.listen(_onMessage);
@@ -83,5 +84,11 @@ class FirebasePushMessagingService implements PushMessagingService {
     if (wiped) {
       onWipeCompleted?.call();
     }
+  }
+
+  /// Primeros 8 caracteres del token, para diagnóstico sin filtrarlo entero.
+  static String _maskToken(String? token) {
+    if (token == null || token.isEmpty) return 'null';
+    return '${token.length > 8 ? token.substring(0, 8) : token}…';
   }
 }

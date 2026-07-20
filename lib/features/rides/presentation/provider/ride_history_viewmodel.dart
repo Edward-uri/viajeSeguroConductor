@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/error/error.dart';
 import '../../di/rides_module.dart';
 import '../../domain/entities/ride_history_item.dart';
 import '../../domain/repositories/rides_repository.dart';
@@ -31,7 +32,8 @@ class RideHistoryViewModel extends ChangeNotifier {
     try {
       _rides = await _repository.getAssignedRides();
     } catch (e) {
-      _errorMessage = 'Error al cargar el historial';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'Error al cargar el historial');
       _rides = [];
     } finally {
       _isLoading = false;

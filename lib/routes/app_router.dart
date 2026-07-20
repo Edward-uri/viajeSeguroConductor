@@ -24,7 +24,6 @@ import '../features/profile/presentation/screens/driver_profile_screen.dart';
 import '../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../features/rides/presentation/screens/driver_home_screen.dart';
 import '../features/rides/presentation/screens/earnings_screen.dart';
-import '../features/rides/presentation/screens/payment_methods_screen.dart';
 import '../features/rides/presentation/screens/ride_evaluation_screen.dart';
 import '../features/rides/presentation/screens/ride_history_screen.dart';
 import '../features/rides/presentation/screens/ride_in_progress_screen.dart';
@@ -70,7 +69,6 @@ final GoRouter appRouter = GoRouter(
     _page(AppRoutes.rideInProgress, (_) => const RideInProgressScreen()),
     _page(AppRoutes.rideEvaluation, (_) => const RideEvaluationScreen()),
     _page(AppRoutes.earnings, (_) => const EarningsScreen()),
-    _page(AppRoutes.paymentMethods, (_) => const PaymentMethodsScreen()),
     _page(AppRoutes.vehicleRegister, (_) => const VehicleRegisterScreen()),
     _page(AppRoutes.vehicleDetail, (_) => const VehicleDetailScreen()),
     _page(AppRoutes.vehicleEdit, (_) => const VehicleEditScreen()),

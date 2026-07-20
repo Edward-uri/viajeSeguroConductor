@@ -84,6 +84,6 @@ class SensitiveDataProcessor {
     Map<String, dynamic> data,
   ) {
     final sanitized = sanitizeForLogging(data);
-    debugPrint('[$tag] $sanitized');
+    if (kDebugMode) debugPrint('[$tag] $sanitized');
   }
 }

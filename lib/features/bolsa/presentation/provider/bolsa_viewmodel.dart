@@ -1,9 +1,7 @@
-import 'dart:ui';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/http/api_exception.dart';
+import '../../../../core/error/error.dart';
 import '../../../profile/di/profile_module.dart';
 import '../../../profile/domain/repositories/profile_repository.dart';
 import '../../di/bolsa_module.dart';
@@ -54,10 +52,9 @@ class BolsaViewModel extends ChangeNotifier {
       ]);
       _vacantes = results[0] as List<Vacante>;
       _postulaciones = results[1] as List<Postulacion>;
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (_) {
-      _errorMessage = 'No pudimos cargar la bolsa de trabajo. Intenta de nuevo.';
+    } catch (e) {
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No pudimos cargar la bolsa de trabajo. Intenta de nuevo.');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -90,10 +87,9 @@ class BolsaViewModel extends ChangeNotifier {
     try {
       await _repository.postular(idVacante);
       await load();
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (_) {
-      _errorMessage = 'No se pudo enviar tu postulación. Intenta de nuevo.';
+    } catch (e) {
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No se pudo enviar tu postulación. Intenta de nuevo.');
     } finally {
       _isWorking = false;
       notifyListeners();
@@ -107,42 +103,13 @@ class BolsaViewModel extends ChangeNotifier {
     try {
       await _repository.retirarPostulacion(idPostulacion);
       await load();
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (_) {
-      _errorMessage = 'No se pudo retirar la postulación. Intenta de nuevo.';
+    } catch (e) {
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No se pudo retirar la postulación. Intenta de nuevo.');
     } finally {
       _isWorking = false;
       notifyListeners();
     }
   }
 
-  String estadoLabel(EstadoPostulacion estado) {
-    switch (estado) {
-      case EstadoPostulacion.pendiente:
-        return 'Pendiente';
-      case EstadoPostulacion.aceptada:
-        return 'Aceptada';
-      case EstadoPostulacion.rechazada:
-        return 'Rechazada';
-      case EstadoPostulacion.retirada:
-        return 'Retirada';
-      case EstadoPostulacion.desconocido:
-        return 'N/A';
-    }
-  }
-
-  Color estadoColor(EstadoPostulacion estado) {
-    switch (estado) {
-      case EstadoPostulacion.pendiente:
-        return const Color(0xFFE8A317);
-      case EstadoPostulacion.aceptada:
-        return const Color(0xFF1E8E5A);
-      case EstadoPostulacion.rechazada:
-        return const Color(0xFFD84315);
-      case EstadoPostulacion.retirada:
-      case EstadoPostulacion.desconocido:
-        return const Color(0xFF9E9E9E);
-    }
-  }
 }

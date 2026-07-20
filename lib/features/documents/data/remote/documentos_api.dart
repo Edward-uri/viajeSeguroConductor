@@ -11,7 +11,7 @@ class DocumentosApi {
   final ApiClient _api;
 
   static String _endpointForTipo(String tipo) {
-    debugPrint('[DocumentosApi] tipo a subir: "$tipo"');
+    if (kDebugMode) debugPrint('[DocumentosApi] tipo a subir: "$tipo"');
     switch (tipo) {
       case 'licencia':
         return ApiEndpoints.conductorDocumentosLicencia;
@@ -20,7 +20,7 @@ class DocumentosApi {
       case 'ine-reverso':
         return ApiEndpoints.conductorDocumentosIneReverso;
       default:
-        debugPrint('[DocumentosApi] tipo desconocido "$tipo" — usando licencia');
+        if (kDebugMode) debugPrint('[DocumentosApi] tipo desconocido "$tipo" — usando licencia');
         return ApiEndpoints.conductorDocumentosLicencia;
     }
   }
@@ -34,7 +34,7 @@ class DocumentosApi {
     required String fileName,
   }) async {
     final endpoint = _endpointForTipo(tipo);
-    debugPrint('[DocumentosApi] subirDocumento endpoint=$endpoint file=$fileName size=${bytes.length}');
+    if (kDebugMode) debugPrint('[DocumentosApi] subirDocumento endpoint=$endpoint file=$fileName size=${bytes.length}');
     return _api.multipartPost(
       endpoint,
       bytes: bytes,
@@ -46,7 +46,7 @@ class DocumentosApi {
   }
 
   Future<void> crearConductor() async {
-    debugPrint('[DocumentosApi] crearConductor — intentando crear registro conductor');
+    if (kDebugMode) debugPrint('[DocumentosApi] crearConductor — intentando crear registro conductor');
     final now = DateTime.now();
     final exp =
         '${now.year - 5}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -60,7 +60,7 @@ class DocumentosApi {
         'licenciaFechaVencimiento': ven,
       }, auth: true);
     } on ApiException catch (e) {
-      debugPrint('[DocumentosApi] crearConductor falló: ${e.statusCode} — ${e.message}');
+      if (kDebugMode) debugPrint('[DocumentosApi] crearConductor falló: ${e.statusCode} — ${e.message}');
       rethrow;
     }
   }

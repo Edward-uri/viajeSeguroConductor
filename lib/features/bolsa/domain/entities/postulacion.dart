@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../../../theme/jala_theme.dart';
+
 /// Estados que devuelve el backend; [desconocido] tolera valores nuevos.
 enum EstadoPostulacion { pendiente, aceptada, rechazada, retirada, desconocido }
 
-/// Label/color de UI para las pantallas del dueño (mismos valores que
-/// BolsaViewModel usa para el conductor; se comparten aquí para no duplicar
-/// el switch en un viewmodel nuevo).
+/// Label/color de UI compartidos por las pantallas del dueño y del conductor
+/// (única fuente; sin BuildContext, por eso constantes estáticas de marca).
 extension EstadoPostulacionUi on EstadoPostulacion {
   String get label {
     switch (this) {
@@ -25,14 +26,14 @@ extension EstadoPostulacionUi on EstadoPostulacion {
   Color get color {
     switch (this) {
       case EstadoPostulacion.pendiente:
-        return const Color(0xFFE8A317);
+        return JalaBrand.warning;
       case EstadoPostulacion.aceptada:
-        return const Color(0xFF1E8E5A);
+        return JalaBrand.success;
       case EstadoPostulacion.rechazada:
-        return const Color(0xFFD84315);
+        return JalaBrand.destructive;
       case EstadoPostulacion.retirada:
       case EstadoPostulacion.desconocido:
-        return const Color(0xFF9E9E9E);
+        return JalaBrand.greyLight;
     }
   }
 }

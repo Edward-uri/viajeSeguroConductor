@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/http/api_exception.dart';
+import '../../../../core/error/error.dart';
 import '../../di/auth_module.dart';
 import '../../domain/repositories/auth_repository.dart';
 
@@ -32,13 +33,15 @@ class LoginPasswordViewModel extends ChangeNotifier {
 
   void setPassword(String v) {
     _password = v;
-    if (v.isNotEmpty && v.length < 6) {
-      _passwordError = 'La contraseña debe tener al menos 6 caracteres';
-    } else {
-      _passwordError = null;
-    }
-    clearError();
-    notifyListeners();
+    final error = (v.isNotEmpty && v.length < 6)
+        ? 'La contraseña debe tener al menos 6 caracteres'
+        : null;
+    // Solo notifica cuando cambia algo visible: antes notificaba en cada
+    // tecla y reconstruía toda la pantalla de login por pulsación.
+    final changed = error != _passwordError || _errorMessage != null;
+    _passwordError = error;
+    _errorMessage = null;
+    if (changed) notifyListeners();
   }
 
   void clearError() {
@@ -70,10 +73,11 @@ class LoginPasswordViewModel extends ChangeNotifier {
       );
       return true;
     } on ApiException catch (e) {
+      // El mensaje del backend (p. ej. credenciales inválidas) es el correcto aquí.
       _errorMessage = e.message;
       return false;
-    } catch (_) {
-      _errorMessage = 'Ocurrió un error inesperado';
+    } catch (e) {
+      _errorMessage = ErrorHandler.handle(e).message;
       return false;
     } finally {
       _isLoading = false;

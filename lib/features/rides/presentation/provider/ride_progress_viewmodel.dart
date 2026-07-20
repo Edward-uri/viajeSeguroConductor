@@ -6,11 +6,13 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../../core/socket/socket_module.dart';
 import '../../../../core/socket/socket_service.dart';
+import '../../../../core/error/error.dart';
 import '../../data/services/location_service.dart';
 import '../../data/services/route_service.dart';
 import '../../di/rides_module.dart';
 import '../../domain/entities/solicitud_viaje.dart';
 import '../../domain/repositories/rides_repository.dart';
+import 'ride_inbox_viewmodel.dart';
 
 final rideProgressViewModelProvider =
     ChangeNotifierProvider.autoDispose<RideProgressViewModel>((ref) {
@@ -19,6 +21,9 @@ final rideProgressViewModelProvider =
     ref.watch(locationServiceProvider),
     ref.watch(socketServiceProvider),
     ref.watch(routeServiceProvider),
+    // El inbox es el dueño único de los eventos de viaje del socket; aquí solo
+    // se consume su retransmisión de cierres del viaje activo.
+    ref.watch(rideInboxViewModelProvider.notifier).viajesCerrados,
   );
   ref.onDispose(() => vm.dispose());
   return vm;
@@ -30,12 +35,16 @@ class RideProgressViewModel extends ChangeNotifier {
     this._locationService,
     this._socketService,
     this._routeService,
+    this._viajesCerrados,
   );
 
   final RidesRepository _repository;
   final LocationService _locationService;
   final SocketService _socketService;
   final RouteService _routeService;
+
+  /// Cancelaciones / "no disponible" retransmitidas por RideInboxViewModel.
+  final Stream<Map<String, dynamic>> _viajesCerrados;
 
   SolicitudViaje? _ride;
   bool _hasStarted = false;
@@ -44,8 +53,7 @@ class RideProgressViewModel extends ChangeNotifier {
   LatLng? _currentPosition;
   LatLng? _pasajeroPosition;
   StreamSubscription? _positionSub;
-  StreamSubscription? _stateChangedSub;
-  StreamSubscription? _notAvailableSub;
+  StreamSubscription? _cierreSub;
   StreamSubscription? _pasajeroLocationSub;
   bool _canceladoPorPasajero = false;
 
@@ -92,14 +100,10 @@ class RideProgressViewModel extends ChangeNotifier {
   }
 
   void _listenSocket() {
-    _stateChangedSub?.cancel();
-    _stateChangedSub = _socketService.onRideStateChanged.listen((data) {
-      if (data['estado']?.toString() == 'cancelado') {
-        _marcarCancelado(data['idViaje']?.toString());
-      }
-    });
-    _notAvailableSub?.cancel();
-    _notAvailableSub = _socketService.onRideNotAvailable.listen((data) {
+    // Cierres (cancelado / no disponible) llegan retransmitidos por el inbox;
+    // la ubicación del pasajero es exclusiva de este viewmodel.
+    _cierreSub?.cancel();
+    _cierreSub = _viajesCerrados.listen((data) {
       _marcarCancelado(data['idViaje']?.toString());
     });
     _pasajeroLocationSub?.cancel();
@@ -108,7 +112,6 @@ class RideProgressViewModel extends ChangeNotifier {
       final lat = (data['lat'] as num?)?.toDouble();
       final lng = (data['lng'] as num?)?.toDouble();
       if (lat == null || lng == null) return;
-      debugPrint('[Tracking] ubicación del pasajero: $lat,$lng');
       _pasajeroPosition = LatLng(lat, lng);
       notifyListeners();
     });
@@ -129,7 +132,6 @@ class RideProgressViewModel extends ChangeNotifier {
 
       // Comparte la posición desde que va por el pasajero (aceptado) hasta el destino.
       if (_ride != null) {
-        debugPrint('[Tracking] comparto mi ubicación: ${latLng.latitude},${latLng.longitude}');
         _socketService.emitLocation(
           idViaje: _ride!.idViaje,
           lat: latLng.latitude,
@@ -187,7 +189,8 @@ class RideProgressViewModel extends ChangeNotifier {
       _errorMessage = null;
       return true;
     } catch (e) {
-      _errorMessage = 'No pudimos soltar el viaje. Intenta de nuevo.';
+      _errorMessage = ErrorHandler.messageFor(e,
+          fallback: 'No pudimos soltar el viaje. Intenta de nuevo.');
       return false;
     } finally {
       _isLoading = false;
@@ -205,7 +208,8 @@ class RideProgressViewModel extends ChangeNotifier {
       _errorMessage = null;
       _refreshRoute(force: true);
     } catch (e) {
-      _errorMessage = 'Error al iniciar viaje';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'Error al iniciar viaje');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -220,7 +224,8 @@ class RideProgressViewModel extends ChangeNotifier {
       await _repository.completeRide(_ride!.id);
       _errorMessage = null;
     } catch (e) {
-      _errorMessage = 'Error al completar viaje';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'Error al completar viaje');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -230,8 +235,7 @@ class RideProgressViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _positionSub?.cancel();
-    _stateChangedSub?.cancel();
-    _notAvailableSub?.cancel();
+    _cierreSub?.cancel();
     _pasajeroLocationSub?.cancel();
     _locationService.stopTracking();
     super.dispose();

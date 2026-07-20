@@ -39,5 +39,4 @@ class AppRoutes {
   static const String rideEvaluation = '/ride-evaluation';
   static const String rideHistory = '/ride-history';
   static const String earnings = '/earnings';
-  static const String paymentMethods = '/payment-methods';
 }

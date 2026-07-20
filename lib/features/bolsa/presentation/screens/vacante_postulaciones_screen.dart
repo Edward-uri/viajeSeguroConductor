@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../theme/jala_theme.dart';
 import '../../domain/entities/postulacion.dart';
 import '../../domain/entities/vacante.dart';
 import '../provider/dueno_vacantes_viewmodel.dart';
@@ -127,7 +128,8 @@ class _PostulacionCard extends ConsumerWidget {
                   if (calificacion != null)
                     Row(
                       children: [
-                        const Icon(Icons.star, size: 14, color: Color(0xFFE8A317)),
+                        Icon(Icons.star,
+                            size: 14, color: context.brand.warning),
                         const SizedBox(width: 2),
                         Text(calificacion.toStringAsFixed(1),
                             style: text.bodySmall),

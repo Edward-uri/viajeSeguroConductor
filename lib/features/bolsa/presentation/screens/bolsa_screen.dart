@@ -165,8 +165,8 @@ class _VacanteCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _EstadoChip(
-                    label: vm.estadoLabel(miPostulacion.estado),
-                    color: vm.estadoColor(miPostulacion.estado),
+                    label: miPostulacion.estado.label,
+                    color: miPostulacion.estado.color,
                   ),
                   if (miPostulacion.estado == EstadoPostulacion.retirada) ...[
                     const SizedBox(width: 8),
@@ -227,8 +227,8 @@ class _PostulacionCard extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             _EstadoChip(
-              label: vm.estadoLabel(postulacion.estado),
-              color: vm.estadoColor(postulacion.estado),
+              label: postulacion.estado.label,
+              color: postulacion.estado.color,
             ),
             if (postulacion.puedeRetirar)
               TextButton(

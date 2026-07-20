@@ -10,6 +10,7 @@ import '../../../../routes/app_routes.dart';
 import '../../../../shared/data/providers/municipio_provider.dart';
 import '../../../../shared/domain/entities/municipio.dart';
 import '../../../../shared/utils/image_utils.dart';
+import '../../../../theme/jala_theme.dart';
 import '../../domain/entities/vehiculo.dart';
 import '../provider/vehicle_viewmodel.dart';
 
@@ -22,12 +23,6 @@ class VehicleRegisterScreen extends ConsumerStatefulWidget {
   ConsumerState<VehicleRegisterScreen> createState() =>
       _VehicleRegisterScreenState();
 }
-
-// Paleta de la app (consistente con documentos).
-const _kDark = Color(0xFF1A1410);
-const _kGrey = Color(0xFF6B6661);
-const _kOrange = Color(0xFFFF8F00);
-const _kGreen = Color(0xFF1E8E5A);
 
 const _kPasos = ['Datos', 'Tarjeta', 'Foto'];
 
@@ -280,8 +275,8 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
                             size: 60,
                             color: scheme.onSurfaceVariant.withValues(alpha: 0.4)),
                         const SizedBox(height: 12),
-                        const Text('Tocar para tomar foto',
-                            style: TextStyle(color: _kGrey)),
+                        Text('Tocar para tomar foto',
+                            style: TextStyle(color: context.brand.greyDark)),
                       ],
                     ),
                   )
@@ -316,22 +311,27 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
           Container(
             width: 88,
             height: 88,
-            decoration: const BoxDecoration(
-              color: Color(0xFFE6F4EA),
+            decoration: BoxDecoration(
+              color: context.brand.successLight,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.check_circle, color: _kGreen, size: 56),
+            child:
+                Icon(Icons.check_circle, color: context.brand.success, size: 56),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             '¡Vehículo registrado!',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: _kDark),
+            style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: context.colors.onSurface),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Tu mototaxi quedó en revisión. Te avisaremos cuando esté aprobado para que puedas recibir viajes.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: _kGrey, height: 1.4),
+            style: TextStyle(
+                fontSize: 14, color: context.brand.greyDark, height: 1.4),
           ),
           const SizedBox(height: 36),
           GradientButton(
@@ -364,7 +364,9 @@ class _StepperHeader extends StatelessWidget {
                   child: Container(
                     height: 3,
                     margin: const EdgeInsets.symmetric(horizontal: 4),
-                    color: done ? _kGreen : const Color(0xFFE3E3E3),
+                    color: done
+                        ? context.brand.success
+                        : context.brand.greyBorder,
                   ),
                 );
               }
@@ -382,7 +384,10 @@ class _StepperHeader extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             'Paso ${current + 1} de ${_kPasos.length}',
-            style: const TextStyle(fontSize: 12, color: _kGrey, fontWeight: FontWeight.w600),
+            style: TextStyle(
+                fontSize: 12,
+                color: context.brand.greyDark,
+                fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -405,11 +410,12 @@ class _StepDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color bg = done
-        ? _kGreen
+        ? context.brand.success
         : active
-            ? _kOrange
-            : const Color(0xFFE3E3E3);
-    final Color fg = (done || active) ? Colors.white : _kGrey;
+            ? JalaBrand.amber
+            : context.brand.greyBorder;
+    final Color fg =
+        (done || active) ? Colors.white : context.brand.greyDark;
     return Column(
       children: [
         Container(
@@ -427,7 +433,7 @@ class _StepDot extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 11,
-            color: active ? _kDark : _kGrey,
+            color: active ? context.colors.onSurface : context.brand.greyDark,
             fontWeight: active ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
@@ -447,10 +453,13 @@ class _PasoTitulo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(titulo,
-            style: const TextStyle(
-                fontSize: 20, fontWeight: FontWeight.w700, color: _kDark)),
+            style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: context.colors.onSurface)),
         const SizedBox(height: 6),
-        Text(subtitulo, style: const TextStyle(fontSize: 14, color: _kGrey)),
+        Text(subtitulo,
+            style: TextStyle(fontSize: 14, color: context.brand.greyDark)),
       ],
     );
   }
@@ -466,9 +475,10 @@ class _Tip extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          const Icon(Icons.check, size: 16, color: _kGreen),
+          Icon(Icons.check, size: 16, color: context.brand.success),
           const SizedBox(width: 8),
-          Text(text, style: const TextStyle(fontSize: 13, color: _kGrey)),
+          Text(text,
+              style: TextStyle(fontSize: 13, color: context.brand.greyDark)),
         ],
       ),
     );
@@ -485,16 +495,18 @@ class _ErrorBox extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCEAE6),
+        color: context.brand.destructiveLight,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, size: 20, color: Color(0xFFD84315)),
+          Icon(Icons.error_outline,
+              size: 20, color: context.brand.destructive),
           const SizedBox(width: 10),
           Expanded(
             child: Text(message,
-                style: const TextStyle(fontSize: 13, color: Color(0xFFD84315))),
+                style: TextStyle(
+                    fontSize: 13, color: context.brand.destructive)),
           ),
         ],
       ),

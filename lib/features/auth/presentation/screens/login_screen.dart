@@ -163,9 +163,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       ),
       // CTA fijo al fondo (Figma); sube con el teclado vía viewInsets.
+      // viewInsetsOf: dependencia solo de los insets, no de todo MediaQuery.
       bottomNavigationBar: Padding(
         padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
         ),
         child: SafeArea(
           child: Padding(

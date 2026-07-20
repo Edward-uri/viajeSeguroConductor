@@ -2,11 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/core_module.dart';
+import '../../../../core/error/error.dart';
 import '../../../../core/http/api_exception.dart';
 import '../../../../core/security/sensitive_data_processor.dart';
 import '../../../../core/session/session_service.dart';
 import '../../../../core/storage/sensitive_data_storage.dart';
 import '../../../../shared/domain/entities/user.dart';
+import '../../../auth/di/auth_module.dart';
 import '../../di/profile_module.dart';
 import '../../domain/repositories/profile_repository.dart';
 
@@ -75,11 +77,9 @@ class ProfileViewModel extends ChangeNotifier {
       // JWT vencido o invalido. La View detectara `user == null` y
       // sabra que tiene que ir al login.
       await _sessionService.logout();
-      _errorMessage = 'Tu sesion expiro. Inicia sesion de nuevo.';
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-    } catch (_) {
-      _errorMessage = 'Ocurrio un error inesperado';
+      _errorMessage = 'Tu sesión expiró. Inicia sesión de nuevo.';
+    } catch (e) {
+      _errorMessage = ErrorHandler.handle(e).message;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -97,11 +97,9 @@ class ProfileViewModel extends ChangeNotifier {
     try {
       _user = await _profileRepo.uploadPhoto(bytes: bytes, fileName: fileName);
       return true;
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-      return false;
-    } catch (_) {
-      _errorMessage = 'No se pudo actualizar la foto';
+    } catch (e) {
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'No se pudo actualizar la foto');
       return false;
     } finally {
       _isUploadingPhoto = false;
@@ -118,11 +116,9 @@ class ProfileViewModel extends ChangeNotifier {
       await _sessionService.logout();
       _user = null;
       return true;
-    } on ApiException catch (e) {
-      _errorMessage = e.message;
-      return false;
-    } catch (_) {
-      _errorMessage = 'No se pudo eliminar la cuenta';
+    } catch (e) {
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'No se pudo eliminar la cuenta');
       return false;
     } finally {
       _isDeleting = false;

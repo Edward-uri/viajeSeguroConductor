@@ -19,6 +19,7 @@ dependencies:
 
   flutter_riverpod: ^2.6.1
   go_router: ^14.6.2
+  equatable: ^2.0.7
 
   http: ^1.2.2
   http_parser: ^4.1.2
@@ -38,7 +39,9 @@ dependencies:
 
   socket_io_client: ^3.0.2
 
-  flutter_map: ^7.0.2
+  mapbox_maps_flutter: ^2.4.0
+  # Render de SVG a bytes para pines personalizados en Mapbox.
+  vector_graphics: ^1.1.18+1
   latlong2: ^0.9.1
   url_launcher: ^6.3.2
 
@@ -64,4 +67,6 @@ flutter:
 
   assets:
     - assets/
+    - lib/shared/icons/
+    - lib/shared/icons/map-icons/
     - .env

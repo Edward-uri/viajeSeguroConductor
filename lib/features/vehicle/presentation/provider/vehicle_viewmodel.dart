@@ -3,19 +3,29 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/error/error.dart';
+import '../../../../features/rides/presentation/provider/driver_availability_viewmodel.dart';
+import '../../../../theme/jala_theme.dart';
 import '../../di/vehicle_module.dart';
 import '../../domain/entities/vehiculo.dart';
 import '../../domain/repositories/vehicle_repository.dart';
 
 final vehicleViewModelProvider =
     ChangeNotifierProvider.autoDispose<VehicleViewModel>((ref) {
-  return VehicleViewModel(ref.watch(vehicleRepositoryProvider));
+  return VehicleViewModel(
+    ref.watch(vehicleRepositoryProvider),
+    // ref.read puntual (sin dependencia): el shell del home mantiene vivo el
+    // provider de disponibilidad mientras el conductor puede estar en línea.
+    isOnline: () => ref.read(driverAvailabilityViewModelProvider).isOnline,
+  );
 });
 
 class VehicleViewModel extends ChangeNotifier {
-  VehicleViewModel(this._repository);
+  VehicleViewModel(this._repository, {bool Function()? isOnline})
+      : _isOnline = isOnline ?? (() => false);
 
   final VehicleRepository _repository;
+  final bool Function() _isOnline;
 
   List<Vehiculo> _vehiculos = [];
   String? _rfc;
@@ -45,7 +55,8 @@ class VehicleViewModel extends ChangeNotifier {
       _rfc = facturacion['rfc']?.toString();
       _razonSocial = facturacion['razonSocial']?.toString();
     } catch (e) {
-      _errorMessage = 'Error al cargar vehículos';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'Error al cargar vehículos');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -68,7 +79,8 @@ class VehicleViewModel extends ChangeNotifier {
       _rfc = rfc;
       _razonSocial = razonSocial;
     } catch (e) {
-      _errorMessage = 'No se pudieron guardar los datos de facturación';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'No se pudieron guardar los datos de facturación');
     } finally {
       _isSaving = false;
       notifyListeners();
@@ -85,7 +97,8 @@ class VehicleViewModel extends ChangeNotifier {
       await loadVehiculos();
       return id;
     } catch (e) {
-      _errorMessage = 'No se pudo registrar el vehículo. Verifica los datos.';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'No se pudo registrar el vehículo. Verifica los datos.');
       return 0;
     } finally {
       _isSaving = false;
@@ -112,7 +125,8 @@ class VehicleViewModel extends ChangeNotifier {
       await loadVehiculos();
       return true;
     } catch (e) {
-      _errorMessage = 'No se pudo subir el documento. Intenta de nuevo.';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'No se pudo subir el documento. Intenta de nuevo.');
       return false;
     } finally {
       _isSaving = false;
@@ -126,6 +140,14 @@ class VehicleViewModel extends ChangeNotifier {
   }
 
   Future<void> usarVehiculo(int idVehiculo) async {
+    // El backend no lo valida: cambiar de vehículo en línea dejaría viajes
+    // asignados con un vehículo distinto al aprobado para recibirlos.
+    if (_isOnline()) {
+      _errorMessage =
+          'No puedes cambiar de vehículo estando en línea. Pasa a offline primero.';
+      notifyListeners();
+      return;
+    }
     _isSaving = true;
     _errorMessage = null;
     notifyListeners();
@@ -133,7 +155,8 @@ class VehicleViewModel extends ChangeNotifier {
       await _repository.setVehiculoActivo(idVehiculo);
       await loadVehiculos();
     } catch (e) {
-      _errorMessage = 'No se pudo seleccionar el vehículo. Intenta de nuevo.';
+      _errorMessage =
+          ErrorHandler.messageFor(e, fallback: 'No se pudo seleccionar el vehículo. Intenta de nuevo.');
     } finally {
       _isSaving = false;
       notifyListeners();
@@ -151,14 +174,15 @@ class VehicleViewModel extends ChangeNotifier {
     }
   }
 
+  // ponytail: sin BuildContext aquí; se usan las constantes estáticas de marca.
   Color statusColor(VehicleStatus status) {
     switch (status) {
       case VehicleStatus.active:
-        return const Color(0xFF1E8E5A);
+        return JalaBrand.success;
       case VehicleStatus.incomplete:
-        return const Color(0xFFE8A317);
+        return JalaBrand.warning;
       case VehicleStatus.reviewing:
-        return const Color(0xFFE8A317);
+        return JalaBrand.warning;
     }
   }
 }

@@ -9,11 +9,24 @@ import '../env/api_config.dart';
 enum SocketStatus { disconnected, connecting, connected, unauthorized }
 
 class SocketService {
-  SocketService();
+  SocketService({
+    String Function()? tokenProvider,
+    Future<bool> Function()? onTokenExpired,
+  })  : _tokenProvider = tokenProvider,
+        _onTokenExpired = onTokenExpired;
+
+  /// Devuelve el access token vigente (lo cachea ApiClient).
+  final String Function()? _tokenProvider;
+
+  /// Pide a ApiClient refrescar la sesión (con sus guards de single-flight
+  /// y cooldown). Devuelve true si hay token nuevo.
+  final Future<bool> Function()? _onTokenExpired;
 
   io.Socket? _socket;
   SocketStatus _status = SocketStatus.disconnected;
   Timer? _reconnectTimer;
+  Timer? _refreshTimer;
+  int _refreshAttempts = 0;
   String? _token;
   bool _shouldReconnect = true;
   int? _municipioOnline;
@@ -46,16 +59,29 @@ class SocketService {
   void _doConnect() {
     _setStatus(SocketStatus.connecting);
 
+    // Usa el token vigente de ApiClient si está disponible: puede haberse
+    // refrescado por otra vía (interceptor HTTP) desde la última conexión.
+    final fresh = _tokenProvider?.call();
+    if (fresh != null && fresh.isNotEmpty) _token = fresh;
+
+    // Socket SIEMPRE nuevo: la librería cachea el Manager/Socket por URI y
+    // reutilizaría el `auth` capturado en el primer handshake (token viejo),
+    // además de acumular los handlers de cada reconexión (eventos duplicados).
+    // dispose() mata el socket anterior (handlers y estado de reintentos
+    // incluidos) y enableForceNew() impide que la caché devuelva uno viejo.
+    _socket?.dispose();
     _socket = io.io(
       ApiConfig.baseUrl,
       OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
+          .enableForceNew()
           .setAuth(<String, dynamic>{'token': _token})
           .build(),
     );
 
     _socket!.onConnect((_) {
+      _refreshAttempts = 0;
       _setStatus(SocketStatus.connected);
       // Tras reconectar, el server perdió el room: hay que volver a anunciarse.
       if (_municipioOnline != null) emitOnline(_municipioOnline!);
@@ -70,6 +96,8 @@ class SocketService {
       final msg = data.toString();
       if (msg.contains('unauthorized')) {
         _setStatus(SocketStatus.unauthorized);
+        // Token expirado: refresca vía ApiClient y reconecta.
+        _tryRefreshAndReconnect();
       } else {
         _setStatus(SocketStatus.disconnected);
         _scheduleReconnect();
@@ -120,13 +148,13 @@ class SocketService {
   Future<bool> emitOnline(int idMunicipio) {
     final socket = _socket;
     if (socket == null) {
-      debugPrint('[Socket] emitOnline sin socket conectado');
+      if (kDebugMode) debugPrint('[Socket] emitOnline sin socket conectado');
       return Future.value(false);
     }
     _municipioOnline = idMunicipio;
     final completer = Completer<bool>();
     socket.emitWithAck('conductor:online', {'idMunicipio': idMunicipio}, ack: (data) {
-      debugPrint('[Socket] conductor:online ack=$data');
+      if (kDebugMode) debugPrint('[Socket] conductor:online ack=$data');
       final ok = data is Map && data['ok'] == true;
       if (!completer.isCompleted) completer.complete(ok);
     });
@@ -156,6 +184,46 @@ class SocketService {
     }
   }
 
+  /// Intenta refrescar el token y reconectar el socket (máx. 5 intentos por
+  /// ráfaga, con debounce de 2 s). Ningún camino de fallo termina sin
+  /// programar un reintento: si el refresh falla o ApiClient está en cooldown
+  /// se vuelve al ciclo de _scheduleReconnect, que reintentará más tarde.
+  void _tryRefreshAndReconnect() {
+    if (_onTokenExpired == null || _tokenProvider == null) {
+      _scheduleReconnect();
+      return;
+    }
+    if (_refreshAttempts >= 5) {
+      // Ráfaga agotada: resetea el contador y deja que el ciclo normal
+      // reintente (el cooldown de ApiClient evita martillar /refresh).
+      _refreshAttempts = 0;
+      _scheduleReconnect();
+      return;
+    }
+    _refreshAttempts++;
+
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer(const Duration(seconds: 2), () async {
+      var refreshed = false;
+      try {
+        refreshed = await _onTokenExpired();
+      } catch (_) {
+        // Refresh lanzó (red caída, etc.): cae al reintento programado.
+      }
+      if (!_shouldReconnect) return;
+      if (!refreshed) {
+        _scheduleReconnect();
+        return;
+      }
+      final token = _tokenProvider();
+      if (token.isEmpty) {
+        _scheduleReconnect();
+        return;
+      }
+      refreshToken(token);
+    });
+  }
+
   void _scheduleReconnect() {
     if (!_shouldReconnect) return;
     _reconnectTimer?.cancel();
@@ -174,6 +242,7 @@ class SocketService {
   void disconnect() {
     _shouldReconnect = false;
     _reconnectTimer?.cancel();
+    _refreshTimer?.cancel();
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;

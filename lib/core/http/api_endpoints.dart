@@ -30,8 +30,6 @@ class ApiEndpoints {
   static const String conductorStats = '/api/conductor/stats';
   static const String conductorDisponibilidad =
       '/api/conductor/disponibilidad';
-  static const String conductorMetodoCobro =
-      '/api/conductor/metodo-cobro';
 
   // ───── Rides ─────
   static const String viajesPendientes = '/api/viajes/pendientes';
@@ -104,6 +102,10 @@ class ApiEndpoints {
   // ───── Zonas calientes (proxy del modelo, evita CORS) ─────
   static String zonasCalientes(int diaSemana, int hora) =>
       '/api/zonas/calientes?dia_semana=$diaSemana&hora=$hora&top=6';
+
+  // ───── Reputación (top-3 etiquetas inferidas por LLM-JALA) ─────
+  static String usuarioEtiquetas(int idUsuario, String rol) =>
+      '/api/usuarios/$idUsuario/etiquetas?rol=$rol';
 
   // ───── Dispositivos / FCM ─────
   static const String dispositivos = '/api/dispositivos';

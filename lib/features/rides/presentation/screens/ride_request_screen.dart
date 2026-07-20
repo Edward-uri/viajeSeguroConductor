@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/gradient_button.dart';
+import '../../../../core/widgets/reputation_chips.dart';
 import '../../../../routes/app_routes.dart';
-import '../provider/home_viewmodel.dart';
+import '../provider/ride_inbox_viewmodel.dart';
 
 class RideRequestScreen extends ConsumerStatefulWidget {
   const RideRequestScreen({super.key});
@@ -32,7 +33,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
         setState(() => _countdown--);
       }
       if (_countdown <= 0 && !_aceptando) {
-        await ref.read(homeViewModelProvider).rejectRide();
+        await ref.read(rideInboxViewModelProvider.notifier).rejectRide();
         if (mounted) context.pop();
         return false;
       }
@@ -42,10 +43,11 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final vm = ref.watch(homeViewModelProvider);
+    final inbox = ref.read(rideInboxViewModelProvider.notifier);
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final request = vm.currentRequest;
+    final request =
+        ref.watch(rideInboxViewModelProvider.select((s) => s.currentRequest));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Solicitud de viaje')),
@@ -99,7 +101,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                                   const SizedBox(width: 4),
                                   Text(
                                     request.metodoPago,
-                                    style: TextStyle(
+                                    style: text.bodyMedium?.copyWith(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       color: scheme.primary,
@@ -182,12 +184,17 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                                 const SizedBox(width: 4),
                                 Text(
                                   '${request.pasajeroCalificacion.toStringAsFixed(1)} · Pasajera',
-                                  style: TextStyle(
-                                    fontSize: 14,
+                                  style: text.bodyMedium?.copyWith(
                                     color: scheme.onSurfaceVariant,
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                          Center(
+                            child: ReputationChips(
+                              idUsuario: request.idPasajero,
+                              rol: 'pasajero',
                             ),
                           ),
                         const SizedBox(height: 24),
@@ -228,7 +235,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                       onPressed: _aceptando
                           ? null
                           : () async {
-                        await vm.rejectRide();
+                        await inbox.rejectRide();
                         if (!context.mounted) return;
                         context.pop();
                       },
@@ -254,7 +261,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                             ? null
                             : () async {
                                 setState(() => _aceptando = true);
-                                final viaje = await vm.acceptRide();
+                                final viaje = await inbox.acceptRide();
                                 if (!context.mounted) return;
                                 if (viaje != null) {
                                   context.pushReplacement(
@@ -279,6 +286,7 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
 
   Widget _locationRow(
       IconData icon, String title, String subtitle, Color color, ColorScheme scheme) {
+    final text = Theme.of(context).textTheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -289,14 +297,14 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title,
-                  style: TextStyle(
+                  style: text.bodyMedium?.copyWith(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: scheme.onSurface,
                   )),
               const SizedBox(height: 2),
               Text(subtitle,
-                  style: TextStyle(
+                  style: text.bodyMedium?.copyWith(
                     fontSize: 13,
                     color: scheme.onSurfaceVariant,
                   )),

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/di/core_module.dart';
 import '../../../core/http/api_exception.dart';
 import '../../../core/widgets/logo_badge.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/theme.dart';
+import '../../auth/di/auth_module.dart';
 import '../../profile/di/profile_module.dart';
 
 

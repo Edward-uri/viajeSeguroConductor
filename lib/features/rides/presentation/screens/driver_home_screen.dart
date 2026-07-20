@@ -1,18 +1,23 @@
 import 'dart:async';
+import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:latlong2/latlong.dart' show LatLng;
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' hide Size;
 
 import '../../../../core/di/core_module.dart';
-import '../../../../core/env/api_config.dart';
 import '../../../../features/auth/di/auth_module.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../shared/utils/svg_to_mapbox.dart';
+import '../../../../shared/widgets/jala_map_view.dart';
 import '../../../../theme/theme.dart';
+import '../../../heatmap/presentation/provider/heatmap_viewmodel.dart';
 import '../../domain/entities/solicitud_viaje.dart';
-import '../provider/home_viewmodel.dart';
+import '../provider/driver_availability_viewmodel.dart';
+import '../provider/ride_inbox_viewmodel.dart';
 
 class DriverHomeScreen extends ConsumerStatefulWidget {
   const DriverHomeScreen({super.key});
@@ -22,7 +27,13 @@ class DriverHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
-  final _mapController = MapController();
+  // ponytail: los viewmodels/servicios siguen en LatLng (latlong2); la
+  // conversión a Point de Mapbox se hace solo aquí, en la frontera de la UI.
+  MapboxMap? _mapboxMap;
+  PointAnnotationManager? _pointManager;
+  CircleAnnotationManager? _zonasManager;
+  PointAnnotation? _driverMarker;
+  bool _pinLoaded = false;
   bool _socketInitialized = false;
   DateTime? _onlineSince;
   Timer? _onlineTimer;
@@ -31,33 +42,49 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final vm = ref.read(homeViewModelProvider);
-      vm.loadData();
+      final disponibilidad =
+          ref.read(driverAvailabilityViewModelProvider.notifier);
+      disponibilidad.loadData();
 
-      final activo = await vm.getViajeActivoConductor();
-      if (activo != null) {
-        if (!mounted) return;
-        context.push(AppRoutes.rideInProgress, extra: activo);
-      }
-
-      await vm.initLocation();
-      _centerOnDriver();
-
+      // Socket y registro del dispositivo (FCM) van PRIMERO y protegidos:
+      // no dependen del GPS y no deben morir por un permiso de ubicación en
+      // disputa ni por un fallo de red del resto de la cadena.
       if (!_socketInitialized) {
         _socketInitialized = true;
         final storage = ref.read(authStorageProvider);
         final token = await storage.readAccessToken();
+        if (!mounted) return;
         if (token != null && token.isNotEmpty) {
-          vm.initSocket(token: token);
+          ref.read(rideInboxViewModelProvider.notifier).initSocket(token: token);
         }
 
         try {
           final deviceReg = ref.read(deviceRegistrationServiceProvider);
           await deviceReg.registerCurrentDevice();
         } catch (_) {}
+        if (!mounted) return;
       }
 
-      if (vm.isOnline) {
+      try {
+        final activo = await disponibilidad.getViajeActivoConductor();
+        if (!mounted) return;
+        if (activo != null) {
+          context.push(AppRoutes.rideInProgress, extra: activo);
+        }
+      } catch (_) {
+        // Sin red no hay viaje activo que restaurar; el home sigue vivo.
+      }
+
+      try {
+        await disponibilidad.initLocation();
+      } catch (_) {
+        // iOS lanza PermissionRequestInProgress si dos peticiones de permiso
+        // compiten; sin ubicación el mapa no centra, pero el resto funciona.
+      }
+      if (!mounted) return;
+      _centerOnDriver();
+
+      if (ref.read(driverAvailabilityViewModelProvider).isOnline) {
         _onlineSince = DateTime.now();
         _onlineTimer = Timer.periodic(const Duration(seconds: 30), (_) {
           if (mounted) setState(() {});
@@ -88,36 +115,154 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   }
 
   void _centerOnDriver() {
-    final pos = ref.read(homeViewModelProvider).currentPosition;
+    final pos =
+        ref.read(driverAvailabilityViewModelProvider).currentPosition;
     if (pos != null) {
-      _mapController.move(pos, 15.0);
+      _mapboxMap?.flyTo(
+        CameraOptions(
+          center: Point(coordinates: Position(pos.longitude, pos.latitude)),
+          zoom: 16.0,
+        ),
+        MapAnimationOptions(duration: 1000, startDelay: 0),
+      );
     }
   }
 
-  // Naranja (baja) → rojo (alta intensidad).
-  Color _zonaColor(double intensidad) =>
-      Color.lerp(const Color(0xFFFFA000), const Color(0xFFD32F2F), intensidad)!;
+  void _onMapCreated(MapboxMap mapboxMap) async {
+    _mapboxMap = mapboxMap;
+    // El mapa puede recrearse (cambio de tema): el estilo nuevo no conserva
+    // imágenes ni anotaciones anteriores.
+    _driverMarker = null;
+    _pinLoaded = false;
+    try {
+      _pointManager =
+          await mapboxMap.annotations.createPointAnnotationManager();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Home] PointAnnotation no disponible: $e');
+    }
+    try {
+      _zonasManager =
+          await mapboxMap.annotations.createCircleAnnotationManager();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Home] CircleAnnotation no disponible: $e');
+    }
+
+    // Sólo marcar el pin como cargado si de verdad quedó registrado en el
+    // estilo; si no, la anotación apuntaría a una imagen inexistente.
+    _pinLoaded = await addPngPinToMap(
+      mapboxMap,
+      'mototaxi-mapa',
+      'lib/shared/icons/map-icons/MototaxiMapa.png',
+      width: 40,
+      height: 40,
+    );
+
+    final pos =
+        ref.read(driverAvailabilityViewModelProvider).currentPosition;
+    if (pos != null) {
+      _updateDriverMarker(pos);
+      _centerOnDriver();
+    }
+    _drawZonas();
+  }
+
+  void _updateDriverMarker(LatLng pos) async {
+    final manager = _pointManager;
+    if (manager == null || !_pinLoaded) return;
+    final point = Point(coordinates: Position(pos.longitude, pos.latitude));
+    try {
+      if (_driverMarker == null) {
+        _driverMarker = await manager.create(PointAnnotationOptions(
+          geometry: point,
+          iconImage: 'mototaxi-mapa',
+          iconSize: 1.0,
+        ));
+      } else {
+        // Mover el marcador existente (no recrear: evita parpadeo).
+        _driverMarker!.geometry = point;
+        await manager.update(_driverMarker!);
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Home] Error actualizando marcador del conductor: $e');
+    }
+  }
+
+  Future<void> _drawZonas() async {
+    final manager = _zonasManager;
+    if (manager == null) return;
+    final zonas = ref.read(heatmapViewModelProvider);
+    try {
+      await manager.deleteAll();
+      if (zonas.zonas.isEmpty) return;
+
+      final zoom = (await _mapboxMap?.getCameraState())?.zoom ?? 14.0;
+      final options = <CircleAnnotationOptions>[];
+      for (var i = 0; i < zonas.zonas.length; i++) {
+        final z = zonas.zonas[i];
+        final base = zonas.colores[i];
+        // metros → píxeles al zoom actual (Web Mercator).
+        // ponytail: el radio no se re-escala al hacer zoom; si algún día
+        // importa la fidelidad, migrar a una capa GeoJSON con radio en metros.
+        final metersPerPixel =
+            156543.03392 * math.cos(z.lat * math.pi / 180) / math.pow(2, zoom);
+        options.add(CircleAnnotationOptions(
+          geometry: Point(coordinates: Position(z.lng, z.lat)),
+          circleColor: base.toARGB32(),
+          circleRadius: z.radioM / metersPerPixel,
+          circleOpacity: 0.18 + z.intensidad * 0.17,
+          circleStrokeColor: base.toARGB32(),
+          circleStrokeWidth: 2.0,
+        ));
+      }
+      await manager.createMulti(options);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Home] zonas calientes no disponibles en el mapa: $e');
+    }
+  }
+
+  void _mostrarError(String? msg) {
+    if (msg != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final vm = ref.watch(homeViewModelProvider);
+    final disponibilidad = ref.watch(driverAvailabilityViewModelProvider);
+    final inbox = ref.watch(rideInboxViewModelProvider);
     final scheme = Theme.of(context).colorScheme;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
-    ref.listen<String?>(homeViewModelProvider.select((v) => v.errorMessage), (_, msg) {
-      if (msg != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    });
+    // Los errores llegan de dos fuentes: disponibilidad (toggle/GPS/carga) y
+    // bandeja de solicitudes (aceptar/rechazar/socket). Mismo snackbar.
+    // Tras mostrarlo se limpia el mensaje: este listener sólo dispara con
+    // CAMBIOS, así que sin limpiar, dos errores idénticos seguidos no
+    // mostrarían nada la segunda vez.
+    ref.listen<String?>(
+      driverAvailabilityViewModelProvider.select((s) => s.errorMessage),
+      (_, msg) {
+        if (msg == null) return;
+        _mostrarError(msg);
+        ref.read(driverAvailabilityViewModelProvider.notifier).clearError();
+      },
+    );
+    ref.listen<String?>(
+      rideInboxViewModelProvider.select((s) => s.errorMessage),
+      (_, msg) {
+        if (msg == null) return;
+        _mostrarError(msg);
+        ref.read(rideInboxViewModelProvider.notifier).clearError();
+      },
+    );
 
     ref.listen<SolicitudViaje?>(
-      homeViewModelProvider.select((v) => v.currentRequest),
+      rideInboxViewModelProvider.select((s) => s.currentRequest),
       (_, request) {
         if (request != null && context.mounted) {
           context.push(AppRoutes.rideRequest);
@@ -126,8 +271,24 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     );
 
     ref.listen<bool>(
-      homeViewModelProvider.select((v) => v.isOnline),
+      driverAvailabilityViewModelProvider.select((s) => s.isOnline),
       (_, isOnline) => _onOnlineChanged(isOnline),
+    );
+
+    // El mapa ya no se reconstruye con el estado: marcador y zonas se
+    // actualizan imperativamente sobre las anotaciones de Mapbox.
+    ref.listen<LatLng?>(
+      driverAvailabilityViewModelProvider.select((s) => s.currentPosition),
+      (prev, pos) {
+        if (pos == null) return;
+        _updateDriverMarker(pos);
+        if (prev == null) _centerOnDriver();
+      },
+    );
+
+    ref.listen(
+      heatmapViewModelProvider.select((s) => s.zonas),
+      (_, _) => _drawZonas(),
     );
 
     final text = Theme.of(context).textTheme;
@@ -143,69 +304,16 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             Expanded(
               child: Stack(
                 children: [
-                  FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: vm.currentPosition ?? const LatLng(19.4326, -99.1332),
-                      initialZoom: 14.0,
-                      onTap: (_, _) {},
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate: ApiConfig.mapboxTilesUrlFor(
-                            Theme.of(context).brightness),
-                        userAgentPackageName: 'com.uriel.viajeseguroapp',
-                      ),
-                      if (vm.currentPosition != null)
-                        MarkerLayer(
-                          markers: [
-                            Marker(
-                              point: vm.currentPosition!,
-                              width: 40,
-                              height: 40,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: JalaBrand.success,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 3,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.motorcycle_outlined,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      if (vm.zonasCalientes.isNotEmpty)
-                        CircleLayer(
-                          circles: vm.zonasCalientes.asMap().entries.map((e) {
-                            final i = e.key;
-                            final z = e.value;
-                            final base = vm.heatZoneColors[i];
-                            return CircleMarker(
-                              point: LatLng(z.lat, z.lng),
-                              radius: z.radioM,
-                              useRadiusInMeter: true,
-                              color: base.withValues(
-                                  alpha: 0.18 + z.intensidad * 0.17),
-                              borderColor: base,
-                              borderStrokeWidth: 2,
-                            );
-                          }).toList(),
-                        ),
-                    ],
+                  // El mototaxi del conductor se dibuja como anotación
+                  // (pin PNG de map-icons), no como pin de "mi ubicación".
+                  JalaMapView(
+                    onMapCreated: _onMapCreated,
+                    showCurrentLocationPin: false,
+                    // La posición la resuelve el viewmodel de disponibilidad
+                    // (initLocation + listener de currentPosition centra la
+                    // cámara); autoLocate aquí duplicaría la petición de
+                    // permiso y en iOS revienta con PermissionRequestInProgress.
+                    autoLocate: false,
                   ),
                   Positioned(
                     right: 16,
@@ -220,13 +328,18 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                     ),
                   ),
                   if (isLandscape)
-                    vm.esConductor
+                    disponibilidad.esConductor
                         ? _LandscapeBottomBar(
-                            stats: vm.stats,
-                            pendientes: vm.pendientes,
-                            onSelect: vm.seleccionarViaje,
-                            isOnline: vm.isOnline,
-                            onToggle: (_) => vm.toggleOnline(),
+                            stats: disponibilidad.stats,
+                            pendientes: inbox.pendientes,
+                            onSelect: ref
+                                .read(rideInboxViewModelProvider.notifier)
+                                .seleccionarViaje,
+                            isOnline: disponibilidad.isOnline,
+                            onToggle: (_) => ref
+                                .read(driverAvailabilityViewModelProvider
+                                    .notifier)
+                                .toggleOnline(),
                             onlineElapsed: onlineElapsed,
                             text: text,
                             scheme: scheme,
@@ -254,13 +367,17 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               ),
             ),
             if (!isLandscape)
-              vm.esConductor
+              disponibilidad.esConductor
                   ? _BottomSheet(
-                      pendientes: vm.pendientes,
-                      onSelect: vm.seleccionarViaje,
-                      isOnline: vm.isOnline,
-                      onToggle: (_) => vm.toggleOnline(),
-                      stats: vm.stats,
+                      pendientes: inbox.pendientes,
+                      onSelect: ref
+                          .read(rideInboxViewModelProvider.notifier)
+                          .seleccionarViaje,
+                      isOnline: disponibilidad.isOnline,
+                      onToggle: (_) => ref
+                          .read(driverAvailabilityViewModelProvider.notifier)
+                          .toggleOnline(),
+                      stats: disponibilidad.stats,
                       onlineElapsed: onlineElapsed,
                       text: text,
                       scheme: scheme,

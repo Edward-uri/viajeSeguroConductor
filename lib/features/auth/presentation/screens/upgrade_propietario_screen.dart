@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/di/core_module.dart';
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../core/widgets/logo_badge.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../theme/jala_theme.dart';
+import '../../di/auth_module.dart';
 import '../provider/upgrade_propietario_viewmodel.dart';
 
 /// Cuenta solo-pasajero (registrada en la app pasajero) que inicia sesión en
@@ -24,7 +25,7 @@ class UpgradePropietarioScreen extends ConsumerWidget {
         SnackBar(
           content: const Text(
               'Cuenta activada. Cierra sesión y vuelve a entrar para ver los cambios.'),
-          backgroundColor: Colors.orange.shade700,
+          backgroundColor: context.brand.warning,
           behavior: SnackBarBehavior.floating,
           action: SnackBarAction(
             label: 'Cerrar sesión',

@@ -5,9 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'app.dart';
-import 'core/di/core_module.dart';
 import 'core/env/api_config.dart';
 import 'core/messaging/background_message_handler.dart';
 import 'core/messaging/firebase_push_messaging_service.dart';
@@ -26,31 +27,50 @@ import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  debugPrint('[App] Iniciando secuencia de arranque...');
 
+  // Precarga Plus Jakarta Sans: google_fonts la baja en el primer arranque y
+  // después la sirve de caché local; sin esto el primer texto renderea con la
+  // fuente del sistema y "salta" al llegar la descarga (jank en getstarted/
+  // login). La app pasajero tampoco empaqueta la fuente en assets, así que
+  // esta es la mitigación compartida más barata.
   try {
-    await dotenv.load(fileName: ".env");
-    debugPrint('[App] .env cargado');
+    await GoogleFonts.pendingFonts([
+      GoogleFonts.plusJakartaSans(),
+      GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w500),
+      GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+      GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+    ]).timeout(const Duration(seconds: 2));
   } catch (e) {
-    debugPrint('[App] Advertencia: .env no cargado: $e');
+    if (kDebugMode) debugPrint('[App] Fuentes no precargadas: $e');
   }
 
   try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    if (kDebugMode) debugPrint('[App] Advertencia: .env no cargado: $e');
+  }
 
+  try {
+    // Acepta ambas claves: MAPBOX_ACCESS_TOKEN (app pasajero) o MAPBOX_TOKEN (histórica).
+    MapboxOptions.setAccessToken(
+      dotenv.env['MAPBOX_ACCESS_TOKEN'] ?? dotenv.env['MAPBOX_TOKEN'] ?? '',
+    );
+  } catch (e) {
+    if (kDebugMode) debugPrint('[App] Error configurando Mapbox: $e');
+  }
+
+  try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     ).timeout(const Duration(seconds: 5));
-    debugPrint('[App] Firebase inicializado');
   } catch (e) {
-    debugPrint('[App] Error o Timeout en Firebase: $e');
+    if (kDebugMode) debugPrint('[App] Error o Timeout en Firebase: $e');
   }
 
   try {
     await _initSecureDataAndRemoteWipe();
-    debugPrint('[App] Servicios de seguridad inicializados');
   } catch (e) {
-    debugPrint('[App] Error en servicios de seguridad: $e');
+    if (kDebugMode) debugPrint('[App] Error en servicios de seguridad: $e');
   }
 
   if (kDebugMode) {
@@ -60,7 +80,6 @@ Future<void> main() async {
   runApp(
     ProviderScope(
       overrides: [
-        sessionServiceProvider.overrideWith((ref) => ref.watch(authSessionServiceProvider)),
         deviceRegistrationServiceProvider.overrideWith((ref) {
           final messaging = MessagingGlobals.messaging!;
           final repository = ref.watch(ridesRepositoryProvider);
@@ -87,7 +106,7 @@ Future<void> _initSecureDataAndRemoteWipe() async {
   try {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   } catch (e) {
-    debugPrint('[App] No se pudo registrar el background handler: $e');
+    if (kDebugMode) debugPrint('[App] No se pudo registrar el background handler: $e');
   }
 
   final wipeHandler = RemoteWipeHandler(sensitiveStorage, SecureAuthStorage());
@@ -101,7 +120,7 @@ Future<void> _initSecureDataAndRemoteWipe() async {
   // No esperamos (await) a que termine la inicialización de mensajería para no bloquear el UI
   // si el servicio de tokens de Google está caído.
   messaging.initialize().catchError((e) {
-    debugPrint('[App] Error asíncrono en messaging.initialize: $e');
+    if (kDebugMode) debugPrint('[App] Error asíncrono en messaging.initialize: $e');
   });
 }
 

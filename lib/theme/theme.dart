@@ -11,8 +11,47 @@ abstract final class JalaBrand {
 
   static const Color cream = Color(0xfffbf7f2);
 
-  /// Verde semántico "en línea / activo" — único acento de estado en la app.
+  // Colores semánticos del proyecto (no están en ColorScheme estándar)
+  static const Color greyDark = Color(0xff6B6661);
+  static const Color greyLight = Color(0xffB6B3B1);
+  static const Color greyBorder = Color(0xffD1D1D1);
+  static const Color surfaceLight = Color(0xffF6F6F6);
+  static const Color divider = Color(0xffECECEC);
+  static const Color accentSurface = Color(0xffFFF1E0);
+  static const Color accentBlue = Color(0xff005B9F);
+
+  /// Verde semántico "en línea / activo".
   static const Color success = Color(0xff1e8e5a);
+  static const Color successLight = Color(0xffE6F4EA);
+  static const Color destructive = Color(0xffD84315);
+  static const Color destructiveLight = Color(0xffFCEAE6);
+  // Ámbar para estados pendientes / advertencia (no existe en la app pasajero)
+  static const Color warning = Color(0xffE8A317);
+  static const Color warningLight = Color(0xffFDF1DC);
+
+  // Equivalentes para modo oscuro
+  static const Color greyDarkDark = Color(0xffA8A29A);
+  static const Color greyLightDark = Color(0xff7A746E);
+  static const Color greyBorderDark = Color(0xff4A4540);
+  static const Color surfaceLightDark = Color(0xff242017);
+  static const Color dividerDark = Color(0xff3A352E);
+  static const Color accentSurfaceDark = Color(0xff3A2E1A);
+  static const Color accentBlueDark = Color(0xff4A9FE2);
+  static const Color successDark = Color(0xff4EC080);
+  static const Color successLightDark = Color(0xff1E3A2A);
+  static const Color destructiveDark = Color(0xffFF6B4A);
+  static const Color destructiveLightDark = Color(0xff3A1E18);
+  static const Color warningDark = Color(0xffF2B84B);
+  static const Color warningLightDark = Color(0xff3A2F14);
+
+  // Helper para obtener colores semánticos según brightness
+  static Color semantic(
+    Brightness brightness, {
+    required Color light,
+    required Color dark,
+  }) {
+    return brightness == Brightness.dark ? dark : light;
+  }
 }
 
 class MaterialTheme {
@@ -242,6 +281,109 @@ class MaterialTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
+      ),
+
+      chipTheme: ChipThemeData(
+        backgroundColor: colorScheme.surfaceContainerHigh,
+        selectedColor: JalaBrand.amber.withValues(alpha: isLight ? 0.15 : 0.25),
+        labelStyle: refinedText.labelLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: colorScheme.onSurface,
+        ),
+        secondaryLabelStyle: refinedText.labelLarge?.copyWith(
+          color: colorScheme.onSurface,
+        ),
+        side: BorderSide(color: colorScheme.outlineVariant),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+
+      listTileTheme: ListTileThemeData(
+        iconColor: colorScheme.onSurfaceVariant,
+        textColor: colorScheme.onSurface,
+        titleTextStyle: refinedText.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
+        subtitleTextStyle: refinedText.bodySmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
+
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: JalaBrand.amber,
+        linearTrackColor: colorScheme.outlineVariant.withValues(alpha: 0.3),
+        linearMinHeight: 4,
+        borderRadius: BorderRadius.circular(2),
+      ),
+
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: colorScheme.surface,
+        surfaceTintColor: colorScheme.surfaceTint,
+        modalBackgroundColor: colorScheme.surface,
+        modalElevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        showDragHandle: true,
+        dragHandleColor: colorScheme.outline,
+      ),
+
+      dialogTheme: DialogThemeData(
+        backgroundColor: colorScheme.surface,
+        surfaceTintColor: colorScheme.surfaceTint,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        titleTextStyle: refinedText.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: colorScheme.onSurface,
+        ),
+        contentTextStyle: refinedText.bodyMedium?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+        ),
+      ),
+
+      iconTheme: IconThemeData(
+        color: colorScheme.onSurface,
+        size: 24,
+      ),
+
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: JalaBrand.amber,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: colorScheme.surface,
+        indicatorColor: JalaBrand.amber.withValues(alpha: isLight ? 0.15 : 0.25),
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return refinedText.labelSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: JalaBrand.amber,
+            );
+          }
+          return refinedText.labelSmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return IconThemeData(color: JalaBrand.amber, size: 24);
+          }
+          return IconThemeData(color: colorScheme.onSurfaceVariant, size: 24);
+        }),
       ),
     );
   }
