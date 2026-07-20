@@ -19,21 +19,17 @@ class EditProfileViewModel extends ChangeNotifier {
   String _nombre = '';
   String _apellidoPaterno = '';
   String _apellidoMaterno = '';
-  String _correoElectronico = '';
   bool _isLoading = false;
   String? _errorMessage;
 
   String get nombre => _nombre;
   String get apellidoPaterno => _apellidoPaterno;
   String get apellidoMaterno => _apellidoMaterno;
-  String get correoElectronico => _correoElectronico;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
   bool get canSubmit =>
-      _nombre.trim().isNotEmpty &&
-      _apellidoPaterno.trim().isNotEmpty &&
-      _correoElectronico.trim().contains('@');
+      _nombre.trim().isNotEmpty && _apellidoPaterno.trim().isNotEmpty;
 
   void setNombre(String v) {
     _nombre = v;
@@ -47,11 +43,6 @@ class EditProfileViewModel extends ChangeNotifier {
 
   void setApellidoMaterno(String v) {
     _apellidoMaterno = v;
-    notifyListeners();
-  }
-
-  void setCorreo(String v) {
-    _correoElectronico = v;
     notifyListeners();
   }
 
@@ -70,7 +61,6 @@ class EditProfileViewModel extends ChangeNotifier {
           apellidoMaterno: _apellidoMaterno.trim().isEmpty
               ? null
               : _apellidoMaterno.trim(),
-          correoElectronico: _correoElectronico.trim(),
         ),
       );
       _isLoading = false;

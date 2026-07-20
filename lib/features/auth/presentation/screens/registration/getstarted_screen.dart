@@ -66,7 +66,7 @@ class _GetstartedScreenState extends State<GetstartedScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (MediaQuery.of(context).disableAnimations) {
+      if (MediaQuery.disableAnimationsOf(context)) {
         _entrada.value = 1;
       } else {
         _entrada.forward();
@@ -85,8 +85,10 @@ class _GetstartedScreenState extends State<GetstartedScreen>
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final isLight = Theme.of(context).brightness == Brightness.light;
+    // orientationOf: no re-construye esta pantalla (queda viva bajo la de
+    // login) en cada frame de la animación del teclado.
     final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+        MediaQuery.orientationOf(context) == Orientation.landscape;
     final accent = isLight ? JalaBrand.amberDeep : JalaBrand.amberLight;
 
     return Scaffold(

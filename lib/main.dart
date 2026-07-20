@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'app.dart';
@@ -26,6 +27,22 @@ import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Precarga Plus Jakarta Sans: google_fonts la baja en el primer arranque y
+  // después la sirve de caché local; sin esto el primer texto renderea con la
+  // fuente del sistema y "salta" al llegar la descarga (jank en getstarted/
+  // login). La app pasajero tampoco empaqueta la fuente en assets, así que
+  // esta es la mitigación compartida más barata.
+  try {
+    await GoogleFonts.pendingFonts([
+      GoogleFonts.plusJakartaSans(),
+      GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w500),
+      GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+      GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+    ]).timeout(const Duration(seconds: 2));
+  } catch (e) {
+    if (kDebugMode) debugPrint('[App] Fuentes no precargadas: $e');
+  }
 
   try {
     await dotenv.load(fileName: ".env");

@@ -37,13 +37,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       vm.setNombre(user.nombre ?? '');
       vm.setApellidoPaterno(user.apellidoPaterno ?? '');
       vm.setApellidoMaterno(user.apellidoMaterno ?? '');
-      vm.setCorreo(user.correoElectronico ?? '');
     });
 
     _nombreController.addListener(_onNombreChanged);
     _apellidoPaternoController.addListener(_onApellidoPaternoChanged);
     _apellidoMaternoController.addListener(_onApellidoMaternoChanged);
-    _correoController.addListener(_onCorreoChanged);
   }
 
   void _onNombreChanged() =>
@@ -52,15 +50,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       ref.read(editProfileViewModelProvider).setApellidoPaterno(_apellidoPaternoController.text);
   void _onApellidoMaternoChanged() =>
       ref.read(editProfileViewModelProvider).setApellidoMaterno(_apellidoMaternoController.text);
-  void _onCorreoChanged() =>
-      ref.read(editProfileViewModelProvider).setCorreo(_correoController.text);
 
   @override
   void dispose() {
     _nombreController.removeListener(_onNombreChanged);
     _apellidoPaternoController.removeListener(_onApellidoPaternoChanged);
     _apellidoMaternoController.removeListener(_onApellidoMaternoChanged);
-    _correoController.removeListener(_onCorreoChanged);
     _nombreController.dispose();
     _apellidoPaternoController.dispose();
     _apellidoMaternoController.dispose();
@@ -144,12 +139,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       style: text.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
+                  // El correo es de solo lectura (igual que en la app
+                  // pasajero): se muestra pero no se envía al backend.
                   TextField(
                     controller: _correoController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
+                    enabled: false,
+                    decoration: InputDecoration(
                       labelText: 'Correo electrónico',
-                      prefixIcon: Icon(Icons.alternate_email),
+                      prefixIcon: const Icon(Icons.alternate_email),
+                      helperText: 'El correo no se puede modificar',
+                      filled: true,
+                      fillColor: context.brand.surfaceLight,
                     ),
                   ),
                   const SizedBox(height: 24),

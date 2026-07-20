@@ -1,10 +1,11 @@
+// El correo no viaja en la edición de perfil: es de solo lectura en la UI
+// (mismo comportamiento que la app pasajero).
 class UpdateProfileParams {
   const UpdateProfileParams({
     required this.nombre,
     required this.apellidoPaterno,
     this.apellidoMaterno,
     this.telefono,
-    required this.correoElectronico,
     this.nombreUsuario,
   });
 
@@ -12,7 +13,6 @@ class UpdateProfileParams {
   final String apellidoPaterno;
   final String? apellidoMaterno;
   final String? telefono;
-  final String correoElectronico;
   final String? nombreUsuario;
 
   Map<String, dynamic> toJson() => {
@@ -22,7 +22,6 @@ class UpdateProfileParams {
           'apellidoMaterno': apellidoMaterno,
         if (telefono != null && telefono!.trim().isNotEmpty)
           'telefono': telefono,
-        'correoElectronico': correoElectronico,
         if (nombreUsuario != null && nombreUsuario!.trim().isNotEmpty)
           'nombreUsuario': nombreUsuario,
       };

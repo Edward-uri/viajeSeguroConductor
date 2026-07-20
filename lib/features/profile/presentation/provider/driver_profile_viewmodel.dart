@@ -1,29 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/di/core_module.dart';
 import '../../../../core/error/error.dart';
 import '../../../../core/http/api_exception.dart';
 import '../../../../core/session/session_service.dart';
-import '../../../../core/storage/sensitive_data_storage.dart';
 import '../../../../shared/domain/entities/user.dart';
 import '../../../auth/di/auth_module.dart';
 import '../../di/profile_module.dart';
 import '../../domain/repositories/profile_repository.dart';
-import '../../../rides/domain/entities/solicitud_viaje.dart';
-import '../../../rides/domain/repositories/rides_repository.dart';
-import '../../../rides/di/rides_module.dart';
-import '../../../vehicle/domain/entities/vehiculo.dart';
-import '../../../vehicle/domain/repositories/vehicle_repository.dart';
-import '../../../vehicle/di/vehicle_module.dart';
 
 final driverProfileViewModelProvider =
     ChangeNotifierProvider.autoDispose<DriverProfileViewModel>((ref) {
   return DriverProfileViewModel(
     ref.watch(profileRepositoryProvider),
-    ref.watch(ridesRepositoryProvider),
-    ref.watch(vehicleRepositoryProvider),
-    ref.watch(sensitiveDataStorageProvider),
     ref.watch(sessionServiceProvider),
   );
 });
@@ -31,36 +20,21 @@ final driverProfileViewModelProvider =
 class DriverProfileViewModel extends ChangeNotifier {
   DriverProfileViewModel(
     this._profileRepo,
-    this._ridesRepo,
-    this._vehicleRepo,
-    this._sensitiveStorage,
     this._sessionService,
   );
 
   final ProfileRepository _profileRepo;
-  final RidesRepository _ridesRepo;
-  final VehicleRepository _vehicleRepo;
-  final SensitiveDataStorage _sensitiveStorage;
   final SessionService _sessionService;
 
   User? _user;
-  DriverStats? _stats;
-  Vehiculo? _vehiculo;
-  String _displayName = '';
   bool _isLoading = false;
   bool _isUploadingPhoto = false;
   String? _errorMessage;
 
   User? get user => _user;
-  DriverStats? get stats => _stats;
-  Vehiculo? get vehiculo => _vehiculo;
-  String get displayName => _displayName;
   bool get isLoading => _isLoading;
   bool get isUploadingPhoto => _isUploadingPhoto;
   String? get errorMessage => _errorMessage;
-
-  int get viajes => _stats?.viajesHoy ?? 0;
-  double get ganancias => _stats?.gananciasHoy ?? 0;
 
   Future<void> loadData() async {
     _isLoading = true;
@@ -71,30 +45,9 @@ class DriverProfileViewModel extends ChangeNotifier {
     } on UnauthorizedException {
       await _sessionService.logout();
       _errorMessage = 'Tu sesión expiró. Inicia sesión de nuevo.';
-      _isLoading = false;
-      notifyListeners();
-      return;
     } catch (e) {
       _errorMessage = ErrorHandler.handle(e).message;
     }
-
-    try {
-      _stats = await _ridesRepo.getStats();
-    } catch (_) {}
-
-    try {
-      final vehicles = await _vehicleRepo.getVehiculos();
-      _vehiculo = vehicles.isNotEmpty ? vehicles.first : null;
-    } catch (_) {}
-
-    try {
-      _displayName = await _sensitiveStorage.readUsername() ??
-          _user?.correoElectronico ??
-          'N/A';
-    } catch (_) {
-      _displayName = _user?.correoElectronico ?? 'N/A';
-    }
-
     _isLoading = false;
     notifyListeners();
   }

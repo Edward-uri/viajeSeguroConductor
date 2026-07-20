@@ -186,29 +186,6 @@ class _ProfileContent extends ConsumerWidget {
         // no ocupa espacio y el perfil funciona igual sin ellas.
         ReputationChips(idUsuario: user.idUsuario, rol: 'conductor'),
         const SizedBox(height: 32),
-        // ─── Stats ───
-        Row(
-          children: [
-            Expanded(
-              child: _statItem(
-                context,
-                vm.stats?.calificacion?.toStringAsFixed(1) ?? '0',
-                'Calificación',
-              ),
-            ),
-            Expanded(
-              child: _statItem(context, '${vm.viajes}', 'Viajes'),
-            ),
-            Expanded(
-              child: _statItem(
-                context,
-                vm.stats?.tasaAceptacion?.toStringAsFixed(0) ?? '0',
-                'Aceptación',
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 32),
         // ─── Cuenta ───
         Text('Cuenta',
             style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
@@ -397,20 +374,6 @@ class _ProfileContent extends ConsumerWidget {
       height: 1,
       indent: 16,
       color: context.colors.outlineVariant.withValues(alpha: 0.3),
-    );
-  }
-
-  Widget _statItem(BuildContext context, String value, String label) {
-    return Column(
-      children: [
-        Text(value,
-            style: context.text.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 2),
-        Text(label,
-            style: context.text.bodySmall
-                ?.copyWith(color: context.colors.onSurfaceVariant)),
-      ],
     );
   }
 }
