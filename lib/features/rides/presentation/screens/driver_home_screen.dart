@@ -147,14 +147,15 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       if (kDebugMode) debugPrint('[Home] CircleAnnotation no disponible: $e');
     }
 
-    await addPngPinToMap(
+    // Sólo marcar el pin como cargado si de verdad quedó registrado en el
+    // estilo; si no, la anotación apuntaría a una imagen inexistente.
+    _pinLoaded = await addPngPinToMap(
       mapboxMap,
       'mototaxi-mapa',
       'lib/shared/icons/map-icons/MototaxiMapa.png',
       width: 40,
       height: 40,
     );
-    _pinLoaded = true;
 
     final pos =
         ref.read(driverAvailabilityViewModelProvider).currentPosition;
