@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'dart:math' as math;
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart' show Geolocator;
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' hide Size;
@@ -14,6 +15,7 @@ import '../../../../routes/app_routes.dart';
 import '../../../../shared/utils/svg_to_mapbox.dart';
 import '../../../../shared/widgets/jala_map_view.dart';
 import '../../../../theme/theme.dart';
+import '../../../heatmap/data/models/heat_zone.dart';
 import '../../../heatmap/presentation/provider/heatmap_viewmodel.dart';
 import '../../domain/entities/solicitud_viaje.dart';
 import '../provider/driver_availability_viewmodel.dart';
@@ -31,12 +33,16 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   // conversión a Point de Mapbox se hace solo aquí, en la frontera de la UI.
   MapboxMap? _mapboxMap;
   PointAnnotationManager? _pointManager;
-  CircleAnnotationManager? _zonasManager;
   PointAnnotation? _driverMarker;
   bool _pinLoaded = false;
   bool _socketInitialized = false;
   DateTime? _onlineSince;
   Timer? _onlineTimer;
+
+  // Tamaños del panel inferior arrastrable (fracción de la altura del cuerpo).
+  static const _sheetMin = 0.16;
+  static const _sheetInitial = 0.30;
+  static const _sheetMax = 0.88;
 
   @override
   void initState() {
@@ -143,12 +149,6 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     } catch (e) {
       if (kDebugMode) debugPrint('[Home] PointAnnotation no disponible: $e');
     }
-    try {
-      _zonasManager =
-          await mapboxMap.annotations.createCircleAnnotationManager();
-    } catch (e) {
-      if (kDebugMode) debugPrint('[Home] CircleAnnotation no disponible: $e');
-    }
 
     // Sólo marcar el pin como cargado si de verdad quedó registrado en el
     // estilo; si no, la anotación apuntaría a una imagen inexistente.
@@ -208,37 +208,202 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     }
   }
 
-  Future<void> _drawZonas() async {
-    final manager = _zonasManager;
-    if (manager == null) return;
-    final zonas = ref.read(heatmapViewModelProvider);
-    try {
-      await manager.deleteAll();
-      if (zonas.zonas.isEmpty) return;
+  // Fuente y capa del heatmap de zonas de alta demanda.
+  static const _zonasSourceId = 'zonas-src';
+  static const _zonasLayerId = 'zonas-heat';
 
-      final zoom = (await _mapboxMap?.getCameraState())?.zoom ?? 14.0;
-      final options = <CircleAnnotationOptions>[];
-      for (var i = 0; i < zonas.zonas.length; i++) {
-        final z = zonas.zonas[i];
-        final base = zonas.colores[i];
-        // metros → píxeles al zoom actual (Web Mercator).
-        // ponytail: el radio no se re-escala al hacer zoom; si algún día
-        // importa la fidelidad, migrar a una capa GeoJSON con radio en metros.
-        final metersPerPixel =
-            156543.03392 * math.cos(z.lat * math.pi / 180) / math.pow(2, zoom);
-        options.add(CircleAnnotationOptions(
-          geometry: Point(coordinates: Position(z.lng, z.lat)),
-          circleColor: base.toARGB32(),
-          circleRadius: z.radioM / metersPerPixel,
-          circleOpacity: 0.18 + z.intensidad * 0.17,
-          circleStrokeColor: base.toARGB32(),
-          circleStrokeWidth: 2.0,
-        ));
+  /// Pinta las zonas de alta demanda como un HeatmapLayer (escala de verde por
+  /// intensidad). Crea la fuente/capa la primera vez y luego solo actualiza sus
+  /// datos; al recrearse el mapa (cambio de tema) el estilo se reinicia y se
+  /// vuelven a crear.
+  Future<void> _drawZonas() async {
+    final map = _mapboxMap;
+    if (map == null) return;
+    final zonas = ref.read(heatmapViewModelProvider).zonas;
+
+    final geojson = jsonEncode({
+      'type': 'FeatureCollection',
+      'features': [
+        for (final z in zonas)
+          {
+            'type': 'Feature',
+            'geometry': {
+              'type': 'Point',
+              'coordinates': [z.lng, z.lat],
+            },
+            'properties': {'intensidad': z.intensidad},
+          },
+      ],
+    });
+
+    try {
+      if (await map.style.styleSourceExists(_zonasSourceId)) {
+        await map.style.setStyleSourceProperty(_zonasSourceId, 'data', geojson);
+        return;
       }
-      await manager.createMulti(options);
+      // Aún no hay fuente: si tampoco hay zonas, no creamos nada todavía.
+      if (zonas.isEmpty) return;
+      await map.style
+          .addSource(GeoJsonSource(id: _zonasSourceId, data: geojson));
+      await map.style.addLayer(HeatmapLayer(
+        id: _zonasLayerId,
+        sourceId: _zonasSourceId,
+        // Peso de cada punto = su intensidad (0..1) del modelo.
+        heatmapWeightExpression: [
+          'interpolate', ['linear'], ['get', 'intensidad'],
+          0.0, 0.0,
+          1.0, 1.0,
+        ],
+        // Escala de verde: más demanda = verde más intenso.
+        heatmapColorExpression: [
+          'interpolate', ['linear'], ['heatmap-density'],
+          0.0, 'rgba(0, 0, 0, 0)',
+          0.2, 'rgba(197, 225, 165, 0.55)',
+          0.4, 'rgba(156, 204, 101, 0.70)',
+          0.6, 'rgba(102, 187, 106, 0.82)',
+          0.8, 'rgba(56, 142, 60, 0.90)',
+          1.0, 'rgba(27, 94, 32, 0.95)',
+        ],
+        // Radio del blob crece con el zoom (look suave tipo mapa de calor).
+        heatmapRadiusExpression: [
+          'interpolate', ['linear'], ['zoom'],
+          10.0, 18.0,
+          13.0, 34.0,
+          16.0, 55.0,
+        ],
+        heatmapOpacity: 0.85,
+      ));
     } catch (e) {
-      if (kDebugMode) debugPrint('[Home] zonas calientes no disponibles en el mapa: $e');
+      if (kDebugMode) debugPrint('[Home] heatmap de zonas no disponible: $e');
     }
+  }
+
+  /// Tap sobre el mapa: si cae dentro de una zona de alta demanda, muestra su
+  /// tarjeta traducida (nivel de demanda, solicitudes, competencia de motos).
+  void _onMapTap(MapContentGestureContext gesture) {
+    final zonas = ref.read(heatmapViewModelProvider).zonas;
+    if (zonas.isEmpty) return;
+    final lat = gesture.point.coordinates.lat.toDouble();
+    final lng = gesture.point.coordinates.lng.toDouble();
+
+    HeatZone? elegida;
+    var mejor = double.infinity;
+    for (final z in zonas) {
+      final d = Geolocator.distanceBetween(lat, lng, z.lat, z.lng);
+      // Margen 1.4x sobre el radio para que sea fácil de atinar con el dedo.
+      if (d <= z.radioM * 1.4 && d < mejor) {
+        mejor = d;
+        elegida = z;
+      }
+    }
+    if (elegida != null) _mostrarTarjetaZona(elegida);
+  }
+
+  void _mostrarTarjetaZona(HeatZone z) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: scheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: scheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: _colorNivel(z.intensidad),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Zona de demanda ${_nivelDemanda(z.intensidad)}',
+                  style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _filaZona(Icons.sensors_rounded,
+                '${z.nRequests} solicitudes recientes', scheme, text),
+            const SizedBox(height: 10),
+            _filaZona(Icons.two_wheeler_rounded,
+                _competencia(z.supplyDemandRatio), scheme, text),
+            const SizedBox(height: 10),
+            _filaZona(
+                Icons.local_fire_department_rounded,
+                '${z.demandDensity.toStringAsFixed(0)} solicitudes/km²',
+                scheme,
+                text),
+            const SizedBox(height: 18),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _consejo(z),
+                style: text.bodyMedium?.copyWith(color: scheme.onSurface),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filaZona(
+      IconData icon, String txt, ColorScheme scheme, TextTheme text) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: scheme.primary),
+        const SizedBox(width: 12),
+        Expanded(child: Text(txt, style: text.bodyMedium)),
+      ],
+    );
+  }
+
+  // El modelo ya devuelve solo zonas calientes; la intensidad (0..1) las rankea.
+  String _nivelDemanda(double i) =>
+      i >= 0.66 ? 'alta' : (i >= 0.33 ? 'media' : 'moderada');
+
+  Color _colorNivel(double i) => i >= 0.66
+      ? const Color(0xFF1B5E20)
+      : (i >= 0.33 ? const Color(0xFF66BB6A) : const Color(0xFFC5E1A5));
+
+  // supply_demand_ratio = oferta/demanda: bajo = pocas motos para la demanda.
+  String _competencia(double ratio) {
+    if (ratio < 0.8) return 'Pocas motos para la demanda — buena oportunidad';
+    if (ratio <= 1.2) return 'Competencia equilibrada de motos';
+    return 'Varias motos ya en la zona';
+  }
+
+  String _consejo(HeatZone z) {
+    if (z.supplyDemandRatio < 1.0) {
+      return 'Buen momento para acercarte: hay más pasajeros que motos disponibles.';
+    }
+    return 'Hay demanda, aunque también hay motos disponibles cerca.';
   }
 
   void _mostrarError(String? msg) {
@@ -319,105 +484,88 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         : null;
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  // El mototaxi del conductor se dibuja como anotación
-                  // (pin PNG de map-icons), no como pin de "mi ubicación".
-                  JalaMapView(
-                    onMapCreated: _onMapCreated,
-                    showCurrentLocationPin: false,
-                    // La posición la resuelve el viewmodel de disponibilidad
-                    // (initLocation + listener de currentPosition centra la
-                    // cámara); autoLocate aquí duplicaría la petición de
-                    // permiso y en iOS revienta con PermissionRequestInProgress.
-                    autoLocate: false,
+      body: Stack(
+        children: [
+          // Mapa a pantalla completa; el panel inferior se arrastra encima.
+          Positioned.fill(
+            child: JalaMapView(
+              onMapCreated: _onMapCreated,
+              showCurrentLocationPin: false,
+              // La posición la resuelve el viewmodel de disponibilidad
+              // (initLocation + listener de currentPosition centra la cámara);
+              // autoLocate aquí duplicaría la petición de permiso y en iOS
+              // revienta con PermissionRequestInProgress.
+              autoLocate: false,
+              onTap: _onMapTap,
+            ),
+          ),
+          // Recentrar, por encima del panel colapsado.
+          Positioned(
+            right: 16,
+            bottom: MediaQuery.of(context).size.height * _sheetInitial + 8,
+            child: FloatingActionButton.small(
+              onPressed: _centerOnDriver,
+              backgroundColor: scheme.surfaceContainerHigh,
+              child: Icon(Icons.my_location, color: scheme.onSurface),
+            ),
+          ),
+          // Panel inferior: banner de registro, barra horizontal, o el sheet
+          // arrastrable (retrato) para mostrar/ocultar el mapa.
+          if (!disponibilidad.esConductor)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: InkWell(
+                onTap: () => context.push(AppRoutes.documents),
+                child: Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  color: scheme.surfaceContainerLow,
+                  child: Text(
+                    'Completa tu registro de conductor para recibir viajes →',
+                    style: text.bodyMedium?.copyWith(color: scheme.primary),
                   ),
-                  Positioned(
-                    right: 16,
-                    bottom: 16,
-                    child: FloatingActionButton.small(
-                      onPressed: _centerOnDriver,
-                      backgroundColor: scheme.surfaceContainerHigh,
-                      child: Icon(
-                        Icons.my_location,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                  ),
-                  if (isLandscape)
-                    disponibilidad.esConductor
-                        ? _LandscapeBottomBar(
-                            stats: disponibilidad.stats,
-                            pendientes: inbox.pendientes,
-                            onSelect: ref
-                                .read(rideInboxViewModelProvider.notifier)
-                                .seleccionarViaje,
-                            isOnline: disponibilidad.isOnline,
-                            onToggle: (_) => ref
-                                .read(driverAvailabilityViewModelProvider
-                                    .notifier)
-                                .toggleOnline(),
-                            onlineElapsed: onlineElapsed,
-                            text: text,
-                            scheme: scheme,
-                          )
-                        : Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            child: InkWell(
-                              onTap: () => context.push(AppRoutes.documents),
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 20, vertical: 12),
-                                color: scheme.surfaceContainerLow,
-                                child: Text(
-                                  'Completa tu registro de conductor para recibir viajes →',
-                                  style: text.bodyMedium
-                                      ?.copyWith(color: scheme.primary),
-                                ),
-                              ),
-                            ),
-                          ),
-                ],
+                ),
+              ),
+            )
+          else if (isLandscape)
+            _LandscapeBottomBar(
+              stats: disponibilidad.stats,
+              pendientes: inbox.pendientes,
+              onSelect:
+                  ref.read(rideInboxViewModelProvider.notifier).seleccionarViaje,
+              isOnline: disponibilidad.isOnline,
+              onToggle: (_) => ref
+                  .read(driverAvailabilityViewModelProvider.notifier)
+                  .toggleOnline(),
+              onlineElapsed: onlineElapsed,
+              text: text,
+              scheme: scheme,
+            )
+          else
+            DraggableScrollableSheet(
+              initialChildSize: _sheetInitial,
+              minChildSize: _sheetMin,
+              maxChildSize: _sheetMax,
+              builder: (context, scrollController) => _BottomSheet(
+                scrollController: scrollController,
+                pendientes: inbox.pendientes,
+                onSelect: ref
+                    .read(rideInboxViewModelProvider.notifier)
+                    .seleccionarViaje,
+                isOnline: disponibilidad.isOnline,
+                onToggle: (_) => ref
+                    .read(driverAvailabilityViewModelProvider.notifier)
+                    .toggleOnline(),
+                stats: disponibilidad.stats,
+                onlineElapsed: onlineElapsed,
+                text: text,
+                scheme: scheme,
               ),
             ),
-            if (!isLandscape)
-              disponibilidad.esConductor
-                  ? _BottomSheet(
-                      pendientes: inbox.pendientes,
-                      onSelect: ref
-                          .read(rideInboxViewModelProvider.notifier)
-                          .seleccionarViaje,
-                      isOnline: disponibilidad.isOnline,
-                      onToggle: (_) => ref
-                          .read(driverAvailabilityViewModelProvider.notifier)
-                          .toggleOnline(),
-                      stats: disponibilidad.stats,
-                      onlineElapsed: onlineElapsed,
-                      text: text,
-                      scheme: scheme,
-                    )
-                  : InkWell(
-                      onTap: () => context.push(AppRoutes.documents),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
-                        color: scheme.surfaceContainerLow,
-                        child: Text(
-                          'Completa tu registro de conductor para recibir viajes →',
-                          style: text.bodyMedium?.copyWith(color: scheme.primary),
-                        ),
-                      ),
-                    ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -469,7 +617,7 @@ class _LandscapeBottomBar extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              isOnline ? 'En línea' : 'Offline',
+              isOnline ? 'En línea' : 'Desconectado',
               style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
             const SizedBox(width: 4),
@@ -504,7 +652,9 @@ class _LandscapeBottomBar extends StatelessWidget {
               child: GestureDetector(
                 onTap: hayPendientes ? () => onSelect(pendientes.first) : null,
                 child: Text(
-                  hayPendientes ? 'Viaje solicitado' : 'Esperando viajes…',
+                  hayPendientes
+                      ? 'Viaje solicitado'
+                      : (isOnline ? 'Esperando viajes…' : 'Desconectado'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: text.labelSmall?.copyWith(
@@ -528,6 +678,7 @@ class _LandscapeBottomBar extends StatelessWidget {
 }
 
 class _BottomSheet extends StatelessWidget {
+  final ScrollController scrollController;
   final List<SolicitudViaje> pendientes;
   final ValueChanged<SolicitudViaje> onSelect;
   final bool isOnline;
@@ -538,6 +689,7 @@ class _BottomSheet extends StatelessWidget {
   final ColorScheme scheme;
 
   const _BottomSheet({
+    required this.scrollController,
     required this.pendientes,
     required this.onSelect,
     required this.isOnline,
@@ -567,15 +719,34 @@ class _BottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
+        color: scheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      // El sheet arrastrable provee el scrollController: la lista y el arrastre
+      // comparten el mismo scroll (subir el panel = mostrar/ocultar el mapa).
+      child: ListView(
+        controller: scrollController,
+        padding: const EdgeInsets.fromLTRB(24, 10, 24, 24),
         children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: scheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           Row(
             children: [
               Container(
@@ -592,7 +763,7 @@ class _BottomSheet extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isOnline ? 'Estás en línea' : 'Estás offline',
+                      isOnline ? 'Estás en línea' : 'Estás desconectado',
                       style: text.bodyLarge
                           ?.copyWith(fontWeight: FontWeight.w600),
                     ),
@@ -613,10 +784,11 @@ class _BottomSheet extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           _PendingTrips(
             pendientes: pendientes,
             onSelect: onSelect,
+            isOnline: isOnline,
             text: text,
             scheme: scheme,
           ),
@@ -629,88 +801,166 @@ class _BottomSheet extends StatelessWidget {
 class _PendingTrips extends StatelessWidget {
   final List<SolicitudViaje> pendientes;
   final ValueChanged<SolicitudViaje> onSelect;
+  final bool isOnline;
   final TextTheme text;
   final ColorScheme scheme;
 
   const _PendingTrips({
     required this.pendientes,
     required this.onSelect,
+    required this.isOnline,
     required this.text,
     required this.scheme,
   });
 
   @override
   Widget build(BuildContext context) {
-    final hay = pendientes.isNotEmpty;
+    // Sin pendientes: radar "buscando" solo si estás en línea; si no, invita a
+    // conectarse (nunca "buscando viajes" estando desconectado).
+    if (pendientes.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: isOnline
+              ? Column(
+                  children: [
+                    _RadarPulse(color: JalaBrand.success),
+                    const SizedBox(height: 18),
+                    Text('Buscando viajes cerca de ti',
+                        style: text.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text('Te avisaremos al instante.',
+                        textAlign: TextAlign.center,
+                        style: text.bodySmall
+                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                  ],
+                )
+              : Column(
+                  children: [
+                    Icon(Icons.wifi_tethering_off_rounded,
+                        size: 40, color: scheme.onSurfaceVariant),
+                    const SizedBox(height: 14),
+                    Text('Estás desconectado',
+                        style: text.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text('Ponte en línea para recibir viajes.',
+                        textAlign: TextAlign.center,
+                        style: text.bodySmall
+                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                  ],
+                ),
+        ),
+      );
+    }
+
+    // El sheet ya es scrollable: las tarjetas van como columna, no en otra lista.
     return Column(
-      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Expanded(
               child: Text(
-                hay ? 'Viajes para ti' : 'Viajes disponibles',
+                'Viajes para ti',
                 style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (hay)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
-                decoration: BoxDecoration(
-                  color: scheme.primary,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text('${pendientes.length}',
-                    style: TextStyle(
-                        color: scheme.onPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+              decoration: BoxDecoration(
+                color: scheme.primary,
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: Text('${pendientes.length}',
+                  style: TextStyle(
+                      color: scheme.onPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800)),
+            ),
           ],
         ),
         const SizedBox(height: 12),
-        if (!hay)
-          SizedBox(
-            width: double.infinity,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Column(
-                children: [
-                  Icon(Icons.radar, color: scheme.onSurfaceVariant, size: 24),
-                  const SizedBox(height: 12),
-                  Text('Buscando viajes cerca de ti',
-                      style: text.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Text('Mantente en línea, te avisaremos al instante.',
-                      textAlign: TextAlign.center,
-                      style: text.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant)),
-                ],
-              ),
-            ),
-          )
-        else
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 320),
-            child: ListView.separated(
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              itemCount: pendientes.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (_, i) => _TripCard(
-                viaje: pendientes[i],
-                onTap: () => onSelect(pendientes[i]),
-                text: text,
-                scheme: scheme,
-              ),
-            ),
+        for (var i = 0; i < pendientes.length; i++) ...[
+          if (i > 0) const SizedBox(height: 12),
+          _TripCard(
+            viaje: pendientes[i],
+            onTap: () => onSelect(pendientes[i]),
+            text: text,
+            scheme: scheme,
           ),
+        ],
       ],
     );
   }
+}
+
+/// Pulso tipo radar/escáner: anillos que se expanden y desvanecen. Se muestra
+/// cuando el conductor está en línea esperando viajes.
+class _RadarPulse extends StatefulWidget {
+  const _RadarPulse({required this.color});
+
+  final Color color;
+
+  @override
+  State<_RadarPulse> createState() => _RadarPulseState();
+}
+
+class _RadarPulseState extends State<_RadarPulse>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2200),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 92,
+      height: 92,
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (_, _) => CustomPaint(
+          painter: _RadarPainter(_c.value, widget.color),
+        ),
+      ),
+    );
+  }
+}
+
+class _RadarPainter extends CustomPainter {
+  _RadarPainter(this.t, this.color);
+
+  final double t;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final maxR = size.width / 2;
+    // Tres anillos desfasados que crecen y se desvanecen.
+    for (var i = 0; i < 3; i++) {
+      final p = (t + i / 3) % 1.0;
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = color.withValues(alpha: (1 - p) * 0.6);
+      canvas.drawCircle(center, maxR * p, paint);
+    }
+    // Punto central sólido.
+    canvas.drawCircle(center, 5, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_RadarPainter old) => old.t != t || old.color != color;
 }
 
 class _TripCard extends StatelessWidget {

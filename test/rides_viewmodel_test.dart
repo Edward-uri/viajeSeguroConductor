@@ -769,7 +769,7 @@ void main() {
   });
 
   group('HeatmapViewModel', () {
-    test('fetchZonas procesa zonas y colores', () async {
+    test('fetchZonas procesa zonas', () async {
       final repo = _FakeHeatmapRepository()
         ..raw = [
           {
@@ -789,8 +789,8 @@ void main() {
 
       expect(vm.state.isLoading, false);
       expect(vm.state.zonas.length, 1);
-      expect(vm.state.colores.length, 1);
       expect(vm.state.zonas.first.radioM, 200.0);
+      expect(vm.state.zonas.first.supplyDemandRatio, 0.5);
     });
 
     test('fetchZonas con error deja el mapa despejado', () async {
@@ -802,7 +802,6 @@ void main() {
 
       expect(vm.state.isLoading, false);
       expect(vm.state.zonas, isEmpty);
-      expect(vm.state.colores, isEmpty);
     });
   });
 }
