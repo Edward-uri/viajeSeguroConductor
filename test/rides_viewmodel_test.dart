@@ -186,12 +186,14 @@ class _FakeDocumentoRepository implements DocumentoRepository {
 
 class _FakeVehicleRepository implements VehicleRepository {
   Vehiculo? miVehiculo;
+  // Si se define, gana sobre miVehiculo en getVehiculos (para probar flotillas).
+  List<Vehiculo>? vehiculos;
   final activados = <int>[];
 
   @override
   Future<Vehiculo?> getMiVehiculo() async => miVehiculo;
   @override
-  Future<List<Vehiculo>> getVehiculos() async => [?miVehiculo];
+  Future<List<Vehiculo>> getVehiculos() async => vehiculos ?? [?miVehiculo];
   @override
   Future<void> setVehiculoActivo(int idVehiculo) async {
     activados.add(idVehiculo);
@@ -252,6 +254,18 @@ const _vehiculoAprobado = Vehiculo(
   color: 'Rojo',
   anio: 2022,
   status: VehicleStatus.active,
+);
+
+// El recién registrado quedó activo pero aún en revisión (reproduce el bug de
+// gating: tener este activo NO debe impedir salir en línea si hay otro aprobado).
+const _vehiculoPendiente = Vehiculo(
+  idVehiculo: 8,
+  placa: 'XYZ789',
+  modelo: 'Vento',
+  color: 'Negro',
+  anio: 2023,
+  status: VehicleStatus.reviewing,
+  activo: true,
 );
 
 /// Deja correr microtasks y timers de duración cero (entrega de streams broadcast).
@@ -607,7 +621,7 @@ void main() {
       heatmap.dispose();
     });
 
-    test('loadData llena stats/municipio y pasa pendientes al inbox', () async {
+    test('loadData llena stats/municipio pero NO carga pendientes offline', () async {
       mockRepo.pendingTrips = [_viaje(1), _viaje(2)];
       await vm.loadData();
 
@@ -615,7 +629,8 @@ void main() {
       expect(vm.state.stats, isNotNull);
       expect(vm.state.idMunicipio, 2);
       expect(vm.state.esConductor, true);
-      expect(inbox.state.pendientes.length, 2);
+      // Arranca offline: no deben aparecer viajes hasta ponerse en línea.
+      expect(inbox.state.pendientes, isEmpty);
     });
 
     test('toggleOnline bloqueado por documentos pendientes', () async {
@@ -639,6 +654,22 @@ void main() {
       expect(vm.state.isOnline, false);
       expect(vm.state.errorMessage,
           'Registra tu vehículo para poder recibir viajes.');
+    });
+
+    test('toggleOnline con un aprobado entre otros en revisión entra en línea',
+        () async {
+      await vm.loadData();
+      inbox.initSocket(token: 't');
+      // El activo está en revisión, pero hay otro aprobado en la flotilla.
+      vehicles.vehiculos = [_vehiculoPendiente, _vehiculoAprobado];
+
+      await vm.toggleOnline();
+      await _pump();
+
+      expect(vm.state.isOnline, true);
+      expect(vm.state.errorMessage, isNull);
+      // Se conduce con el aprobado, no con el activo-en-revisión.
+      expect(vm.state.miVehiculo?.idVehiculo, _vehiculoAprobado.idVehiculo);
     });
 
     test('toggleOnline feliz: en línea, tracking y room del municipio',

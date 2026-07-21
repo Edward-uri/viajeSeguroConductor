@@ -46,6 +46,17 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           ref.read(driverAvailabilityViewModelProvider.notifier);
       disponibilidad.loadData();
 
+      // La ubicación NO debe esperar al socket ni al registro FCM: el mototaxi
+      // debe aparecer en cuanto haya fix de GPS. Se resuelve concurrente; el
+      // listener de currentPosition dibuja el marcador y centra la cámara.
+      unawaited(disponibilidad.initLocation().then((_) {
+        if (!mounted) return;
+        final pos =
+            ref.read(driverAvailabilityViewModelProvider).currentPosition;
+        if (kDebugMode) debugPrint('[Home] initLocation resuelto pos=$pos');
+        _centerOnDriver();
+      }));
+
       // Socket y registro del dispositivo (FCM) van PRIMERO y protegidos:
       // no dependen del GPS y no deben morir por un permiso de ubicación en
       // disputa ni por un fallo de red del resto de la cadena.
@@ -75,15 +86,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         // Sin red no hay viaje activo que restaurar; el home sigue vivo.
       }
 
-      try {
-        await disponibilidad.initLocation();
-      } catch (_) {
-        // iOS lanza PermissionRequestInProgress si dos peticiones de permiso
-        // compiten; sin ubicación el mapa no centra, pero el resto funciona.
-      }
       if (!mounted) return;
-      _centerOnDriver();
-
       if (ref.read(driverAvailabilityViewModelProvider).isOnline) {
         _onlineSince = DateTime.now();
         _onlineTimer = Timer.periodic(const Duration(seconds: 30), (_) {
@@ -149,13 +152,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
 
     // Sólo marcar el pin como cargado si de verdad quedó registrado en el
     // estilo; si no, la anotación apuntaría a una imagen inexistente.
-    _pinLoaded = await addPngPinToMap(
-      mapboxMap,
-      'mototaxi-mapa',
-      'lib/shared/icons/map-icons/MototaxiMapa.png',
-      width: 40,
-      height: 40,
-    );
+    await _ensurePin();
+    if (kDebugMode) debugPrint('[Home] mototaxi pin cargado=$_pinLoaded');
 
     final pos =
         ref.read(driverAvailabilityViewModelProvider).currentPosition;
@@ -166,9 +164,32 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     _drawZonas();
   }
 
+  /// Registra el PNG del mototaxi en el estilo actual. Idempotente: si ya está
+  /// cargado no hace nada. Se reintenta desde _updateDriverMarker por si la
+  /// primera carga cayó en una carrera con la carga del estilo del mapa.
+  Future<void> _ensurePin() async {
+    final map = _mapboxMap;
+    if (_pinLoaded || map == null) return;
+    _pinLoaded = await addPngPinToMap(
+      map,
+      'mototaxi-mapa',
+      'lib/shared/icons/map-icons/MototaxiMapa.png',
+      width: 40,
+      height: 40,
+    );
+  }
+
   void _updateDriverMarker(LatLng pos) async {
     final manager = _pointManager;
-    if (manager == null || !_pinLoaded) return;
+    if (manager == null) return;
+    // El PNG pudo no quedar registrado al crear el estilo (carrera con la carga
+    // del estilo): reintentar aquí hace que el marcador aparezca en cuanto haya
+    // posición, en vez de quedarse invisible hasta un rebuild.
+    if (!_pinLoaded) await _ensurePin();
+    if (!_pinLoaded) {
+      if (kDebugMode) debugPrint('[Home] mototaxi NO dibujado (pin no cargó, pos=$pos)');
+      return;
+    }
     final point = Point(coordinates: Position(pos.longitude, pos.latitude));
     try {
       if (_driverMarker == null) {
