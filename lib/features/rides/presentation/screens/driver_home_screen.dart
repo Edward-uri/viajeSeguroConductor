@@ -208,14 +208,16 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     }
   }
 
-  // Fuente y capa del heatmap de zonas de alta demanda.
+  // Fuente y capas de las zonas de alta demanda (círculo + etiqueta).
   static const _zonasSourceId = 'zonas-src';
-  static const _zonasLayerId = 'zonas-heat';
+  static const _zonasCircleId = 'zonas-circle';
+  static const _zonasLabelId = 'zonas-label';
 
-  /// Pinta las zonas de alta demanda como un HeatmapLayer (escala de verde por
-  /// intensidad). Crea la fuente/capa la primera vez y luego solo actualiza sus
-  /// datos; al recrearse el mapa (cambio de tema) el estilo se reinicia y se
-  /// vuelven a crear.
+  /// Pinta las zonas de alta demanda como círculos nítidos de tamaño uniforme
+  /// (verde por demanda, con borde y etiqueta de nivel). Uniforme = nunca se
+  /// anida una zona dentro de otra. Crea fuente/capas la primera vez y luego
+  /// solo actualiza los datos; al recrearse el mapa (cambio de tema) el estilo
+  /// se reinicia y se vuelven a crear.
   Future<void> _drawZonas() async {
     final map = _mapboxMap;
     if (map == null) return;
@@ -231,7 +233,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               'type': 'Point',
               'coordinates': [z.lng, z.lat],
             },
-            'properties': {'intensidad': z.intensidad},
+            'properties': {
+              'intensidad': z.intensidad,
+              'nivel': z.intensidad >= 0.66
+                  ? 'Alta'
+                  : (z.intensidad >= 0.33 ? 'Media' : 'Baja'),
+            },
           },
       ],
     });
@@ -245,36 +252,41 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       if (zonas.isEmpty) return;
       await map.style
           .addSource(GeoJsonSource(id: _zonasSourceId, data: geojson));
-      await map.style.addLayer(HeatmapLayer(
-        id: _zonasLayerId,
+      // Círculo nítido, mismo tamaño para todas (no se anidan), verde por demanda.
+      await map.style.addLayer(CircleLayer(
+        id: _zonasCircleId,
         sourceId: _zonasSourceId,
-        // Peso de cada punto = su intensidad (0..1) del modelo.
-        heatmapWeightExpression: [
+        circleColorExpression: [
           'interpolate', ['linear'], ['get', 'intensidad'],
-          0.0, 0.0,
-          1.0, 1.0,
+          0.0, 'rgb(165, 214, 167)',
+          0.5, 'rgb(102, 187, 106)',
+          1.0, 'rgb(27, 94, 32)',
         ],
-        // Escala de verde: más demanda = verde más intenso.
-        heatmapColorExpression: [
-          'interpolate', ['linear'], ['heatmap-density'],
-          0.0, 'rgba(0, 0, 0, 0)',
-          0.2, 'rgba(197, 225, 165, 0.55)',
-          0.4, 'rgba(156, 204, 101, 0.70)',
-          0.6, 'rgba(102, 187, 106, 0.82)',
-          0.8, 'rgba(56, 142, 60, 0.90)',
-          1.0, 'rgba(27, 94, 32, 0.95)',
-        ],
-        // Radio del blob crece con el zoom (look suave tipo mapa de calor).
-        heatmapRadiusExpression: [
+        // Radio uniforme que crece con el zoom (cubre terreno parecido).
+        circleRadiusExpression: [
           'interpolate', ['linear'], ['zoom'],
-          10.0, 18.0,
-          13.0, 34.0,
-          16.0, 55.0,
+          11.0, 16.0,
+          13.0, 30.0,
+          15.0, 48.0,
+          17.0, 66.0,
         ],
-        heatmapOpacity: 0.85,
+        circleOpacity: 0.45,
+        circleStrokeColor: 0xFF2E7D32,
+        circleStrokeWidth: 2.0,
+      ));
+      // Etiqueta con el nivel de demanda encima de cada zona.
+      await map.style.addLayer(SymbolLayer(
+        id: _zonasLabelId,
+        sourceId: _zonasSourceId,
+        textFieldExpression: ['get', 'nivel'],
+        textSize: 12.0,
+        textColor: 0xFFFFFFFF,
+        textHaloColor: 0xFF1B5E20,
+        textHaloWidth: 1.4,
+        textAllowOverlap: true,
       ));
     } catch (e) {
-      if (kDebugMode) debugPrint('[Home] heatmap de zonas no disponible: $e');
+      if (kDebugMode) debugPrint('[Home] zonas de demanda no disponibles: $e');
     }
   }
 
@@ -290,8 +302,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     var mejor = double.infinity;
     for (final z in zonas) {
       final d = Geolocator.distanceBetween(lat, lng, z.lat, z.lng);
-      // Margen 1.4x sobre el radio para que sea fácil de atinar con el dedo.
-      if (d <= z.radioM * 1.4 && d < mejor) {
+      // Margen generoso (mínimo 300 m) para que sea fácil de atinar con el dedo.
+      final tol = (z.radioM * 1.4).clamp(300.0, 1000.0);
+      if (d <= tol && d < mejor) {
         mejor = d;
         elegida = z;
       }
