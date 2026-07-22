@@ -37,6 +37,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   PointAnnotation? _driverMarker;
   bool _pinLoaded = false;
   bool _socketInitialized = false;
+  // Tema con el que se pintaron las celdas de demanda (para repintar al cambiar).
+  bool? _zonasDark;
   DateTime? _onlineSince;
   Timer? _onlineTimer;
 
@@ -101,6 +103,17 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         });
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Cambió el tema: repinta las celdas con la rampa del tema actual (el mapa
+    // ya no se recrea al cambiar tema, así que hay que hacerlo a mano).
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (_zonasDark != null && _zonasDark != isDark) {
+      _repintarZonas();
+    }
   }
 
   @override
@@ -221,6 +234,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   Future<void> _drawZonas() async {
     final map = _mapboxMap;
     if (map == null) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final zonas = ref.read(heatmapViewModelProvider).zonas;
 
     final geojson = jsonEncode({
@@ -240,19 +254,48 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       await map.style.addLayer(FillLayer(
         id: _zonasFillId,
         sourceId: _zonasSourceId,
-        // Escala de verde por demanda (más demanda = verde más intenso).
-        fillColorExpression: [
+        fillColorExpression: _zonaColorExpr(isDark),
+        fillOpacity: isDark ? 0.6 : 0.55,
+        fillOutlineColor: isDark ? 0xFFB4F582 : 0xFF2E7D32,
+      ));
+      _zonasDark = isDark;
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Home] zonas de demanda no disponibles: $e');
+    }
+  }
+
+  /// Rampa de verde por intensidad adaptada al tema: en oscuro va de verde medio
+  /// a verde-lima brillante (contrasta con el mapa nocturno); en claro de verde
+  /// pálido a profundo. Así se distinguen los niveles en ambos temas.
+  List<Object> _zonaColorExpr(bool isDark) => isDark
+      ? [
+          'interpolate', ['linear'], ['get', 'intensidad'],
+          0.0, 'rgb(46, 125, 50)',
+          0.5, 'rgb(129, 199, 132)',
+          1.0, 'rgb(180, 245, 130)',
+        ]
+      : [
           'interpolate', ['linear'], ['get', 'intensidad'],
           0.0, 'rgb(197, 225, 165)',
           0.5, 'rgb(102, 187, 106)',
           1.0, 'rgb(27, 94, 32)',
-        ],
-        fillOpacity: 0.55,
-        fillOutlineColor: 0xFF2E7D32,
-      ));
-    } catch (e) {
-      if (kDebugMode) debugPrint('[Home] zonas de demanda no disponibles: $e');
-    }
+        ];
+
+  /// Al cambiar el tema el mapa NO se recrea (fix del jank), así que las celdas
+  /// conservarían los colores viejos: se quitan y se vuelven a pintar con la
+  /// rampa del tema actual.
+  Future<void> _repintarZonas() async {
+    final map = _mapboxMap;
+    if (map == null) return;
+    try {
+      if (await map.style.styleLayerExists(_zonasFillId)) {
+        await map.style.removeStyleLayer(_zonasFillId);
+      }
+      if (await map.style.styleSourceExists(_zonasSourceId)) {
+        await map.style.removeStyleSource(_zonasSourceId);
+      }
+    } catch (_) {}
+    _drawZonas();
   }
 
   /// Celda cuadrada (~260 m de lado) centrada en la zona, como polígono GeoJSON.
@@ -453,6 +496,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     final onlineElapsed = _onlineSince != null
         ? DateTime.now().difference(_onlineSince!)
         : null;
+    final hayZonas =
+        ref.watch(heatmapViewModelProvider.select((s) => s.zonas.isNotEmpty));
 
     return Scaffold(
       body: Stack(
@@ -480,6 +525,17 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               child: Icon(Icons.my_location, color: scheme.onSurface),
             ),
           ),
+          // Simbología: qué significan los colores de las celdas de demanda.
+          if (hayZonas)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 12,
+              left: 12,
+              child: _ZonaLegend(
+                isDark: Theme.of(context).brightness == Brightness.dark,
+                scheme: scheme,
+                text: text,
+              ),
+            ),
           // Panel inferior: banner de registro, barra horizontal, o el sheet
           // arrastrable (retrato) para mostrar/ocultar el mapa.
           if (!disponibilidad.esConductor)
@@ -534,6 +590,79 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                 onlineElapsed: onlineElapsed,
                 text: text,
                 scheme: scheme,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Simbología del mapa: qué significa cada color de las celdas de demanda.
+class _ZonaLegend extends StatelessWidget {
+  const _ZonaLegend({
+    required this.isDark,
+    required this.scheme,
+    required this.text,
+  });
+
+  final bool isDark;
+  final ColorScheme scheme;
+  final TextTheme text;
+
+  @override
+  Widget build(BuildContext context) {
+    final colores = isDark
+        ? const [Color(0xFF2E7D32), Color(0xFF81C784), Color(0xFFB4F582)]
+        : const [Color(0xFFC5E1A5), Color(0xFF66BB6A), Color(0xFF1B5E20)];
+    const labels = ['Poca', 'Media', 'Mucha'];
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Demanda',
+            style: text.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          for (var i = 0; i < 3; i++)
+            Padding(
+              padding: EdgeInsets.only(top: i == 0 ? 0 : 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: colores[i],
+                      borderRadius: BorderRadius.circular(3),
+                      border:
+                          Border.all(color: scheme.outlineVariant, width: 0.5),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    labels[i],
+                    style: text.bodySmall?.copyWith(color: scheme.onSurface),
+                  ),
+                ],
               ),
             ),
         ],
