@@ -24,14 +24,22 @@ class BolsaApi {
 
   // ───── Dueño ─────
 
-  Future<Map<String, dynamic>> crearVacante(
-    int idVehiculo,
+  Future<Map<String, dynamic>> crearVacante({
+    required int idVehiculo,
+    required String tipoTurno,
+    required double rentaTurno,
+    required List<String> dias,
+    String? horario,
     String? condiciones,
-  ) =>
+  }) =>
       _api.post(
         ApiEndpoints.bolsaCrearVacante,
         body: <String, dynamic>{
           'idVehiculo': idVehiculo,
+          'tipoTurno': tipoTurno,
+          'rentaTurno': rentaTurno,
+          'dias': dias,
+          if (horario != null && horario.isNotEmpty) 'horario': horario,
           if (condiciones != null && condiciones.isNotEmpty)
             'condiciones': condiciones,
         },

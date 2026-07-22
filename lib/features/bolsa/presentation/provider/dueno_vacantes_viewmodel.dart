@@ -85,13 +85,27 @@ class DuenoVacantesViewModel extends ChangeNotifier {
     }
   }
 
-  Future<bool> crearVacante(int idVehiculo, String? condiciones) async {
+  Future<bool> crearVacante({
+    required int idVehiculo,
+    required String tipoTurno,
+    required double rentaTurno,
+    required List<String> dias,
+    String? horario,
+    String? condiciones,
+  }) async {
     _isWorking = true;
     _errorMessage = null;
     notifyListeners();
     var ok = false;
     try {
-      await _repository.crearVacante(idVehiculo, condiciones);
+      await _repository.crearVacante(
+        idVehiculo: idVehiculo,
+        tipoTurno: tipoTurno,
+        rentaTurno: rentaTurno,
+        dias: dias,
+        horario: horario,
+        condiciones: condiciones,
+      );
       ok = true;
     } catch (e) {
       _errorMessage = ErrorHandler.messageFor(e,
