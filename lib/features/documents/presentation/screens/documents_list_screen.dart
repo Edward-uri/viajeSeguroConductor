@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../routes/app_routes.dart';
 import '../../../../theme/theme.dart';
+import '../../../vehicle/presentation/provider/vehicle_viewmodel.dart';
 import '../../domain/entities/documento.dart';
 import '../provider/documents_viewmodel.dart';
 
@@ -20,9 +21,11 @@ class _DocumentsListScreenState extends ConsumerState<DocumentsListScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => ref.read(documentsViewModelProvider).loadDocumentos(),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(documentsViewModelProvider).loadDocumentos();
+      // Para saber si ya es un conductor con flotilla (no onboarding).
+      ref.read(vehicleViewModelProvider).loadVehiculos();
+    });
   }
 
   Color _statusColor(ColorScheme scheme, DocumentStatus status) {
@@ -67,6 +70,11 @@ class _DocumentsListScreenState extends ConsumerState<DocumentsListScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = ref.watch(documentsViewModelProvider);
+    // Ya tiene al menos un vehículo => es gestión, no onboarding: no mostramos
+    // el CTA de "registra tu primer vehículo".
+    final tieneVehiculos = ref.watch(
+      vehicleViewModelProvider.select((v) => v.vehiculos.isNotEmpty),
+    );
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
@@ -129,12 +137,21 @@ class _DocumentsListScreenState extends ConsumerState<DocumentsListScreen> {
                 ),
               Padding(
                 padding: const EdgeInsets.only(top: 8, bottom: 16),
-                child: GradientButton(
-                  label: 'Continuar',
-                  onPressed: vm.allApproved
-                      ? () => context.push(AppRoutes.documentsApproved)
-                      : null,
-                ),
+                child: tieneVehiculos
+                    // Conductor con vehículos: solo gestiona documentos, sin
+                    // el flujo de onboarding "registra tu primer vehículo".
+                    ? GradientButton(
+                        label: 'Listo',
+                        onPressed: () => context.canPop()
+                            ? context.pop()
+                            : context.go(AppRoutes.driverHome),
+                      )
+                    : GradientButton(
+                        label: 'Continuar',
+                        onPressed: vm.allApproved
+                            ? () => context.push(AppRoutes.documentsApproved)
+                            : null,
+                      ),
               ),
             ],
           ),

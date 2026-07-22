@@ -29,11 +29,15 @@ class DriverProfileViewModel extends ChangeNotifier {
   User? _user;
   bool _isLoading = false;
   bool _isUploadingPhoto = false;
+  int _photoVersion = 0;
   String? _errorMessage;
 
   User? get user => _user;
   bool get isLoading => _isLoading;
   bool get isUploadingPhoto => _isUploadingPhoto;
+  // Sube en cada foto nueva; los avatares (AuthedImage) lo usan para recargar
+  // aunque la URL por-id sea la misma.
+  int get photoVersion => _photoVersion;
   String? get errorMessage => _errorMessage;
 
   Future<void> loadData() async {
@@ -81,6 +85,7 @@ class DriverProfileViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       _user = await _profileRepo.uploadPhoto(bytes: bytes, fileName: fileName);
+      _photoVersion++;
       return true;
     } catch (e) {
       _errorMessage = ErrorHandler.messageFor(e,

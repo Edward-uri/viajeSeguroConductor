@@ -46,7 +46,16 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mi flotilla')),
+      appBar: AppBar(
+        title: const Text('Mi flotilla'),
+        actions: [
+          IconButton(
+            tooltip: 'Recargar',
+            onPressed: vm.isLoading ? null : () => vm.loadVehiculos(),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
       body: vm.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(

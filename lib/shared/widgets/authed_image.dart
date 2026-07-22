@@ -15,11 +15,17 @@ class AuthedImage extends ConsumerStatefulWidget {
     required this.path,
     required this.size,
     required this.fallback,
+    this.version = 0,
   });
 
   final String? path;
   final double size;
   final Widget fallback;
+
+  /// Fuerza recarga aunque [path] no cambie. La foto de perfil se sirve por id
+  /// (`/api/users/:id/photo`), así que al reemplazarla la URL es la misma;
+  /// subir este contador vuelve a pedir los bytes al backend.
+  final int version;
 
   @override
   ConsumerState<AuthedImage> createState() => _AuthedImageState();
@@ -37,7 +43,9 @@ class _AuthedImageState extends ConsumerState<AuthedImage> {
   @override
   void didUpdateWidget(AuthedImage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.path != widget.path) _bytes = _load();
+    if (oldWidget.path != widget.path || oldWidget.version != widget.version) {
+      _bytes = _load();
+    }
   }
 
   Future<Uint8List?> _load() async {
