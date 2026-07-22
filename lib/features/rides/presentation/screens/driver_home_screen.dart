@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
@@ -208,16 +209,15 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     }
   }
 
-  // Fuente y capas de las zonas de alta demanda (círculo + etiqueta).
+  // Fuente y capa de las zonas de alta demanda (celdas cuadradas).
   static const _zonasSourceId = 'zonas-src';
-  static const _zonasCircleId = 'zonas-circle';
-  static const _zonasLabelId = 'zonas-label';
+  static const _zonasFillId = 'zonas-fill';
 
-  /// Pinta las zonas de alta demanda como círculos nítidos de tamaño uniforme
-  /// (verde por demanda, con borde y etiqueta de nivel). Uniforme = nunca se
-  /// anida una zona dentro de otra. Crea fuente/capas la primera vez y luego
-  /// solo actualiza los datos; al recrearse el mapa (cambio de tema) el estilo
-  /// se reinicia y se vuelven a crear.
+  /// Pinta las zonas como celdas cuadradas rellenas (rejilla tipo DiDi: verde
+  /// por demanda, con borde), no círculos. Todas del mismo tamaño → se leen como
+  /// mosaicos y nunca una queda dentro de otra. Crea fuente/capa la primera vez
+  /// y luego solo actualiza los datos; al recrearse el mapa (cambio de tema) el
+  /// estilo se reinicia y se vuelven a crear.
   Future<void> _drawZonas() async {
     final map = _mapboxMap;
     if (map == null) return;
@@ -225,22 +225,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
 
     final geojson = jsonEncode({
       'type': 'FeatureCollection',
-      'features': [
-        for (final z in zonas)
-          {
-            'type': 'Feature',
-            'geometry': {
-              'type': 'Point',
-              'coordinates': [z.lng, z.lat],
-            },
-            'properties': {
-              'intensidad': z.intensidad,
-              'nivel': z.intensidad >= 0.66
-                  ? 'Alta'
-                  : (z.intensidad >= 0.33 ? 'Media' : 'Baja'),
-            },
-          },
-      ],
+      'features': [for (final z in zonas) _celdaFeature(z)],
     });
 
     try {
@@ -252,44 +237,48 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       if (zonas.isEmpty) return;
       await map.style
           .addSource(GeoJsonSource(id: _zonasSourceId, data: geojson));
-      // Círculo nítido, mismo tamaño para todas (no se anidan), verde por demanda.
-      await map.style.addLayer(CircleLayer(
-        id: _zonasCircleId,
+      await map.style.addLayer(FillLayer(
+        id: _zonasFillId,
         sourceId: _zonasSourceId,
-        circleColorExpression: [
+        // Escala de verde por demanda (más demanda = verde más intenso).
+        fillColorExpression: [
           'interpolate', ['linear'], ['get', 'intensidad'],
-          0.0, 'rgb(165, 214, 167)',
+          0.0, 'rgb(197, 225, 165)',
           0.5, 'rgb(102, 187, 106)',
           1.0, 'rgb(27, 94, 32)',
         ],
-        // Radio uniforme que crece con el zoom (cubre terreno parecido).
-        circleRadiusExpression: [
-          'interpolate', ['linear'], ['zoom'],
-          11.0, 16.0,
-          13.0, 30.0,
-          15.0, 48.0,
-          17.0, 66.0,
-        ],
-        circleOpacity: 0.45,
-        circleStrokeColor: 0xFF2E7D32,
-        circleStrokeWidth: 2.0,
-      ));
-      // Etiqueta con el nivel de demanda encima de cada zona.
-      await map.style.addLayer(SymbolLayer(
-        id: _zonasLabelId,
-        sourceId: _zonasSourceId,
-        textFieldExpression: ['get', 'nivel'],
-        textSize: 12.0,
-        textColor: 0xFFFFFFFF,
-        textHaloColor: 0xFF1B5E20,
-        textHaloWidth: 1.4,
-        // Con muchas zonas, dejar que Mapbox oculte las etiquetas que se
-        // encimen (false = colisión) en vez de saturar el mapa.
-        textAllowOverlap: false,
+        fillOpacity: 0.55,
+        fillOutlineColor: 0xFF2E7D32,
       ));
     } catch (e) {
       if (kDebugMode) debugPrint('[Home] zonas de demanda no disponibles: $e');
     }
+  }
+
+  /// Celda cuadrada (~260 m de lado) centrada en la zona, como polígono GeoJSON.
+  /// Deja una separación fina entre celdas para que se lean como mosaicos.
+  Map<String, dynamic> _celdaFeature(HeatZone z) {
+    const halfM = 130.0; // media celda en metros
+    final dLat = halfM / 111320.0;
+    final dLng = halfM / (111320.0 * math.cos(z.lat * math.pi / 180.0));
+    final n = z.lat + dLat, s = z.lat - dLat;
+    final e = z.lng + dLng, w = z.lng - dLng;
+    return {
+      'type': 'Feature',
+      'geometry': {
+        'type': 'Polygon',
+        'coordinates': [
+          [
+            [w, s],
+            [e, s],
+            [e, n],
+            [w, n],
+            [w, s],
+          ],
+        ],
+      },
+      'properties': {'intensidad': z.intensidad},
+    };
   }
 
   /// Tap sobre el mapa: si cae dentro de una zona de alta demanda, muestra su
