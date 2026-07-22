@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../core/widgets/reputation_chips.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../shared/widgets/authed_image.dart';
 import '../../../../theme/theme.dart';
 import '../provider/ride_inbox_viewmodel.dart';
 
@@ -156,16 +157,23 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
                       ),
                       child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 26,
-                            backgroundColor: scheme.primaryContainer,
-                            child: Text(
-                              request.pasajeroIniciales.isNotEmpty
-                                  ? request.pasajeroIniciales
-                                  : '?',
-                              style: text.titleMedium?.copyWith(
-                                color: scheme.onPrimaryContainer,
-                                fontWeight: FontWeight.w700,
+                          ClipOval(
+                            child: AuthedImage(
+                              // Ruta por id (no depende de que el broadcast traiga fotoUrl).
+                              path: '/api/users/${request.idPasajero}/photo',
+                              size: 52,
+                              fallback: CircleAvatar(
+                                radius: 26,
+                                backgroundColor: scheme.primaryContainer,
+                                child: Text(
+                                  request.pasajeroIniciales.isNotEmpty
+                                      ? request.pasajeroIniciales
+                                      : '?',
+                                  style: text.titleMedium?.copyWith(
+                                    color: scheme.onPrimaryContainer,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
