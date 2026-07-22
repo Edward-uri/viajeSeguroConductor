@@ -255,8 +255,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         id: _zonasFillId,
         sourceId: _zonasSourceId,
         fillColorExpression: _zonaColorExpr(isDark),
-        fillOpacity: isDark ? 0.6 : 0.55,
-        fillOutlineColor: isDark ? 0xFFB4F582 : 0xFF2E7D32,
+        // En oscuro casi opaco: los verdes translúcidos se lavaban contra el
+        // mapa nocturno y no se veían.
+        fillOpacity: isDark ? 0.85 : 0.55,
+        fillOutlineColor: isDark ? 0xFFDBFF6E : 0xFF2E7D32,
       ));
       _zonasDark = isDark;
     } catch (e) {
@@ -264,15 +266,16 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     }
   }
 
-  /// Rampa de verde por intensidad adaptada al tema: en oscuro va de verde medio
-  /// a verde-lima brillante (contrasta con el mapa nocturno); en claro de verde
-  /// pálido a profundo. Así se distinguen los niveles en ambos temas.
+  /// Rampa de verde por intensidad adaptada al tema. En oscuro va de verde claro
+  /// brillante a lima (brillante y casi opaco para que resalte sobre el mapa
+  /// nocturno); en claro de verde pálido a profundo. Así se distinguen los
+  /// niveles en ambos temas.
   List<Object> _zonaColorExpr(bool isDark) => isDark
       ? [
           'interpolate', ['linear'], ['get', 'intensidad'],
-          0.0, 'rgb(46, 125, 50)',
-          0.5, 'rgb(129, 199, 132)',
-          1.0, 'rgb(180, 245, 130)',
+          0.0, 'rgb(124, 214, 124)',
+          0.5, 'rgb(168, 235, 108)',
+          1.0, 'rgb(205, 255, 90)',
         ]
       : [
           'interpolate', ['linear'], ['get', 'intensidad'],
@@ -613,7 +616,7 @@ class _ZonaLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colores = isDark
-        ? const [Color(0xFF2E7D32), Color(0xFF81C784), Color(0xFFB4F582)]
+        ? const [Color(0xFF7CD67C), Color(0xFFA8EB6C), Color(0xFFCDFF5A)]
         : const [Color(0xFFC5E1A5), Color(0xFF66BB6A), Color(0xFF1B5E20)];
     const labels = ['Poca', 'Media', 'Mucha'];
     return Container(
