@@ -283,7 +283,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         textColor: 0xFFFFFFFF,
         textHaloColor: 0xFF1B5E20,
         textHaloWidth: 1.4,
-        textAllowOverlap: true,
+        // Con muchas zonas, dejar que Mapbox oculte las etiquetas que se
+        // encimen (false = colisión) en vez de saturar el mapa.
+        textAllowOverlap: false,
       ));
     } catch (e) {
       if (kDebugMode) debugPrint('[Home] zonas de demanda no disponibles: $e');
@@ -355,30 +357,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            _filaZona(Icons.sensors_rounded,
-                '${z.nRequests} solicitudes recientes', scheme, text),
             const SizedBox(height: 10),
-            _filaZona(Icons.two_wheeler_rounded,
-                _competencia(z.supplyDemandRatio), scheme, text),
-            const SizedBox(height: 10),
-            _filaZona(
-                Icons.local_fire_department_rounded,
-                '${z.demandDensity.toStringAsFixed(0)} solicitudes/km²',
-                scheme,
-                text),
-            const SizedBox(height: 18),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                _consejo(z),
-                style: text.bodyMedium?.copyWith(color: scheme.onSurface),
-              ),
+            Text(
+              _consejoZona(z.intensidad),
+              style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -386,37 +368,24 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     );
   }
 
-  Widget _filaZona(
-      IconData icon, String txt, ColorScheme scheme, TextTheme text) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: scheme.primary),
-        const SizedBox(width: 12),
-        Expanded(child: Text(txt, style: text.bodyMedium)),
-      ],
-    );
-  }
-
-  // El modelo ya devuelve solo zonas calientes; la intensidad (0..1) las rankea.
+  // La intensidad (0..1) rankea las zonas entre sí.
   String _nivelDemanda(double i) =>
-      i >= 0.66 ? 'alta' : (i >= 0.33 ? 'media' : 'moderada');
+      i >= 0.66 ? 'alta' : (i >= 0.33 ? 'media' : 'baja');
 
   Color _colorNivel(double i) => i >= 0.66
       ? const Color(0xFF1B5E20)
       : (i >= 0.33 ? const Color(0xFF66BB6A) : const Color(0xFFC5E1A5));
 
-  // supply_demand_ratio = oferta/demanda: bajo = pocas motos para la demanda.
-  String _competencia(double ratio) {
-    if (ratio < 0.8) return 'Pocas motos para la demanda — buena oportunidad';
-    if (ratio <= 1.2) return 'Competencia equilibrada de motos';
-    return 'Varias motos ya en la zona';
-  }
-
-  String _consejo(HeatZone z) {
-    if (z.supplyDemandRatio < 1.0) {
-      return 'Buen momento para acercarte: hay más pasajeros que motos disponibles.';
+  // Datos sintéticos por ahora: nada de cifras exactas (no significan nada
+  // real todavía); solo lenguaje simple que se entienda de un vistazo.
+  String _consejoZona(double i) {
+    if (i >= 0.66) {
+      return 'Aquí se están pidiendo más viajes de lo normal. Buen momento para acercarte.';
     }
-    return 'Hay demanda, aunque también hay motos disponibles cerca.';
+    if (i >= 0.33) {
+      return 'Hay buena actividad de viajes por esta zona.';
+    }
+    return 'Actividad de viajes moderada por aquí.';
   }
 
   void _mostrarError(String? msg) {
