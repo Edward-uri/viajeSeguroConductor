@@ -5,16 +5,18 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-/// Default [FirebaseOptions] for use with your Firebase apps.
+/// [FirebaseOptions] de la app del conductor.
 ///
-/// Example:
-/// ```dart
-/// import 'firebase_options.dart';
-/// // ...
-/// await Firebase.initializeApp(
-///   options: DefaultFirebaseOptions.currentPlatform,
-/// );
-/// ```
+/// Proyecto Firebase: `jala-devs` — el MISMO que la app del pasajero, para que
+/// el backend entregue push a ambas con una sola `FCM_SERVICE_ACCOUNT`.
+///
+/// Patrón (igual que el pasajero): los valores del proyecto y los appId van
+/// quemados aquí; solo la `apiKey` se lee del `.env`.
+///
+/// TODO(pendiente): reemplaza los `PENDIENTE_*` con los datos del registro de
+/// ESTA app (Android `com.uriel.jala` / iOS `com.jala.viajeseguroconductor`)
+/// dentro del proyecto `jala-devs`. Y pon las 3 apiKeys reales en el `.env`
+/// (FIREBASE_API_KEY_ANDROID / _IOS / _WEB).
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -43,47 +45,47 @@ class DefaultFirebaseOptions {
 
   static FirebaseOptions get web => FirebaseOptions(
     apiKey: dotenv.get('FIREBASE_API_KEY_WEB'),
-    appId: dotenv.get('FIREBASE_APP_ID_WEB'),
-    messagingSenderId: dotenv.get('FIREBASE_MESSAGING_SENDER_ID'),
-    projectId: dotenv.get('FIREBASE_PROJECT_ID'),
-    authDomain: dotenv.get('FIREBASE_AUTH_DOMAIN'),
-    storageBucket: dotenv.get('FIREBASE_STORAGE_BUCKET'),
-    measurementId: dotenv.get('FIREBASE_MEASUREMENT_ID_WEB'),
+    appId: 'PENDIENTE_APP_ID_WEB', // TODO: appId web del conductor en jala-devs
+    messagingSenderId: '963153744458',
+    projectId: 'jala-devs',
+    authDomain: 'jala-devs.firebaseapp.com',
+    storageBucket: 'jala-devs.firebasestorage.app',
+    measurementId: 'PENDIENTE_MEASUREMENT_ID_WEB', // TODO (opcional, solo web)
   );
 
   static FirebaseOptions get android => FirebaseOptions(
-    apiKey: dotenv.get('FIREBASE_API_KEY_ANDROID'),
-    appId: dotenv.get('FIREBASE_APP_ID_ANDROID'),
-    messagingSenderId: dotenv.get('FIREBASE_MESSAGING_SENDER_ID'),
-    projectId: dotenv.get('FIREBASE_PROJECT_ID'),
-    storageBucket: dotenv.get('FIREBASE_STORAGE_BUCKET'),
+    apiKey: 'AIzaSyC0t1-fFk1a1ltroHRVySMXcCfgv7yMjt0',
+    appId: '1:963153744458:android:a7c5136d83a1bcb334ccb3', // com.uriel.jala en jala-devs
+    messagingSenderId: '963153744458',
+    projectId: 'jala-devs',
+    storageBucket: 'jala-devs.firebasestorage.app',
   );
 
   static FirebaseOptions get ios => FirebaseOptions(
     apiKey: dotenv.get('FIREBASE_API_KEY_IOS'),
-    appId: dotenv.get('FIREBASE_APP_ID_IOS'),
-    messagingSenderId: dotenv.get('FIREBASE_MESSAGING_SENDER_ID'),
-    projectId: dotenv.get('FIREBASE_PROJECT_ID'),
-    storageBucket: dotenv.get('FIREBASE_STORAGE_BUCKET'),
-    iosBundleId: dotenv.get('FIREBASE_IOS_BUNDLE_ID'),
+    appId: 'PENDIENTE_APP_ID_IOS', // TODO: appId ios del conductor (com.jala.viajeseguroconductor)
+    messagingSenderId: '963153744458',
+    projectId: 'jala-devs',
+    storageBucket: 'jala-devs.firebasestorage.app',
+    iosBundleId: 'com.jala.viajeseguroconductor',
   );
 
   static FirebaseOptions get macos => FirebaseOptions(
     apiKey: dotenv.get('FIREBASE_API_KEY_IOS'),
-    appId: dotenv.get('FIREBASE_APP_ID_MACOS'),
-    messagingSenderId: dotenv.get('FIREBASE_MESSAGING_SENDER_ID'),
-    projectId: dotenv.get('FIREBASE_PROJECT_ID'),
-    storageBucket: dotenv.get('FIREBASE_STORAGE_BUCKET'),
-    iosBundleId: dotenv.get('FIREBASE_IOS_BUNDLE_ID'),
+    appId: 'PENDIENTE_APP_ID_IOS', // TODO: mismo appId ios del conductor
+    messagingSenderId: '963153744458',
+    projectId: 'jala-devs',
+    storageBucket: 'jala-devs.firebasestorage.app',
+    iosBundleId: 'com.jala.viajeseguroconductor',
   );
 
   static FirebaseOptions get windows => FirebaseOptions(
     apiKey: dotenv.get('FIREBASE_API_KEY_WEB'),
-    appId: dotenv.get('FIREBASE_APP_ID_WINDOWS'),
-    messagingSenderId: dotenv.get('FIREBASE_MESSAGING_SENDER_ID'),
-    projectId: dotenv.get('FIREBASE_PROJECT_ID'),
-    authDomain: dotenv.get('FIREBASE_AUTH_DOMAIN'),
-    storageBucket: dotenv.get('FIREBASE_STORAGE_BUCKET'),
-    measurementId: dotenv.get('FIREBASE_MEASUREMENT_ID_WINDOWS'),
+    appId: 'PENDIENTE_APP_ID_WEB', // TODO: mismo appId web del conductor
+    messagingSenderId: '963153744458',
+    projectId: 'jala-devs',
+    authDomain: 'jala-devs.firebaseapp.com',
+    storageBucket: 'jala-devs.firebasestorage.app',
+    measurementId: 'PENDIENTE_MEASUREMENT_ID_WEB', // TODO (opcional)
   );
 }
