@@ -17,16 +17,27 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
   late TextEditingController _colorController;
   late TextEditingController _anioController;
   late TextEditingController _municipioController;
+  bool _cargado = false;
 
   @override
   void initState() {
     super.initState();
+    // Los controllers se crean vacíos aquí; el extra de la ruta (InheritedWidget)
+    // se lee en didChangeDependencies, cuando el context ya está listo.
+    _colorController = TextEditingController();
+    _anioController = TextEditingController();
+    _municipioController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_cargado) return;
+    _cargado = true;
     final v = GoRouterState.of(context).extra as Vehiculo?;
-    _colorController = TextEditingController(text: v?.color ?? '');
-    _anioController =
-        TextEditingController(text: v?.anio.toString() ?? '');
-    _municipioController =
-        TextEditingController(text: v?.municipio ?? '');
+    _colorController.text = v?.color ?? '';
+    _anioController.text = v?.anio.toString() ?? '';
+    _municipioController.text = v?.municipio ?? '';
   }
 
   @override
