@@ -49,6 +49,24 @@ class VehiculosApi {
         auth: true,
       );
 
+  // ───── Conductores asignados (dueño) ─────
+
+  Future<Map<String, dynamic>> getConductoresAsignados(int idVehiculo) =>
+      _api.get(ApiEndpoints.flotillasVehiculoConductores(idVehiculo));
+
+  Future<Map<String, dynamic>> editarConductorAsignado(
+    int idVehiculo,
+    int idConductor,
+    Map<String, dynamic> body,
+  ) =>
+      _api.patch(
+        ApiEndpoints.flotillasVehiculoConductor(idVehiculo, idConductor),
+        body: body,
+      );
+
+  Future<void> darDeBajaConductor(int idVehiculo, int idConductor) =>
+      _api.delete(ApiEndpoints.flotillasVehiculoConductor(idVehiculo, idConductor));
+
   Future<Map<String, dynamic>> getDatosFacturacion() =>
       _api.get(ApiEndpoints.flotillasFacturacion);
 

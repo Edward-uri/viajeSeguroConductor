@@ -1,9 +1,24 @@
 import 'dart:typed_data';
 
+import '../entities/conductor_asignado.dart';
 import '../entities/vehiculo.dart';
 
 abstract class VehicleRepository {
   Future<List<Vehiculo>> getVehiculos();
+
+  // ───── Conductores asignados (dueño) ─────
+  Future<List<ConductorAsignado>> getConductoresAsignados(int idVehiculo);
+
+  Future<void> editarConductorAsignado(
+    int idVehiculo,
+    int idConductor, {
+    required String tipoTurno,
+    required double rentaTurno,
+    required List<String> dias,
+    String? horario,
+  });
+
+  Future<void> darDeBajaConductor(int idVehiculo, int idConductor);
 
   /// Vehículo propio del conductor (o null si aún no registra ninguno).
   Future<Vehiculo?> getMiVehiculo();

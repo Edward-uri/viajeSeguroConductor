@@ -1,7 +1,9 @@
 import 'dart:typed_data';
 
+import '../domain/entities/conductor_asignado.dart';
 import '../domain/entities/vehiculo.dart';
 import '../domain/repositories/vehicle_repository.dart';
+import 'mappers/conductor_asignado_mapper.dart';
 import 'mappers/vehiculo_mapper.dart';
 import 'remote/vehiculos_api.dart';
 
@@ -65,6 +67,40 @@ class VehicleRepositoryImpl implements VehicleRepository {
       bytes: bytes,
       fileName: fileName,
     );
+  }
+
+  // Las lecturas/mutaciones de conductores NO tragan errores: el viewmodel los
+  // convierte en SnackBar (a diferencia de getVehiculos).
+
+  @override
+  Future<List<ConductorAsignado>> getConductoresAsignados(int idVehiculo) async {
+    final res = await _api.getConductoresAsignados(idVehiculo);
+    final data = res['data'] as List<dynamic>? ?? [];
+    return data
+        .map((e) => ConductorAsignadoMapper.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<void> editarConductorAsignado(
+    int idVehiculo,
+    int idConductor, {
+    required String tipoTurno,
+    required double rentaTurno,
+    required List<String> dias,
+    String? horario,
+  }) async {
+    await _api.editarConductorAsignado(idVehiculo, idConductor, {
+      'tipoTurno': tipoTurno,
+      'rentaTurno': rentaTurno,
+      'dias': dias,
+      if (horario != null && horario.isNotEmpty) 'horario': horario,
+    });
+  }
+
+  @override
+  Future<void> darDeBajaConductor(int idVehiculo, int idConductor) async {
+    await _api.darDeBajaConductor(idVehiculo, idConductor);
   }
 
   @override

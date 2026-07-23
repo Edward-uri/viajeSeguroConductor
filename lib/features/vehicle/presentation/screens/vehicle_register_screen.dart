@@ -25,86 +25,137 @@ class VehicleRegisterScreen extends ConsumerStatefulWidget {
 }
 
 const _kPasos = ['Datos', 'Tarjeta', 'Foto'];
+const _kColores = [
+  'Blanco', 'Rojo', 'Azul', 'Negro', 'Verde', 'Amarillo', 'Gris', 'Naranja',
+];
 
 class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
   int _step = 0; // 0=datos, 1=tarjeta, 2=foto, 3=listo
+  // Nada se persiste hasta "Finalizar": ahí se crea el vehículo y se suben los
+  // dos documentos. Estos flags hacen el reintento idempotente si algo falla a
+  // media subida (no recrea ni resube lo ya hecho).
   int _idVehiculo = 0;
+  bool _tarjetaSubida = false;
+  bool _fotoSubida = false;
+  bool _enviando = false;
 
   final _placaController = TextEditingController();
+  final _numeroSerieController = TextEditingController();
   final _modeloController = TextEditingController();
-  final _colorController = TextEditingController();
   final _anioController = TextEditingController();
+  String? _color;
   Municipio? _municipio;
 
-  Uint8List? _docBytes; // foto del paso actual (tarjeta o vehículo)
-  String _docExt = 'jpg';
+  Uint8List? _tarjetaBytes;
+  Uint8List? _fotoBytes;
   String? _error;
 
   @override
   void dispose() {
     _placaController.dispose();
+    _numeroSerieController.dispose();
     _modeloController.dispose();
-    _colorController.dispose();
     _anioController.dispose();
     super.dispose();
   }
 
-  // ───────── Pasos ─────────
+  // ───────── Pasos (nada se envía hasta "Finalizar") ─────────
 
-  Future<void> _guardarDatos() async {
-    setState(() => _error = null);
+  void _continuarDatos() {
     if (_placaController.text.trim().length < 3) {
       setState(() => _error = 'Escribe la placa del vehículo.');
+      return;
+    }
+    if (_numeroSerieController.text.trim().length < 3) {
+      setState(() => _error = 'Escribe el número de serie del vehículo.');
       return;
     }
     if (_municipio == null) {
       setState(() => _error = 'Selecciona tu municipio.');
       return;
     }
-    final vm = ref.read(vehicleViewModelProvider);
-    final id = await vm.registrar(Vehiculo(
-      placa: _placaController.text.trim().toUpperCase(),
-      modelo: _modeloController.text.trim(),
-      color: _colorController.text.trim(),
-      anio: int.tryParse(_anioController.text.trim()) ?? 0,
-      idMunicipio: _municipio!.idMunicipio,
-      municipio: _municipio!.nombre,
-      status: VehicleStatus.incomplete,
-    ));
-    if (!mounted) return;
-    if (id == 0) {
-      setState(() => _error = vm.errorMessage ?? 'No se pudo registrar.');
-      return;
-    }
     setState(() {
-      _idVehiculo = id;
-      _docBytes = null;
+      _error = null;
       _step = 1;
     });
   }
 
-  Future<void> _subirDocPaso(String tipo, int siguiente) async {
-    if (_docBytes == null) {
-      setState(() => _error = 'Toma o elige una foto primero.');
-      return;
-    }
-    setState(() => _error = null);
-    final vm = ref.read(vehicleViewModelProvider);
-    final ok = await vm.subirDocumento(
-      idVehiculo: _idVehiculo,
-      tipo: tipo,
-      bytes: _docBytes!,
-      fileName: '$tipo.$_docExt',
-    );
-    if (!mounted) return;
-    if (!ok) {
-      setState(() => _error = vm.errorMessage ?? 'No se pudo subir.');
+  void _continuarTarjeta() {
+    if (_tarjetaBytes == null) {
+      setState(() => _error = 'Toma o elige la foto de la tarjeta primero.');
       return;
     }
     setState(() {
-      _docBytes = null;
-      _step = siguiente;
+      _error = null;
+      _step = 2;
     });
+  }
+
+  /// Crea el vehículo y sube ambos documentos en un solo envío. Idempotente:
+  /// si algo falla a media subida, reintenta sin recrear ni resubir lo hecho.
+  Future<void> _finalizar() async {
+    if (_fotoBytes == null) {
+      setState(() => _error = 'Toma o elige la foto del vehículo primero.');
+      return;
+    }
+    setState(() {
+      _error = null;
+      _enviando = true;
+    });
+    final vm = ref.read(vehicleViewModelProvider);
+    try {
+      if (_idVehiculo == 0) {
+        final id = await vm.registrar(Vehiculo(
+          placa: _placaController.text.trim().toUpperCase(),
+          numeroSerie: _numeroSerieController.text.trim(),
+          modelo: _modeloController.text.trim(),
+          color: _color ?? '',
+          anio: int.tryParse(_anioController.text.trim()) ?? 0,
+          idMunicipio: _municipio!.idMunicipio,
+          municipio: _municipio!.nombre,
+          status: VehicleStatus.incomplete,
+        ));
+        if (!mounted) return;
+        if (id == 0) {
+          setState(() => _error = vm.errorMessage ?? 'No se pudo registrar.');
+          return;
+        }
+        _idVehiculo = id;
+      }
+      if (!_tarjetaSubida) {
+        final ok = await vm.subirDocumento(
+          idVehiculo: _idVehiculo,
+          tipo: 'tarjeta-circulacion',
+          bytes: _tarjetaBytes!,
+          fileName: 'tarjeta-circulacion.jpg',
+        );
+        if (!mounted) return;
+        if (!ok) {
+          setState(() =>
+              _error = vm.errorMessage ?? 'No se pudo subir la tarjeta.');
+          return;
+        }
+        _tarjetaSubida = true;
+      }
+      if (!_fotoSubida) {
+        final ok = await vm.subirDocumento(
+          idVehiculo: _idVehiculo,
+          tipo: 'foto-vehiculo',
+          bytes: _fotoBytes!,
+          fileName: 'foto-vehiculo.jpg',
+        );
+        if (!mounted) return;
+        if (!ok) {
+          setState(
+              () => _error = vm.errorMessage ?? 'No se pudo subir la foto.');
+          return;
+        }
+        _fotoSubida = true;
+      }
+      if (mounted) setState(() => _step = 3);
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
   }
 
   // ───────── Imagen ─────────
@@ -116,8 +167,11 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
     if (!mounted) return;
     setState(() {
       _error = null;
-      _docBytes = jpeg;
-      _docExt = 'jpg';
+      if (_step == 1) {
+        _tarjetaBytes = jpeg;
+      } else {
+        _fotoBytes = jpeg;
+      }
     });
   }
 
@@ -125,7 +179,6 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final vm = ref.watch(vehicleViewModelProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text(_step >= 3 ? 'Vehículo registrado' : 'Registrar vehículo'),
@@ -137,7 +190,7 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                child: _buildStep(vm),
+                child: _buildStep(),
               ),
             ),
           ],
@@ -146,32 +199,33 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
     );
   }
 
-  Widget _buildStep(VehicleViewModel vm) {
+  Widget _buildStep() {
     switch (_step) {
       case 0:
-        return _datosStep(vm);
+        return _datosStep();
       case 1:
         return _fotoStep(
           titulo: 'Tarjeta de circulación',
           ayuda: 'Toma una foto clara de la tarjeta de circulación del vehículo.',
-          botonLabel: 'Subir y continuar',
-          vm: vm,
-          onSubir: () => _subirDocPaso('tarjeta-circulacion', 2),
+          botonLabel: 'Continuar',
+          bytes: _tarjetaBytes,
+          onSubir: _continuarTarjeta,
         );
       case 2:
         return _fotoStep(
           titulo: 'Foto del vehículo',
           ayuda: 'Toma una foto del frente del mototaxi donde se vea la placa.',
-          botonLabel: 'Subir y finalizar',
-          vm: vm,
-          onSubir: () => _subirDocPaso('foto-vehiculo', 3),
+          botonLabel: 'Finalizar registro',
+          bytes: _fotoBytes,
+          cargando: _enviando,
+          onSubir: _finalizar,
         );
       default:
         return _listoStep();
     }
   }
 
-  Widget _datosStep(VehicleViewModel vm) {
+  Widget _datosStep() {
     final municipios = ref.watch(municipiosProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,6 +239,16 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
           decoration: const InputDecoration(
             labelText: 'Placa *',
             hintText: 'ABC-123',
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _numeroSerieController,
+          textCapitalization: TextCapitalization.characters,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(
+            labelText: 'Número de serie *',
+            hintText: 'Serie / VIN de la unidad',
           ),
         ),
         const SizedBox(height: 16),
@@ -218,10 +282,14 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _colorController,
-          textInputAction: TextInputAction.next,
+        DropdownButtonFormField<String>(
+          initialValue: _color,
+          isExpanded: true,
           decoration: const InputDecoration(labelText: 'Color'),
+          items: _kColores
+              .map((c) => DropdownMenuItem<String>(value: c, child: Text(c)))
+              .toList(),
+          onChanged: (v) => setState(() => _color = v),
         ),
         const SizedBox(height: 16),
         TextField(
@@ -233,8 +301,8 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
         if (_error != null) ...[const SizedBox(height: 16), _ErrorBox(_error!)],
         const SizedBox(height: 28),
         GradientButton(
-          label: vm.isSaving ? 'Guardando…' : 'Continuar',
-          onPressed: vm.isSaving ? null : _guardarDatos,
+          label: 'Continuar',
+          onPressed: _continuarDatos,
         ),
       ],
     );
@@ -244,8 +312,9 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
     required String titulo,
     required String ayuda,
     required String botonLabel,
-    required VehicleViewModel vm,
+    required Uint8List? bytes,
     required VoidCallback onSubir,
+    bool cargando = false,
   }) {
     final scheme = Theme.of(context).colorScheme;
     return Column(
@@ -262,11 +331,11 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
               color: scheme.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: scheme.outlineVariant, width: 2),
-              image: _docBytes != null
-                  ? DecorationImage(image: MemoryImage(_docBytes!), fit: BoxFit.cover)
+              image: bytes != null
+                  ? DecorationImage(image: MemoryImage(bytes), fit: BoxFit.cover)
                   : null,
             ),
-            child: _docBytes == null
+            child: bytes == null
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -296,8 +365,20 @@ class _VehicleRegisterScreenState extends ConsumerState<VehicleRegisterScreen> {
         const _Tip('Todos los datos legibles'),
         const SizedBox(height: 24),
         GradientButton(
-          label: vm.isSaving ? 'Subiendo…' : botonLabel,
-          onPressed: vm.isSaving || _docBytes == null ? null : onSubir,
+          label: cargando ? 'Registrando…' : botonLabel,
+          onPressed: cargando || bytes == null ? null : onSubir,
+        ),
+        const SizedBox(height: 4),
+        Center(
+          child: TextButton(
+            onPressed: cargando
+                ? null
+                : () => setState(() {
+                      _error = null;
+                      _step -= 1;
+                    }),
+            child: const Text('Atrás'),
+          ),
         ),
       ],
     );

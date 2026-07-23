@@ -69,6 +69,14 @@ class ApiEndpoints {
   static const String flotillasFacturacion = '/api/flotillas/facturacion';
   static const String flotillasPropietariosActivar =
       '/api/flotillas/propietarios/activar';
+  // Conductores asignados a un vehículo (dueño): listar / editar términos / dar de baja.
+  static String flotillasVehiculoConductores(int idVehiculo) =>
+      '/api/flotillas/vehiculos/$idVehiculo/conductores';
+  static String flotillasVehiculoConductor(int idVehiculo, int idConductor) =>
+      '/api/flotillas/vehiculos/$idVehiculo/conductores/$idConductor';
+
+  // ───── Reportes ─────
+  static const String reportes = '/api/reportes';
 
   // ───── Bolsa de trabajo ─────
   static String bolsaVacantes(int idMunicipio) =>
