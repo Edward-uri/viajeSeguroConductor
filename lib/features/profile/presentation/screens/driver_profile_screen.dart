@@ -217,6 +217,18 @@ class _ProfileContent extends ConsumerWidget {
                   'Bolsa de trabajo',
                   () => context.push(AppRoutes.bolsa),
                 ),
+              ] else ...[
+                _divider(context),
+                ListTile(
+                  enabled: false,
+                  leading: Icon(Icons.work_outline,
+                      color: context.colors.onSurfaceVariant),
+                  title: const Text('Bolsa de trabajo'),
+                  subtitle: const Text(
+                      'Disponible cuando aprueben tu licencia de conductor'),
+                  trailing: Icon(Icons.lock_outline,
+                      size: 18, color: context.colors.onSurfaceVariant),
+                ),
               ],
               if (user.esPropietario) ...[
                 _divider(context),
