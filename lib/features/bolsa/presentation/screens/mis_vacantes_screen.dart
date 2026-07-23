@@ -87,41 +87,91 @@ class _VacanteCard extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final vm = ref.watch(duenoVacantesViewModelProvider);
     final abierta = vacante.abierta;
-    final color = abierta ? context.brand.success : context.brand.greyLight;
+    final estadoColor =
+        abierta ? context.brand.success : context.brand.greyLight;
+    final pendientes = vacante.postulacionesPendientes;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: () =>
             context.push(AppRoutes.vacantePostulaciones, extra: vacante),
-        title: Text(
-          vacante.descripcionVehiculo,
-          style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 4,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _EstadoChip(label: abierta ? 'Abierta' : 'Cerrada', color: color),
-              if (vacante.postulacionesPendientes > 0)
-                _EstadoChip(
-                  label: '${vacante.postulacionesPendientes} pendientes',
-                  color: context.brand.warning,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      vacante.descripcionVehiculo,
+                      style:
+                          text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _Chip(label: abierta ? 'Abierta' : 'Cerrada', color: estadoColor),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (vacante.turnoLabel.isNotEmpty)
+                    _Chip(label: vacante.turnoLabel, color: scheme.primary),
+                  if (vacante.rentaLabel.isNotEmpty)
+                    Text(
+                      '${vacante.rentaLabel} / turno',
+                      style: text.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: scheme.primary,
+                      ),
+                    ),
+                ],
+              ),
+              if (vacante.diasLabel.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _InfoLinea(
+                    icon: Icons.calendar_today_outlined,
+                    label: vacante.diasLabel),
+              ],
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Icon(Icons.people_alt_outlined,
+                      size: 18, color: scheme.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      pendientes > 0
+                          ? '$pendientes ${pendientes == 1 ? "postulante" : "postulantes"} por revisar'
+                          : 'Ver postulantes',
+                      style: text.bodyMedium?.copyWith(
+                        fontWeight:
+                            pendientes > 0 ? FontWeight.w700 : FontWeight.w400,
+                        color: pendientes > 0
+                            ? context.brand.warning
+                            : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  if (abierta)
+                    TextButton(
+                      onPressed:
+                          vm.isWorking ? null : () => _confirmarCierre(context, ref),
+                      child: Text('Cerrar',
+                          style: TextStyle(color: scheme.error)),
+                    ),
+                  Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                ],
+              ),
             ],
           ),
         ),
-        trailing: abierta
-            ? IconButton(
-                tooltip: 'Cerrar vacante',
-                icon: Icon(Icons.close_rounded, color: scheme.error),
-                onPressed:
-                    vm.isWorking ? null : () => _confirmarCierre(context, ref),
-              )
-            : const Icon(Icons.chevron_right),
       ),
     );
   }
@@ -153,8 +203,35 @@ class _VacanteCard extends ConsumerWidget {
   }
 }
 
-class _EstadoChip extends StatelessWidget {
-  const _EstadoChip({required this.label, required this.color});
+/// Ícono + texto en gris para un término de la vacante (días, horario…).
+class _InfoLinea extends StatelessWidget {
+  const _InfoLinea({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: scheme.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({required this.label, required this.color});
 
   final String label;
   final Color color;
@@ -165,7 +242,7 @@ class _EstadoChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,

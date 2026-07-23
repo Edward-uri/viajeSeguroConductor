@@ -92,14 +92,15 @@ class Vacante {
     }
   }
 
-  /// "Modelo · Color · Año" con lo que haya; placa o id como último recurso.
+  /// La placa manda (es como el dueño identifica su moto); se le suman los
+  /// detalles si los hay. Sin placa, cae a los detalles o al id como último recurso.
   String get descripcionVehiculo {
-    final partes = [
+    final detalles = [
       if (modelo.isNotEmpty) modelo,
       if (color.isNotEmpty) color,
       if (anio > 0) '$anio',
-    ];
-    if (partes.isNotEmpty) return partes.join(' · ');
-    return placa.isNotEmpty ? placa : 'Vehículo #$idVehiculo';
+    ].join(' · ');
+    if (placa.isNotEmpty) return detalles.isEmpty ? placa : '$placa · $detalles';
+    return detalles.isNotEmpty ? detalles : 'Vehículo #$idVehiculo';
   }
 }
