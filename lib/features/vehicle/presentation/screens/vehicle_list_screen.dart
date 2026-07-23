@@ -151,16 +151,7 @@ class _VehiculoCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: MototaxiImage(colorNombre: v.color, size: 40),
-                  ),
+                  MototaxiImage(colorNombre: v.color, size: 52),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
