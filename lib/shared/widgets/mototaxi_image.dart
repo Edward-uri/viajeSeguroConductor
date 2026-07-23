@@ -1,14 +1,10 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_svg/flutter_svg.dart';
 
-/// Muestra el mototaxi de la unidad según su color.
-/// - Si existe `assets/mototaxi/mototaxi_<color>.svg` (variante que provee el
-///   negocio), la usa; si no, cae a la silueta genérica tintada.
-/// Las variantes son siluetas de un solo color, así que se les pone un halo
-/// suave según el tema para que hasta el blanco/negro resalten en claro y oscuro.
+/// Muestra el mototaxi de la unidad según su color, dentro de un chip con fondo
+/// que contrasta (los SVG son siluetas de un solo color): color claro → fondo
+/// oscuro, color oscuro → fondo claro. Sin sombras.
 class MototaxiImage extends StatelessWidget {
   const MototaxiImage({super.key, required this.colorNombre, this.size = 48});
 
@@ -17,9 +13,9 @@ class MototaxiImage extends StatelessWidget {
 
   static const _default = 'assets/mototaxi/mototaxi_default.svg';
 
-  /// color de unidad → (slug de archivo, color para tintar la silueta fallback)
+  /// color de unidad → (slug de archivo, color representativo para el contraste)
   static const _mapa = <String, (String, Color)>{
-    'blanco': ('blanco', Color(0xFFBDBDBD)),
+    'blanco': ('blanco', Color(0xFFF5F5F5)),
     'rojo': ('rojo', Color(0xFFD84315)),
     'azul': ('azul', Color(0xFF1976D2)),
     'negro': ('negro', Color(0xFF212121)),
@@ -34,52 +30,48 @@ class MototaxiImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entry = _mapa[colorNombre.trim().toLowerCase()];
+    final tint = entry?.$2 ?? Theme.of(context).colorScheme.onSurfaceVariant;
     final variante =
         entry == null ? null : 'assets/mototaxi/mototaxi_${entry.$1}.svg';
 
-    // Sin color conocido → silueta tintada al onSurfaceVariant.
+    // Fondo contrastante fijo (independiente del tema) para que cualquier color resalte.
+    final bg = tint.computeLuminance() > 0.45
+        ? const Color(0xFF33373E)
+        : const Color(0xFFE8EAED);
+
+    final fallback = _svg(_default, ColorFilter.mode(tint, BlendMode.srcIn));
+    Widget contenido;
     if (variante == null) {
-      final tint = Theme.of(context).colorScheme.onSurfaceVariant;
-      return _conHalo(context, _default,
-          tint: ColorFilter.mode(tint, BlendMode.srcIn));
+      contenido = fallback;
+    } else {
+      final known = _cache[variante];
+      if (known == true) {
+        contenido = _svg(variante, null);
+      } else if (known == false) {
+        contenido = fallback;
+      } else {
+        contenido = FutureBuilder<bool>(
+          future: _bundled(variante),
+          builder: (context, snap) =>
+              snap.data == true ? _svg(variante, null) : fallback,
+        );
+      }
     }
 
-    final fallback = _conHalo(context, _default,
-        tint: ColorFilter.mode(entry!.$2, BlendMode.srcIn));
-
-    final known = _cache[variante];
-    if (known == true) return _conHalo(context, variante);
-    if (known == false) return fallback;
-
-    return FutureBuilder<bool>(
-      future: _bundled(variante),
-      builder: (context, snap) =>
-          snap.data == true ? _conHalo(context, variante) : fallback,
+    return Container(
+      width: size,
+      height: size,
+      padding: EdgeInsets.all(size * 0.1),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(size * 0.24),
+      ),
+      child: contenido,
     );
   }
 
-  /// SVG con un halo suave detrás (contrasta con el fondo según el tema).
-  Widget _conHalo(BuildContext context, String path, {ColorFilter? tint}) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final halo = dark
-        ? Colors.white.withValues(alpha: 0.55)
-        : Colors.black.withValues(alpha: 0.35);
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        ImageFiltered(
-          imageFilter: ui.ImageFilter.blur(sigmaX: size * 0.06, sigmaY: size * 0.06),
-          child: SvgPicture.asset(
-            path,
-            width: size,
-            height: size,
-            colorFilter: ColorFilter.mode(halo, BlendMode.srcIn),
-          ),
-        ),
-        SvgPicture.asset(path, width: size, height: size, colorFilter: tint),
-      ],
-    );
-  }
+  Widget _svg(String path, ColorFilter? filter) =>
+      SvgPicture.asset(path, fit: BoxFit.contain, colorFilter: filter);
 
   static Future<bool> _bundled(String path) async {
     final cached = _cache[path];

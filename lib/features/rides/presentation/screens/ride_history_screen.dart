@@ -108,41 +108,52 @@ class _FiltrosBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(rideHistoryViewModelProvider);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _fila(
-          _estadoOpciones
-              .map((o) => ChoiceChip(
-                    label: Text(o.$2),
-                    selected: vm.estado == o.$1,
-                    onSelected: (_) => notifier.setEstado(o.$1),
-                  ))
-              .toList(),
-        ),
-        _fila(
-          _fechaOpciones
-              .map((o) => ChoiceChip(
-                    label: Text(o.$2),
-                    selected: vm.dias == o.$1,
-                    onSelected: (_) => notifier.setDias(o.$1),
-                  ))
-              .toList(),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final o in _estadoOpciones)
+                _chip(
+                  label: o.$2,
+                  selected: vm.estado == o.$1,
+                  onTap: () => notifier.setEstado(o.$1),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final o in _fechaOpciones)
+                _chip(
+                  label: o.$2,
+                  selected: vm.dias == o.$1,
+                  onTap: () => notifier.setDias(o.$1),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _fila(List<Widget> chips) {
-    return SizedBox(
-      height: 48,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-        itemCount: chips.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (_, i) => chips[i],
-      ),
+  Widget _chip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap(),
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
   }
 }
