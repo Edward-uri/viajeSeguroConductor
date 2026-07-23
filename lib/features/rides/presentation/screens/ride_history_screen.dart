@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../theme/jala_theme.dart';
+import '../../../reportes/presentation/reportar_sheet.dart';
 import '../../domain/entities/ride_history_item.dart';
 import '../provider/ride_history_viewmodel.dart';
 
@@ -272,6 +273,32 @@ class _RideHistoryCard extends StatelessWidget {
                 ],
               ],
             ),
+            // Reportable: viajes que tuvieron pasajero (completado o cancelado;
+            // este último cubre el "no se presentó").
+            if (ride.estado == 'completado' || ride.estado == 'cancelado') ...[
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () {
+                    final id = int.tryParse(ride.id);
+                    if (id != null) {
+                      mostrarReportarPasajeroSheet(context, idViaje: id);
+                    }
+                  },
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 0),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    foregroundColor: scheme.error,
+                  ),
+                  icon: const Icon(Icons.flag_outlined, size: 16),
+                  label: const Text('Reportar pasajero',
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
           ],
         ),
       ),
