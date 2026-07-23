@@ -84,6 +84,7 @@ class JalaMapView extends StatefulWidget {
     this.showCurrentLocationPin = true,
     this.onMapIdle,
     this.onCameraChanged,
+    this.onTap,
     this.autoLocate = true,
     this.styleUri,
   });
@@ -98,6 +99,9 @@ class JalaMapView extends StatefulWidget {
   final bool showCurrentLocationPin;
   final void Function(CameraChangedEventData)? onCameraChanged;
   final void Function(MapIdleEventData)? onMapIdle;
+
+  /// Tap sobre el mapa (coordenada geográfica en `context.point`).
+  final OnMapTapListener? onTap;
   final bool autoLocate;
   final String? styleUri;
 
@@ -111,6 +115,8 @@ class _JalaMapViewState extends State<JalaMapView>
   CircleAnnotationManager? _circleManager;
   geo.Position? _currentPosition;
   bool _located = false;
+  // Ambiente día/noche ya aplicado (evita re-aplicarlo en cada rebuild).
+  Brightness? _appliedBrightness;
 
   @override
   void initState() {
@@ -124,9 +130,40 @@ class _JalaMapViewState extends State<JalaMapView>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Cambió el tema de la app: ajusta el ambiente del mapa SIN recrear el
+    // MapWidget. Antes el mapa estaba keyed por brillo y cambiar tema destruía
+    // y recreaba el mapa nativo de Mapbox = jank agresivo.
+    final b = Theme.of(context).brightness;
+    if (_mapboxMap != null && b != _appliedBrightness) {
+      _applyLightPreset(b);
+    }
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Ajusta el preset de luz del estilo Standard (día/noche) según el tema, sin
+  /// recargar el estilo ni recrear el mapa (reemplaza el switch de styleUri por
+  /// brillo, que obligaba a recrear el MapWidget).
+  Future<void> _applyLightPreset(Brightness b) async {
+    final map = _mapboxMap;
+    if (map == null) return;
+    _appliedBrightness = b;
+    try {
+      await map.style.setStyleImportConfigProperty(
+          'basemap', 'lightPreset', b == Brightness.dark ? 'night' : 'day');
+    } catch (_) {
+      // Estilos que no son Standard no tienen 'basemap'; se ignora.
+    }
+  }
+
+  void _onStyleLoaded(StyleLoadedEventData _) {
+    if (mounted) _applyLightPreset(Theme.of(context).brightness);
   }
 
   /// When the app comes back from background the native GL surface may have
@@ -233,6 +270,7 @@ class _JalaMapViewState extends State<JalaMapView>
   void _handleMapCreated(MapboxMap mapboxMap) {
     _mapboxMap = mapboxMap;
     _hideMapOrnaments(mapboxMap);
+    _applyLightPreset(Theme.of(context).brightness);
     if (!_located && _currentPosition != null) {
       _located = true;
       _flyToCurrent(_currentPosition!.latitude, _currentPosition!.longitude);
@@ -261,15 +299,17 @@ class _JalaMapViewState extends State<JalaMapView>
     final lat = widget.initialLatitude ?? _currentPosition?.latitude;
     final lng = widget.initialLongitude ?? _currentPosition?.longitude;
     final hasPosition = lat != null && lng != null;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final mapStyle = widget.styleUri ??
-        (isDark ? MapboxStyles.DARK : MapboxStyles.STANDARD);
+    // Un único estilo estable (Standard) para claro y oscuro: el ambiente
+    // día/noche se cambia con lightPreset (_applyLightPreset) sin recrear el
+    // mapa. Por eso la key ya NO depende del brillo (evita el jank al cambiar
+    // tema, sobre todo con el Home vivo en el IndexedStack del shell).
+    final mapStyle = widget.styleUri ?? MapboxStyles.STANDARD;
 
     return Stack(
       children: [
         Positioned.fill(
           child: MapWidget(
-            key: ValueKey("jalaMapWidget_${isDark ? 'dark' : 'light'}"),
+            key: const ValueKey('jalaMapWidget'),
             // Igual que en la app pasajero (mapbox 2.25); en 2.26 se prefiere
             // `viewport`, pero cameraOptions sigue funcionando.
             // ignore: deprecated_member_use
@@ -284,8 +324,12 @@ class _JalaMapViewState extends State<JalaMapView>
             ),
             styleUri: mapStyle,
             onMapCreated: _handleMapCreated,
+            onStyleLoadedListener: _onStyleLoaded,
             onCameraChangeListener: widget.onCameraChanged,
             onMapIdleListener: widget.onMapIdle,
+            // onTapListener sigue funcionando en 2.25; addInteraction es de 2.26.
+            // ignore: deprecated_member_use
+            onTapListener: widget.onTap,
           ),
         ),
         if (widget.showLocationMarker)

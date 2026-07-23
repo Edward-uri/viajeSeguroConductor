@@ -1,7 +1,11 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../../../shared/utils/image_utils.dart';
 import '../../../../shared/widgets/authed_image.dart';
 import '../../../../theme/jala_theme.dart';
 import '../provider/driver_profile_viewmodel.dart';
@@ -19,6 +23,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _apellidoPaternoController = TextEditingController();
   final _apellidoMaternoController = TextEditingController();
   final _correoController = TextEditingController();
+
+  // Foto recién elegida: se muestra al instante (la URL por-id no cambia).
+  Uint8List? _pickedBytes;
 
   @override
   void initState() {
@@ -80,33 +87,88 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Center(
-                    child: ClipOval(
-                      child: Consumer(
-                        builder: (context, ref, _) {
-                          final user = ref.watch(driverProfileViewModelProvider).user;
-                          final initials = (user?.nombre ?? user?.correoElectronico ?? 'N/A')
-                              .substring(0, 1)
-                              .toUpperCase();
-                          return Container(
-                            width: 96,
-                            height: 96,
-                            color: JalaBrand.amber,
-                            alignment: Alignment.center,
-                            child: AuthedImage(
-                              path: user?.fotoPerfilUrl,
-                              size: 96,
-                              fallback: Text(
-                                initials,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 36,
-                                  fontWeight: FontWeight.w700,
+                    child: Consumer(
+                      builder: (context, ref, _) {
+                        final driverVm =
+                            ref.watch(driverProfileViewModelProvider);
+                        final user = driverVm.user;
+                        final initials =
+                            (user?.nombre ?? user?.correoElectronico ?? 'N/A')
+                                .substring(0, 1)
+                                .toUpperCase();
+                        return GestureDetector(
+                          onTap: driverVm.isUploadingPhoto ? null : _cambiarFoto,
+                          child: Stack(
+                            children: [
+                              ClipOval(
+                                child: Container(
+                                  width: 96,
+                                  height: 96,
+                                  color: JalaBrand.amber,
+                                  alignment: Alignment.center,
+                                  child: _pickedBytes != null
+                                      ? Image.memory(
+                                          _pickedBytes!,
+                                          width: 96,
+                                          height: 96,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : AuthedImage(
+                                          path: user?.fotoPerfilUrl,
+                                          size: 96,
+                                          version: driverVm.photoVersion,
+                                          fallback: Text(
+                                            initials,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 36,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: JalaBrand.amber,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Theme.of(context).colorScheme.surface,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt_rounded,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              if (driverVm.isUploadingPhoto)
+                                Positioned.fill(
+                                  child: ClipOval(
+                                    child: Container(
+                                      color: Colors.black.withValues(alpha: 0.4),
+                                      alignment: Alignment.center,
+                                      child: const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.4,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -200,6 +262,54 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (!mounted) return;
     if (ok) {
       context.pop();
+    }
+  }
+
+  Future<void> _cambiarFoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Tomar foto'),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Elegir de la galería'),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final picked = await ImagePicker().pickImage(source: source, imageQuality: 88);
+    if (picked == null) return;
+    final jpeg = await compressToJpeg(await picked.readAsBytes());
+    if (!mounted) return;
+    setState(() => _pickedBytes = jpeg);
+
+    final ok = await ref
+        .read(driverProfileViewModelProvider)
+        .uploadPhoto(bytes: jpeg, fileName: 'perfil.jpg');
+    if (!mounted) return;
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto actualizada')),
+      );
+    } else {
+      setState(() => _pickedBytes = null); // revierte a la foto del servidor
+      final msg = ref.read(driverProfileViewModelProvider).errorMessage ??
+          'No se pudo actualizar la foto';
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(msg)));
     }
   }
 }

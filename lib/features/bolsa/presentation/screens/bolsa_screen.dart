@@ -136,55 +136,95 @@ class _VacanteCard extends StatelessWidget {
     final miPostulacion = postulacion;
 
     return Card(
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    vacante.descripcionVehiculo,
-                    style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    municipio,
-                    style: text.bodySmall
-                        ?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
-                  if (condiciones != null && condiciones.isNotEmpty)
-                    Text(condiciones, style: text.bodySmall),
-                ],
-              ),
+            Text(
+              vacante.descripcionVehiculo,
+              style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(width: 8),
-            if (miPostulacion != null)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _EstadoChip(
-                    label: miPostulacion.estado.label,
-                    color: miPostulacion.estado.color,
+            const SizedBox(height: 2),
+            Text(
+              municipio,
+              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                if (vacante.turnoLabel.isNotEmpty)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: scheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      vacante.turnoLabel,
+                      style: text.labelSmall?.copyWith(
+                        color: scheme.onSecondaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                  if (miPostulacion.estado == EstadoPostulacion.retirada) ...[
-                    const SizedBox(width: 8),
-                    TextButton(
+                if (vacante.rentaLabel.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '${vacante.rentaLabel} / turno',
+                    style: text.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.primary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (vacante.diasLabel.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              _InfoLinea(
+                  icon: Icons.calendar_today_outlined, text: vacante.diasLabel),
+            ],
+            if (vacante.horario != null && vacante.horario!.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              _InfoLinea(icon: Icons.schedule_outlined, text: vacante.horario!),
+            ],
+            if (condiciones != null && condiciones.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(condiciones, style: text.bodySmall),
+            ],
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: miPostulacion != null
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _EstadoChip(
+                          label: miPostulacion.estado.label,
+                          color: miPostulacion.estado.color,
+                        ),
+                        if (miPostulacion.estado ==
+                            EstadoPostulacion.retirada) ...[
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: vm.isWorking
+                                ? null
+                                : () => vm.postular(vacante.idVacante),
+                            child: const Text('Postularme de nuevo'),
+                          ),
+                        ],
+                      ],
+                    )
+                  : FilledButton.tonal(
                       onPressed: vm.isWorking
                           ? null
                           : () => vm.postular(vacante.idVacante),
-                      child: const Text('Postularme de nuevo'),
+                      child: const Text('Postularme'),
                     ),
-                  ],
-                ],
-              )
-            else
-              TextButton(
-                onPressed:
-                    vm.isWorking ? null : () => vm.postular(vacante.idVacante),
-                child: const Text('Postularme'),
-              ),
+            ),
           ],
         ),
       ),
@@ -204,6 +244,7 @@ class _PostulacionCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Card(
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
@@ -240,6 +281,32 @@ class _PostulacionCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Ícono + texto en gris para los términos de la vacante (días, horario).
+class _InfoLinea extends StatelessWidget {
+  const _InfoLinea({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: scheme.onSurfaceVariant),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ),
+      ],
     );
   }
 }

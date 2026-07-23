@@ -9,6 +9,7 @@ class VehiculoMapper {
     return Vehiculo(
       idVehiculo: (json['idVehiculo'] as num?)?.toInt() ?? 0,
       placa: json['placa']?.toString() ?? '',
+      numeroSerie: json['numeroSerie']?.toString() ?? '',
       modelo: json['modelo']?.toString() ?? '',
       color: json['color']?.toString() ?? '',
       anio: (json['anio'] as num?)?.toInt() ?? 0,
@@ -17,6 +18,8 @@ class VehiculoMapper {
       rfc: json['rfc']?.toString(),
       razonSocial: json['razonSocial']?.toString(),
       activo: json['activo'] == true,
+      conductoresAsignados:
+          (json['conductoresAsignados'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -24,8 +27,9 @@ class VehiculoMapper {
   static Map<String, dynamic> toJson(Vehiculo vehiculo) {
     return {
       'placa': vehiculo.placa,
+      if (vehiculo.numeroSerie.isNotEmpty) 'numeroSerie': vehiculo.numeroSerie,
       'modelo': vehiculo.modelo,
-      'color': vehiculo.color,
+      if (vehiculo.color.isNotEmpty) 'color': vehiculo.color,
       'anio': vehiculo.anio,
       'idMunicipio': vehiculo.idMunicipio,
     };

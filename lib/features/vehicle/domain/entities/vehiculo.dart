@@ -3,6 +3,7 @@ enum VehicleStatus { active, incomplete, reviewing }
 class Vehiculo {
   final int idVehiculo;
   final String placa;
+  final String numeroSerie;
   final String marca;
   final String modelo;
   final String color;
@@ -14,9 +15,13 @@ class Vehiculo {
   final String? razonSocial;
   final bool activo;
 
+  /// Conductores con asignación activa a este vehículo (por vacante o alta directa).
+  final int conductoresAsignados;
+
   const Vehiculo({
     this.idVehiculo = 0,
     required this.placa,
+    this.numeroSerie = '',
     this.marca = '',
     required this.modelo,
     required this.color,
@@ -27,6 +32,7 @@ class Vehiculo {
     this.rfc,
     this.razonSocial,
     this.activo = false,
+    this.conductoresAsignados = 0,
   });
 
   bool get aprobado => status == VehicleStatus.active;

@@ -23,7 +23,8 @@ void main() {
       expect(vacante.idMunicipio, 1);
       expect(vacante.condiciones, 'Turno matutino, 60/40');
       expect(vacante.placa, 'XYZ-123');
-      expect(vacante.descripcionVehiculo, 'Italika 150 · Rojo · 2021');
+      // La placa manda y se le suman los detalles.
+      expect(vacante.descripcionVehiculo, 'XYZ-123 · Italika 150 · Rojo · 2021');
     });
 
     test('campos opcionales ausentes o null: defaults tolerantes', () {

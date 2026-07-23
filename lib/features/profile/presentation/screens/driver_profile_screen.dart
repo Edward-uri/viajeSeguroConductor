@@ -136,6 +136,7 @@ class _ProfileContent extends ConsumerWidget {
               child: AuthedImage(
                 path: user.fotoPerfilUrl,
                 size: 96,
+                version: vm.photoVersion,
                 fallback: Text(
                   _initials(user.nombreCompleto),
                   style: text.headlineMedium?.copyWith(

@@ -76,78 +76,162 @@ class _MisVacantesScreenState extends ConsumerState<MisVacantesScreen> {
   }
 }
 
-class _VacanteCard extends ConsumerStatefulWidget {
+class _VacanteCard extends ConsumerWidget {
   const _VacanteCard({required this.vacante});
 
   final Vacante vacante;
 
   @override
-  ConsumerState<_VacanteCard> createState() => _VacanteCardState();
-}
-
-class _VacanteCardState extends ConsumerState<_VacanteCard> {
-  bool _confirmandoCierre = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final vm = ref.watch(duenoVacantesViewModelProvider);
-    final vacante = widget.vacante;
     final abierta = vacante.abierta;
-    final color =
+    final estadoColor =
         abierta ? context.brand.success : context.brand.greyLight;
+    final pendientes = vacante.postulacionesPendientes;
 
     return Card(
-      child: ListTile(
-        onTap: () => context.push(AppRoutes.vacantePostulaciones, extra: vacante),
-        title: Text(
-          vacante.descripcionVehiculo,
-          style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Row(
-          children: [
-            _EstadoChip(
-              label: abierta ? 'Abierta' : 'Cerrada',
-              color: color,
-            ),
-            if (vacante.postulacionesPendientes > 0) ...[
-              const SizedBox(width: 8),
-              _EstadoChip(
-                label: '${vacante.postulacionesPendientes} pendientes',
-                color: context.brand.warning,
+      margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () =>
+            context.push(AppRoutes.vacantePostulaciones, extra: vacante),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      vacante.descripcionVehiculo,
+                      style:
+                          text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _Chip(label: abierta ? 'Abierta' : 'Cerrada', color: estadoColor),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (vacante.turnoLabel.isNotEmpty)
+                    _Chip(label: vacante.turnoLabel, color: scheme.primary),
+                  if (vacante.rentaLabel.isNotEmpty)
+                    Text(
+                      '${vacante.rentaLabel} / turno',
+                      style: text.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: scheme.primary,
+                      ),
+                    ),
+                ],
+              ),
+              if (vacante.diasLabel.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _InfoLinea(
+                    icon: Icons.calendar_today_outlined,
+                    label: vacante.diasLabel),
+              ],
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Icon(Icons.people_alt_outlined,
+                      size: 18, color: scheme.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      pendientes > 0
+                          ? '$pendientes ${pendientes == 1 ? "postulante" : "postulantes"} por revisar'
+                          : 'Ver postulantes',
+                      style: text.bodyMedium?.copyWith(
+                        fontWeight:
+                            pendientes > 0 ? FontWeight.w700 : FontWeight.w400,
+                        color: pendientes > 0
+                            ? context.brand.warning
+                            : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  if (abierta)
+                    TextButton(
+                      onPressed:
+                          vm.isWorking ? null : () => _confirmarCierre(context, ref),
+                      child: Text('Cerrar',
+                          style: TextStyle(color: scheme.error)),
+                    ),
+                  Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                ],
               ),
             ],
-          ],
+          ),
         ),
-        trailing: abierta
-            ? TextButton(
-                onPressed: vm.isWorking
-                    ? null
-                    : () {
-                        if (_confirmandoCierre) {
-                          ref
-                              .read(duenoVacantesViewModelProvider)
-                              .cerrarVacante(vacante.idVacante);
-                        } else {
-                          setState(() => _confirmandoCierre = true);
-                        }
-                      },
-                child: Text(
-                  _confirmandoCierre ? '¿Confirmar cierre?' : 'Cerrar',
-                  style: _confirmandoCierre
-                      ? TextStyle(color: scheme.error)
-                      : null,
-                ),
-              )
-            : const Icon(Icons.chevron_right),
       ),
+    );
+  }
+
+  Future<void> _confirmarCierre(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Cerrar vacante?'),
+        content: const Text(
+            'Dejará de recibir postulaciones. No se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Cerrar vacante'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await ref
+          .read(duenoVacantesViewModelProvider)
+          .cerrarVacante(vacante.idVacante);
+    }
+  }
+}
+
+/// Ícono + texto en gris para un término de la vacante (días, horario…).
+class _InfoLinea extends StatelessWidget {
+  const _InfoLinea({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: scheme.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _EstadoChip extends StatelessWidget {
-  const _EstadoChip({required this.label, required this.color});
+class _Chip extends StatelessWidget {
+  const _Chip({required this.label, required this.color});
 
   final String label;
   final Color color;
@@ -158,7 +242,7 @@ class _EstadoChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,

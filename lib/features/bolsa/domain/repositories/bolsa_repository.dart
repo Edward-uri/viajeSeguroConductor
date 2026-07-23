@@ -22,7 +22,14 @@ abstract class BolsaRepository {
   /// para ese vehículo.
   Future<List<Vacante>> misVacantes();
 
-  Future<void> crearVacante(int idVehiculo, String? condiciones);
+  Future<void> crearVacante({
+    required int idVehiculo,
+    required String tipoTurno,
+    required double rentaTurno,
+    required List<String> dias,
+    String? horario,
+    String? condiciones,
+  });
 
   Future<void> cerrarVacante(int idVacante);
 

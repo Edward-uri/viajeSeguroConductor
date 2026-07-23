@@ -5,18 +5,20 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/gradient_button.dart';
 import '../../../../core/widgets/reputation_chips.dart';
 import '../../../../routes/app_routes.dart';
+import '../../../../shared/widgets/authed_image.dart';
+import '../../../../theme/theme.dart';
 import '../provider/ride_inbox_viewmodel.dart';
 
 class RideRequestScreen extends ConsumerStatefulWidget {
   const RideRequestScreen({super.key});
 
   @override
-  ConsumerState<RideRequestScreen> createState() =>
-      _RideRequestScreenState();
+  ConsumerState<RideRequestScreen> createState() => _RideRequestScreenState();
 }
 
 class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
-  int _countdown = 15;
+  static const _segundos = 15;
+  int _countdown = _segundos;
   bool _aceptando = false;
 
   @override
@@ -41,277 +43,334 @@ class _RideRequestScreenState extends ConsumerState<RideRequestScreen> {
     });
   }
 
+  Future<void> _rechazar() async {
+    await ref.read(rideInboxViewModelProvider.notifier).rejectRide();
+    if (mounted) context.pop();
+  }
+
+  Future<void> _aceptar() async {
+    setState(() => _aceptando = true);
+    final viaje = await ref.read(rideInboxViewModelProvider.notifier).acceptRide();
+    if (!mounted) return;
+    if (viaje != null) {
+      context.pushReplacement(AppRoutes.rideInProgress, extra: viaje);
+    } else {
+      context.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final inbox = ref.read(rideInboxViewModelProvider.notifier);
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final request =
         ref.watch(rideInboxViewModelProvider.select((s) => s.currentRequest));
 
+    if (request == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final urgente = _countdown <= 5;
+    final acento = urgente ? scheme.error : JalaBrand.success;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Solicitud de viaje')),
+      backgroundColor: scheme.surface,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
+          children: [
+            // ─── Cuenta regresiva: barra que se vacía + segundos ───
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LinearProgressIndicator(
+                        value: _countdown / _segundos,
+                        minHeight: 6,
+                        backgroundColor: scheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation<Color>(acento),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${_countdown}s',
+                    style: text.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: urgente ? scheme.error : scheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'NUEVA SOLICITUD',
+                  style: text.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    letterSpacing: 1.4,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            // ─── Contenido ───
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Tarifa protagonista
+                    Center(
+                      child: Column(
                         children: [
                           Text(
-                            'Nueva solicitud',
-                            style: text.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: scheme.primary,
+                            '\$${request.monto.toStringAsFixed(2)}',
+                            style: text.displaySmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: scheme.onSurface,
                             ),
                           ),
-                          if (request != null)
-                            Text(
-                              '\$${request.monto.toStringAsFixed(2)}',
-                              style: text.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: scheme.onSurface,
-                              ),
-                            ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'MXN · ${request.metodoPago}',
+                            style: text.bodyMedium
+                                ?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      if (request != null) ...[
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: scheme.primaryContainer.withValues(alpha: 0.3),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.money,
-                                      size: 14,
-                                      color: scheme.primary),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    request.metodoPago,
-                                    style: text.bodyMedium?.copyWith(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: scheme.primary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${request.distanciaKm.toStringAsFixed(1)} km · ${request.duracionMin} min',
-                              style: text.bodyMedium?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: 24),
-                      Center(
-                        child: SizedBox(
-                          width: 80,
-                          height: 80,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              CircularProgressIndicator(
-                                value: _countdown / 15,
-                                strokeWidth: 6,
-                                backgroundColor: scheme.surfaceContainerHigh,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    scheme.primary),
-                              ),
-                              Center(
-                                child: Text(
-                                  '${_countdown}s',
-                                  style: text.headlineMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: _countdown <= 3
-                                        ? scheme.error
-                                        : scheme.primary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Pasajero
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      const SizedBox(height: 24),
-                      if (request != null) ...[
-                          Center(
-                            child: CircleAvatar(
-                              radius: 32,
-                              backgroundColor: scheme.primary,
-                              child: Text(
-                                request.pasajeroIniciales,
-                                style: text.titleLarge?.copyWith(
-                                  color: scheme.onPrimary,
-                                  fontWeight: FontWeight.w700,
+                      child: Row(
+                        children: [
+                          ClipOval(
+                            child: AuthedImage(
+                              // Ruta por id (no depende de que el broadcast traiga fotoUrl).
+                              path: '/api/users/${request.idPasajero}/photo',
+                              size: 52,
+                              fallback: CircleAvatar(
+                                radius: 26,
+                                backgroundColor: scheme.primaryContainer,
+                                child: Text(
+                                  request.pasajeroIniciales.isNotEmpty
+                                      ? request.pasajeroIniciales
+                                      : '?',
+                                  style: text.titleMedium?.copyWith(
+                                    color: scheme.onPrimaryContainer,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        const SizedBox(height: 12),
-                          Center(
-                            child: Text(
-                              request.nombreCompleto,
-                              style: text.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: scheme.onSurface,
-                              ),
-                            ),
-                          ),
-                          Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.star,
-                                    size: 16, color: scheme.primary),
-                                const SizedBox(width: 4),
                                 Text(
-                                  '${request.pasajeroCalificacion.toStringAsFixed(1)} · Pasajera',
-                                  style: text.bodyMedium?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
+                                  request.nombreCompleto.isNotEmpty
+                                      ? request.nombreCompleto
+                                      : 'Pasajero',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: text.titleSmall
+                                      ?.copyWith(fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    Icon(Icons.star_rounded,
+                                        size: 15, color: scheme.tertiary),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      request.pasajeroCalificacion
+                                          .toStringAsFixed(1),
+                                      style: text.bodySmall?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: scheme.onSurface,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                ReputationChips(
+                                  idUsuario: request.idPasajero,
+                                  rol: 'pasajero',
                                 ),
                               ],
                             ),
                           ),
-                          Center(
-                            child: ReputationChips(
-                              idUsuario: request.idPasajero,
-                              rol: 'pasajero',
-                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Ruta
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        children: [
+                          _routePoint(
+                            true,
+                            request.origen,
+                            'Recoger · ${request.origenDistancia}',
+                            scheme,
+                            text,
                           ),
-                        const SizedBox(height: 24),
-                        _locationRow(
-                          Icons.circle_outlined,
-                          request.origen,
-                          'Recoger · ${request.origenDistancia}',
-                          scheme.primary,
-                          scheme,
-                        ),
-                        const SizedBox(height: 4),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 11),
-                          child: Container(
-                            width: 2,
-                            height: 24,
-                            color: scheme.outlineVariant,
+                          _routeConnector(scheme),
+                          _routePoint(
+                            false,
+                            request.destino,
+                            'Destino del pasajero',
+                            scheme,
+                            text,
                           ),
-                        ),
-                        _locationRow(
-                          Icons.location_on_outlined,
-                          request.destino,
-                          'Destino del pasajero',
-                          scheme.primary,
-                          scheme,
-                        ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Meta
+                    Row(
+                      children: [
+                        _chip(Icons.route_rounded,
+                            '${request.distanciaKm.toStringAsFixed(1)} km',
+                            scheme, text),
+                        const SizedBox(width: 8),
+                        _chip(Icons.schedule_rounded,
+                            '${request.duracionMin} min', scheme, text),
                       ],
-                      const SizedBox(height: 16),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
+            ),
+            // ─── Acciones ───
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+              child: Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: _aceptando
-                          ? null
-                          : () async {
-                        await inbox.rejectRide();
-                        if (!context.mounted) return;
-                        context.pop();
-                      },
+                      onPressed: _aceptando ? null : _rechazar,
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(54),
                         side: BorderSide(color: scheme.outlineVariant),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         foregroundColor: scheme.onSurfaceVariant,
                       ),
                       child: const Text('Rechazar'),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
                     child: SizedBox(
                       height: 54,
                       child: GradientButton(
                         label: _aceptando ? 'Aceptando…' : 'Aceptar viaje',
-                        onPressed: _aceptando
-                            ? null
-                            : () async {
-                                setState(() => _aceptando = true);
-                                final viaje = await inbox.acceptRide();
-                                if (!context.mounted) return;
-                                if (viaje != null) {
-                                  context.pushReplacement(
-                                    AppRoutes.rideInProgress,
-                                    extra: viaje,
-                                  );
-                                } else {
-                                  context.pop();
-                                }
-                              },
+                        onPressed: _aceptando ? null : _aceptar,
                       ),
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _locationRow(
-      IconData icon, String title, String subtitle, Color color, ColorScheme scheme) {
-    final text = Theme.of(context).textTheme;
+  Widget _routePoint(bool origen, String title, String subtitle,
+      ColorScheme scheme, TextTheme text) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 24, color: color),
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: origen
+              ? Icon(Icons.trip_origin, size: 16, color: JalaBrand.success)
+              : Icon(Icons.location_on, size: 18, color: scheme.error),
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: text.bodyMedium?.copyWith(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
-                  )),
-              const SizedBox(height: 2),
-              Text(subtitle,
-                  style: text.bodyMedium?.copyWith(
-                    fontSize: 13,
-                    color: scheme.onSurfaceVariant,
-                  )),
+              Text(
+                title.isNotEmpty
+                    ? title
+                    : (origen ? 'Punto de encuentro' : 'Destino'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                subtitle,
+                style:
+                    text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _routeConnector(ColorScheme scheme) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.only(left: 7),
+      alignment: Alignment.centerLeft,
+      child: Container(width: 2, height: 18, color: scheme.outlineVariant),
+    );
+  }
+
+  Widget _chip(
+      IconData icon, String label, ColorScheme scheme, TextTheme text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: text.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

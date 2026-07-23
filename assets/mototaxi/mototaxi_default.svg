@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 96" fill="#111111">
+  <!-- Silueta genérica de mototaxi (fallback). Se tiñe con el color de la unidad
+       vía colorFilter; reemplázala dejando mototaxi_<color>.svg en esta carpeta. -->
+  <circle cx="28" cy="72" r="16"/>
+  <circle cx="100" cy="72" r="16"/>
+  <path d="M18 64 C22 46 38 40 56 40 L80 40 C94 40 103 50 109 64 L98 68 C92 56 84 52 74 52 L54 52 C44 52 36 58 32 68 Z"/>
+  <rect x="50" y="30" width="40" height="12" rx="6"/>
+  <path d="M82 42 L106 16 L118 21 L101 47 Z"/>
+  <rect x="20" y="58" width="20" height="8" rx="4"/>
+</svg>

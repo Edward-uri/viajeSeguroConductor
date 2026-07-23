@@ -16,6 +16,13 @@ class BolsaMapper {
       idVacante: (json['idVacante'] as num?)?.toInt() ?? 0,
       idVehiculo: (json['idVehiculo'] as num?)?.toInt() ?? 0,
       idMunicipio: (json['idMunicipio'] as num?)?.toInt() ?? 0,
+      tipoTurno: json['tipoTurno']?.toString() ?? '',
+      rentaTurno: (json['rentaTurno'] as num?)?.toDouble() ?? 0,
+      dias: (json['dias'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      horario: json['horario']?.toString(),
       condiciones: json['condiciones']?.toString(),
       placa: json['placa']?.toString() ?? '',
       modelo: json['modelo']?.toString() ?? '',

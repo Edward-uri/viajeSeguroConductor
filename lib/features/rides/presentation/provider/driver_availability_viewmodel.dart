@@ -83,25 +83,24 @@ class DriverAvailabilityViewModel
     try {
       final results = await Future.wait([
         _repository.getStats(),
-        _repository.getPendingTrips(),
         _vehicleRepository.getMiVehiculo(),
-        // getMe no debe ser fatal: si falla, no debe ocultar la lista de viajes.
+        // getMe no debe ser fatal: si falla, no debe ocultar el resto.
         _profileRepository.getMe().then<User?>((u) => u).catchError((_) => null),
       ]);
       if (!mounted) return;
-      final pendientes = results[1] as List<SolicitudViaje>;
-      final vehiculo = results[2] as Vehiculo?;
-      final user = results[3] as User?;
+      final vehiculo = results[1] as Vehiculo?;
+      final user = results[2] as User?;
       state = state.copyWith(
         stats: results[0] as DriverStats,
         miVehiculo: vehiculo,
         me: user,
         idMunicipio: user?.idMunicipio ?? state.idMunicipio,
       );
-      _inbox.setPendientes(pendientes);
+      // Las pendientes NO se cargan aquí: arrancamos offline y no deben verse
+      // viajes hasta ponerse en línea (ahí _goOnline hace refrescarPendientes).
       _inbox.setVehiculo(vehiculo);
       if (kDebugMode) {
-        debugPrint('[Home] pendientes=${pendientes.length} municipio=${state.idMunicipio} vehiculoAprobado=${vehiculo?.aprobado}');
+        debugPrint('[Home] municipio=${state.idMunicipio} vehiculoAprobado=${vehiculo?.aprobado}');
       }
     } catch (e) {
       if (!mounted) return;
@@ -199,13 +198,11 @@ class DriverAvailabilityViewModel
     try {
       final results = await Future.wait<Object?>([
         _documentoRepository.getDocumentos(),
-        _vehicleRepository.getMiVehiculo(),
+        _vehicleRepository.getVehiculos(),
       ]);
       if (!mounted) return;
       final docs = results[0] as List<Documento>;
-      final vehiculo = results[1] as Vehiculo?;
-      state = state.copyWith(miVehiculo: vehiculo);
-      _inbox.setVehiculo(vehiculo);
+      final vehiculos = results[1] as List<Vehiculo>;
       final pendientesDocs =
           docs.where((d) => d.status != DocumentStatus.approved).toList();
       if (docs.isEmpty || pendientesDocs.isNotEmpty) {
@@ -216,19 +213,27 @@ class DriverAvailabilityViewModel
         );
         return;
       }
-      if (vehiculo == null) {
+      if (vehiculos.isEmpty) {
         state = state.copyWith(
           errorMessage: 'Registra tu vehículo para poder recibir viajes.',
         );
         return;
       }
-      if (!vehiculo.aprobado) {
+      // Basta con UN vehículo aprobado para salir en línea; tener otros en
+      // revisión no bloquea. Se conduce con el activo si está aprobado, si no
+      // con el primer aprobado.
+      final aprobados = vehiculos.where((v) => v.aprobado).toList();
+      if (aprobados.isEmpty) {
         state = state.copyWith(
           errorMessage:
               'Tu vehículo aún no está aprobado. Espera la revisión del administrador.',
         );
         return;
       }
+      final vehiculo =
+          aprobados.firstWhere((v) => v.activo, orElse: () => aprobados.first);
+      state = state.copyWith(miVehiculo: vehiculo);
+      _inbox.setVehiculo(vehiculo);
     } catch (e) {
       if (!mounted) return;
       state = state.copyWith(

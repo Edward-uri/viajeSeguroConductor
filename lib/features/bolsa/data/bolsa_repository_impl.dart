@@ -52,8 +52,22 @@ class BolsaRepositoryImpl implements BolsaRepository {
   }
 
   @override
-  Future<void> crearVacante(int idVehiculo, String? condiciones) async {
-    await _api.crearVacante(idVehiculo, condiciones);
+  Future<void> crearVacante({
+    required int idVehiculo,
+    required String tipoTurno,
+    required double rentaTurno,
+    required List<String> dias,
+    String? horario,
+    String? condiciones,
+  }) async {
+    await _api.crearVacante(
+      idVehiculo: idVehiculo,
+      tipoTurno: tipoTurno,
+      rentaTurno: rentaTurno,
+      dias: dias,
+      horario: horario,
+      condiciones: condiciones,
+    );
   }
 
   @override

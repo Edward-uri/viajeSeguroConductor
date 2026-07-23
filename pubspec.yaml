@@ -67,6 +67,7 @@ flutter:
 
   assets:
     - assets/
+    - assets/mototaxi/
     - lib/shared/icons/
     - lib/shared/icons/map-icons/
     - .env
