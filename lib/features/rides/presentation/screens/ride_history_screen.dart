@@ -1,9 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../theme/theme.dart';
+import '../../../../theme/jala_theme.dart';
 import '../../domain/entities/ride_history_item.dart';
 import '../provider/ride_history_viewmodel.dart';
+
+const _estadoOpciones = <(String?, String)>[
+  (null, 'Todos'),
+  ('completado', 'Completados'),
+  ('en_curso', 'En curso'),
+  ('cancelado', 'Cancelados'),
+];
+const _fechaOpciones = <(int?, String)>[
+  (null, 'Todo'),
+  (0, 'Hoy'),
+  (7, '7 días'),
+  (30, '30 días'),
+];
 
 class RideHistoryScreen extends ConsumerStatefulWidget {
   const RideHistoryScreen({super.key});
@@ -13,187 +26,332 @@ class RideHistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _RideHistoryScreenState extends ConsumerState<RideHistoryScreen> {
+  final _scroll = ScrollController();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => ref.read(rideHistoryViewModelProvider).loadHistory(),
     );
+    _scroll.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 240) {
+      ref.read(rideHistoryViewModelProvider).loadMore();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final vm = ref.watch(rideHistoryViewModelProvider);
-
     return Scaffold(
       appBar: AppBar(title: const Text('Historial de viajes')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: _buildContent(vm),
+        child: Column(
+          children: [
+            _FiltrosBar(vm: vm),
+            Expanded(child: _contenido(vm)),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildContent(RideHistoryViewModel vm) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
-    if (vm.isLoading) {
+  Widget _contenido(RideHistoryViewModel vm) {
+    if (vm.isLoading && vm.rides.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-
-    if (vm.errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: scheme.outline),
-            const SizedBox(height: 16),
-            Text(
-              vm.errorMessage!,
-              style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () =>
-                  ref.read(rideHistoryViewModelProvider).loadHistory(),
-              child: const Text('Reintentar'),
-            ),
-          ],
+    if (vm.errorMessage != null && vm.rides.isEmpty) {
+      return _Centro(
+        icon: Icons.error_outline,
+        titulo: vm.errorMessage!,
+        accion: TextButton(
+          onPressed: () => ref.read(rideHistoryViewModelProvider).loadHistory(),
+          child: const Text('Reintentar'),
         ),
       );
     }
-
     if (vm.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.history, size: 48, color: scheme.outline),
-            const SizedBox(height: 16),
-            Text(
-              'Sin viajes aún',
-              style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
-            ),
-          ],
+      return const _Centro(
+          icon: Icons.history, titulo: 'Sin viajes con estos filtros');
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => ref.read(rideHistoryViewModelProvider).loadHistory(),
+      child: ListView.builder(
+        controller: _scroll,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        itemCount: vm.rides.length + 1,
+        itemBuilder: (context, i) {
+          if (i == vm.rides.length) return _Footer(vm: vm);
+          return _RideHistoryCard(ride: vm.rides[i]);
+        },
+      ),
+    );
+  }
+}
+
+class _FiltrosBar extends ConsumerWidget {
+  const _FiltrosBar({required this.vm});
+
+  final RideHistoryViewModel vm;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(rideHistoryViewModelProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _fila(
+          _estadoOpciones
+              .map((o) => ChoiceChip(
+                    label: Text(o.$2),
+                    selected: vm.estado == o.$1,
+                    onSelected: (_) => notifier.setEstado(o.$1),
+                  ))
+              .toList(),
+        ),
+        _fila(
+          _fechaOpciones
+              .map((o) => ChoiceChip(
+                    label: Text(o.$2),
+                    selected: vm.dias == o.$1,
+                    onSelected: (_) => notifier.setDias(o.$1),
+                  ))
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _fila(List<Widget> chips) {
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+        itemCount: chips.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (_, i) => chips[i],
+      ),
+    );
+  }
+}
+
+class _Footer extends ConsumerWidget {
+  const _Footer({required this.vm});
+
+  final RideHistoryViewModel vm;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    if (vm.isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (vm.hasMore) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Center(
+          child: TextButton(
+            onPressed: () => ref.read(rideHistoryViewModelProvider).loadMore(),
+            child: const Text('Cargar más'),
+          ),
         ),
       );
     }
-
-    return ListView.separated(
-      itemCount: vm.rides.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, i) => _RideHistoryCard(ride: vm.rides[i]),
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Center(
+        child: Text(
+          '${vm.total} ${vm.total == 1 ? "viaje" : "viajes"} en total',
+          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      ),
     );
   }
 }
 
 class _RideHistoryCard extends StatelessWidget {
-  final RideHistoryItem ride;
-
   const _RideHistoryCard({required this.ride});
+
+  final RideHistoryItem ride;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final estadoColor = _estadoColor(scheme);
+    final color = _estadoColor(context, ride.estado);
 
     return Card(
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: scheme.secondaryContainer,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.motorcycle_outlined,
-                color: scheme.onSecondaryContainer,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${ride.origen} → ${ride.destino}',
-                    style:
-                        text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 4),
-                  Text.rich(
-                    TextSpan(
-                      text: _estadoLabel(),
-                      style: text.bodySmall?.copyWith(
-                        color: estadoColor,
-                        fontWeight: FontWeight.w600,
+                  child: Icon(Icons.motorcycle_outlined, color: color, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${ride.origen} → ${ride.destino}',
+                        style: text.bodyLarge
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      children: [
-                        if (ride.distanciaKm != null)
-                          TextSpan(
-                            text:
-                                ' · ${ride.distanciaKm!.toStringAsFixed(1)} km',
-                            style: text.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                      ],
-                    ),
+                      if (ride.fecha != null)
+                        Text(
+                          _fechaLabel(ride.fecha!),
+                          style: text.bodySmall
+                              ?.copyWith(color: scheme.onSurfaceVariant),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '\$${ride.monto.toStringAsFixed(2)}',
+                  style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                _EstadoChip(label: _estadoLabel(ride.estado), color: color),
+                if (ride.distanciaKm != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '${ride.distanciaKm!.toStringAsFixed(1)} km',
+                    style: text.bodySmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              '\$${ride.monto.toStringAsFixed(2)}',
-              style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ],
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  String _estadoLabel() {
-    switch (ride.estado) {
-      case 'solicitado':
-        return 'Solicitado';
-      case 'aceptado':
-        return 'Aceptado';
-      case 'en_curso':
-        return 'En curso';
-      case 'completado':
-        return 'Completado';
-      case 'cancelado':
-        return 'Cancelado';
-      default:
-        return ride.estado;
-    }
-  }
+class _EstadoChip extends StatelessWidget {
+  const _EstadoChip({required this.label, required this.color});
 
-  Color _estadoColor(ColorScheme scheme) {
-    switch (ride.estado) {
-      case 'completado':
-        return JalaBrand.success;
-      case 'en_curso':
-      case 'aceptado':
-        return JalaBrand.amberDeep;
-      case 'cancelado':
-        return scheme.error;
-      default:
-        return scheme.onSurfaceVariant;
-    }
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+            color: color, fontWeight: FontWeight.w600, fontSize: 12),
+      ),
+    );
   }
+}
+
+class _Centro extends StatelessWidget {
+  const _Centro({required this.icon, required this.titulo, this.accion});
+
+  final IconData icon;
+  final String titulo;
+  final Widget? accion;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 48, color: scheme.outline),
+          const SizedBox(height: 16),
+          Text(
+            titulo,
+            textAlign: TextAlign.center,
+            style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          if (accion != null) ...[const SizedBox(height: 16), accion!],
+        ],
+      ),
+    );
+  }
+}
+
+String _estadoLabel(String estado) {
+  switch (estado) {
+    case 'solicitado':
+      return 'Solicitado';
+    case 'aceptado':
+      return 'Aceptado';
+    case 'en_curso':
+      return 'En curso';
+    case 'completado':
+      return 'Completado';
+    case 'cancelado':
+      return 'Cancelado';
+    default:
+      return estado;
+  }
+}
+
+Color _estadoColor(BuildContext context, String estado) {
+  switch (estado) {
+    case 'completado':
+      return context.brand.success;
+    case 'en_curso':
+    case 'aceptado':
+      return context.brand.warning;
+    case 'cancelado':
+      return Theme.of(context).colorScheme.error;
+    default:
+      return Theme.of(context).colorScheme.onSurfaceVariant;
+  }
+}
+
+String _fechaLabel(DateTime d) {
+  const meses = [
+    'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+    'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+  ];
+  final hh = d.hour.toString().padLeft(2, '0');
+  final mm = d.minute.toString().padLeft(2, '0');
+  return '${d.day} ${meses[d.month - 1]} ${d.year} · $hh:$mm';
 }

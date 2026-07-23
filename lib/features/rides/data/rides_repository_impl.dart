@@ -36,6 +36,23 @@ class RidesRepositoryImpl implements RidesRepository {
     }
   }
 
+  // El historial NO traga errores: el viewmodel los muestra.
+  @override
+  Future<RideHistoryPage> getHistorial({
+    required int page,
+    int perPage = 10,
+    String? estado,
+    DateTime? desde,
+  }) async {
+    final res = await _api.getHistorial(
+      page: page,
+      perPage: perPage,
+      estado: estado,
+      desde: desde?.toUtc().toIso8601String(),
+    );
+    return RideHistoryMapper.pageFromJson(res);
+  }
+
   @override
   Future<SolicitudViaje?> getCurrentRequest() async {
     try {

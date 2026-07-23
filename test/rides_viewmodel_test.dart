@@ -48,6 +48,22 @@ class _MockRidesRepository implements RidesRepository {
   }
 
   @override
+  Future<RideHistoryPage> getHistorial({
+    required int page,
+    int perPage = 10,
+    String? estado,
+    DateTime? desde,
+  }) async {
+    if (shouldThrow) throw Exception('Error');
+    return RideHistoryPage(
+      items: assignedRides,
+      page: page,
+      totalPages: 1,
+      total: assignedRides.length,
+    );
+  }
+
+  @override
   Future<SolicitudViaje?> getCurrentRequest() async => null;
 
   @override
