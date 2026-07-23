@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../routes/app_routes.dart';
 import '../../../../theme/jala_theme.dart';
+import '../../../reportes/presentation/reportar_sheet.dart';
 import '../provider/ride_evaluation_viewmodel.dart';
 
 class RideEvaluationScreen extends ConsumerStatefulWidget {
@@ -184,6 +185,23 @@ class _RideEvaluationScreenState
                           ),
                         ),
                         onChanged: vm.setComentario,
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: () {
+                            final id = int.tryParse(_rideId ?? '');
+                            if (id != null) {
+                              mostrarReportarPasajeroSheet(context, idViaje: id);
+                            }
+                          },
+                          icon: Icon(Icons.flag_outlined,
+                              size: 18, color: context.brand.destructive),
+                          label: Text('Reportar pasajero',
+                              style:
+                                  TextStyle(color: context.brand.destructive)),
+                        ),
                       ),
                       if (vm.errorMessage != null) ...[
                         const SizedBox(height: 12),
