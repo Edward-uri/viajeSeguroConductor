@@ -103,13 +103,16 @@ class _RegisterOtpScreenState extends ConsumerState<RegisterOtpScreen> {
                     controller: _controllers[i],
                     focusNode: _focusNodes[i],
                     textAlign: TextAlign.center,
+                    textAlignVertical: TextAlignVertical.center,
                     keyboardType: TextInputType.number,
                     maxLength: 1,
-                    style: text.headlineMedium?.copyWith(
+                    style: text.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                     decoration: const InputDecoration(
                       counterText: '',
+                      contentPadding: EdgeInsets.zero,
+                      isDense: true,
                     ),
                     onChanged: (v) => _onDigitChange(i, v),
                   ),

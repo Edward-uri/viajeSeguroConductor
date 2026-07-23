@@ -80,8 +80,13 @@ class _RideHistoryScreenState extends ConsumerState<RideHistoryScreen> {
       );
     }
     if (vm.isEmpty) {
-      return const _Centro(
-          icon: Icons.history, titulo: 'Sin viajes con estos filtros');
+      final hayFiltros = vm.estado != null || vm.dias != null;
+      return _Centro(
+        icon: Icons.history,
+        titulo: hayFiltros
+            ? 'Sin viajes con estos filtros'
+            : 'Aún no has realizado viajes',
+      );
     }
 
     return RefreshIndicator(

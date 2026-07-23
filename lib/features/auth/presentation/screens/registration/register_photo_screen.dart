@@ -43,10 +43,18 @@ class _RegisterPhotoScreenState extends ConsumerState<RegisterPhotoScreen> {
       return;
     }
     setState(() => _subiendo = true);
-    final ok =
-        await ref.read(profileViewModelProvider).uploadNewPhoto(bytes: _bytes!);
+    bool ok = false;
+    try {
+      ok = await ref
+          .read(profileViewModelProvider)
+          .uploadNewPhoto(bytes: _bytes!)
+          .timeout(const Duration(seconds: 40), onTimeout: () => false);
+    } catch (_) {
+      ok = false;
+    } finally {
+      if (mounted) setState(() => _subiendo = false);
+    }
     if (!mounted) return;
-    setState(() => _subiendo = false);
     if (ok) {
       _irAlHome();
     } else {
