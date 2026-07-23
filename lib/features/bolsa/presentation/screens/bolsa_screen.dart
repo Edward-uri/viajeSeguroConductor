@@ -136,6 +136,7 @@ class _VacanteCard extends StatelessWidget {
     final miPostulacion = postulacion;
 
     return Card(
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Column(
@@ -243,6 +244,7 @@ class _PostulacionCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Card(
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(

@@ -76,9 +76,12 @@ class DuenoVacantesViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       _postulaciones = await _repository.postulacionesDe(idVacante);
+      debugPrint(
+          '[bolsa] postulaciones cargadas (vacante $idVacante): ${_postulaciones.length}');
     } catch (e) {
       _errorMessage = ErrorHandler.messageFor(e,
           fallback: 'No pudimos cargar las postulaciones. Intenta de nuevo.');
+      debugPrint('[bolsa] ERROR cargando postulaciones: $e');
     } finally {
       _isLoading = false;
       notifyListeners();

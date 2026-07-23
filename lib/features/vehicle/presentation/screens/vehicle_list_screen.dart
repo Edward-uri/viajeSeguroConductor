@@ -81,8 +81,12 @@ class _VehicleListScreenState extends ConsumerState<VehicleListScreen> {
                                 final v = vm.vehiculos[i];
                                 return _VehicleCard(
                                   placa: v.placa,
-                                  descripcion:
-                                      '${v.marca} · ${v.color} · ${v.anio}',
+                                  descripcion: [
+                                    if (v.marca.isNotEmpty) v.marca,
+                                    if (v.modelo.isNotEmpty) v.modelo,
+                                    if (v.color.isNotEmpty) v.color,
+                                    if (v.anio > 0) '${v.anio}',
+                                  ].join(' · '),
                                   status: v.status,
                                   activo: v.activo,
                                   onUsar: () => vm.usarVehiculo(v.idVehiculo),
@@ -149,7 +153,7 @@ class _VehicleCard extends StatelessWidget {
       case VehicleStatus.incomplete:
         return 'Faltan datos y documentos';
       default:
-        return descripcion;
+        return descripcion.isEmpty ? 'Sin detalles del vehículo' : descripcion;
     }
   }
 

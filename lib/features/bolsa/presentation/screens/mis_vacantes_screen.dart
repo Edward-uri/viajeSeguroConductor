@@ -76,73 +76,80 @@ class _MisVacantesScreenState extends ConsumerState<MisVacantesScreen> {
   }
 }
 
-class _VacanteCard extends ConsumerStatefulWidget {
+class _VacanteCard extends ConsumerWidget {
   const _VacanteCard({required this.vacante});
 
   final Vacante vacante;
 
   @override
-  ConsumerState<_VacanteCard> createState() => _VacanteCardState();
-}
-
-class _VacanteCardState extends ConsumerState<_VacanteCard> {
-  bool _confirmandoCierre = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final vm = ref.watch(duenoVacantesViewModelProvider);
-    final vacante = widget.vacante;
     final abierta = vacante.abierta;
-    final color =
-        abierta ? context.brand.success : context.brand.greyLight;
+    final color = abierta ? context.brand.success : context.brand.greyLight;
 
     return Card(
+      margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        onTap: () => context.push(AppRoutes.vacantePostulaciones, extra: vacante),
+        contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+        onTap: () =>
+            context.push(AppRoutes.vacantePostulaciones, extra: vacante),
         title: Text(
           vacante.descripcionVehiculo,
           style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
         ),
-        subtitle: Row(
-          children: [
-            _EstadoChip(
-              label: abierta ? 'Abierta' : 'Cerrada',
-              color: color,
-            ),
-            if (vacante.postulacionesPendientes > 0) ...[
-              const SizedBox(width: 8),
-              _EstadoChip(
-                label: '${vacante.postulacionesPendientes} pendientes',
-                color: context.brand.warning,
-              ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              _EstadoChip(label: abierta ? 'Abierta' : 'Cerrada', color: color),
+              if (vacante.postulacionesPendientes > 0)
+                _EstadoChip(
+                  label: '${vacante.postulacionesPendientes} pendientes',
+                  color: context.brand.warning,
+                ),
             ],
-          ],
+          ),
         ),
         trailing: abierta
-            ? TextButton(
-                onPressed: vm.isWorking
-                    ? null
-                    : () {
-                        if (_confirmandoCierre) {
-                          ref
-                              .read(duenoVacantesViewModelProvider)
-                              .cerrarVacante(vacante.idVacante);
-                        } else {
-                          setState(() => _confirmandoCierre = true);
-                        }
-                      },
-                child: Text(
-                  _confirmandoCierre ? '¿Confirmar cierre?' : 'Cerrar',
-                  style: _confirmandoCierre
-                      ? TextStyle(color: scheme.error)
-                      : null,
-                ),
+            ? IconButton(
+                tooltip: 'Cerrar vacante',
+                icon: Icon(Icons.close_rounded, color: scheme.error),
+                onPressed:
+                    vm.isWorking ? null : () => _confirmarCierre(context, ref),
               )
             : const Icon(Icons.chevron_right),
       ),
     );
+  }
+
+  Future<void> _confirmarCierre(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Cerrar vacante?'),
+        content: const Text(
+            'Dejará de recibir postulaciones. No se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Cerrar vacante'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await ref
+          .read(duenoVacantesViewModelProvider)
+          .cerrarVacante(vacante.idVacante);
+    }
   }
 }
 
