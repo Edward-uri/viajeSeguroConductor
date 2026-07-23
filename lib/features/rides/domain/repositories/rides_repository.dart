@@ -5,6 +5,14 @@ abstract class RidesRepository {
   Future<DriverStats> getStats();
   Future<List<RideHistoryItem>> getAssignedRides();
 
+  /// Historial paginado con filtros opcionales (estado, desde). Propaga errores.
+  Future<RideHistoryPage> getHistorial({
+    required int page,
+    int perPage,
+    String? estado,
+    DateTime? desde,
+  });
+
   @Deprecated('Usa getPendingTrips() + selección local. Este método devuelve '
       'el primer viaje pendiente, lo cual no representa una "solicitud actual".')
   Future<SolicitudViaje?> getCurrentRequest();

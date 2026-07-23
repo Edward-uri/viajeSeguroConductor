@@ -15,6 +15,19 @@ class RidesApi {
   Future<Map<String, dynamic>> getAssignedRides() =>
       _api.get(ApiEndpoints.viajesAsignados);
 
+  Future<Map<String, dynamic>> getHistorial({
+    required int page,
+    required int perPage,
+    String? estado,
+    String? desde,
+  }) =>
+      _api.get(ApiEndpoints.viajesHistorial(
+        page: page,
+        perPage: perPage,
+        estado: estado,
+        desde: desde,
+      ));
+
   Future<Map<String, dynamic>> getRideById(String rideId) =>
       _api.get(ApiEndpoints.viajeDetalle(rideId), auth: true);
 

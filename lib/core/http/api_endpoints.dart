@@ -35,6 +35,18 @@ class ApiEndpoints {
   static const String viajesPendientes = '/api/viajes/pendientes';
   static const String viajesAsignados = '/api/viajes/asignados';
   static const String viajesMios = '/api/viajes/mios';
+  // Historial del conductor: paginado (10) + filtros (estado, desde ISO).
+  static String viajesHistorial({
+    int page = 1,
+    int perPage = 10,
+    String? estado,
+    String? desde,
+  }) {
+    final q = <String>['page=$page', 'perPage=$perPage'];
+    if (estado != null) q.add('estado=$estado');
+    if (desde != null) q.add('desde=${Uri.encodeComponent(desde)}');
+    return '/api/viajes/historial?${q.join('&')}';
+  }
   static String viajeAceptar(String rideId) => '/api/viajes/$rideId/aceptar';
   static String viajeRechazar(String rideId) => '/api/viajes/$rideId/rechazar';
   static String viajeSoltar(String rideId) => '/api/viajes/$rideId/soltar';

@@ -31,10 +31,27 @@ class RideHistoryMapper {
       monto: (json['tarifa'] as num?)?.toDouble() ?? 0.0,
       estado: json['estado']?.toString() ?? 'desconocido',
       distanciaKm: (json['distanciaKm'] as num?)?.toDouble(),
+      fecha: DateTime.tryParse(json['fechaSolicitud']?.toString() ?? '')?.toLocal(),
       origenLat: extractLat(origenRaw),
       origenLng: extractLng(origenRaw),
       destinoLat: extractLat(destinoRaw),
       destinoLng: extractLng(destinoRaw),
+    );
+  }
+
+  /// Página del historial: GET /api/viajes/historial → { data, page, totalPages, total }.
+  static RideHistoryPage pageFromJson(Map<String, dynamic> json) {
+    final data = json['data'];
+    final items = data is List
+        ? data
+            .map((e) => fromJson(e as Map<String, dynamic>))
+            .toList()
+        : <RideHistoryItem>[];
+    return RideHistoryPage(
+      items: items,
+      page: (json['page'] as num?)?.toInt() ?? 1,
+      totalPages: (json['totalPages'] as num?)?.toInt() ?? 1,
+      total: (json['total'] as num?)?.toInt() ?? items.length,
     );
   }
 }
