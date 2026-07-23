@@ -533,17 +533,6 @@ class _EditarTerminosSheetState extends State<_EditarTerminosSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: scheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
             Text('Editar términos',
                 style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
             Text(

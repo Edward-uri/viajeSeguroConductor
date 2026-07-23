@@ -130,17 +130,6 @@ class _ReportarPasajeroSheetState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: scheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
           Text('Reportar pasajero',
               style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
